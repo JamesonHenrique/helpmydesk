@@ -1,0 +1,24 @@
+name: Proposta de nova verificação ou correção
+description: Sugira um problema comum que o HelpMyDesk deveria diagnosticar ou corrigir
+labels: [capability]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema (como uma pessoa leiga descreveria)
+    validations:
+      required: true
+  - type: textarea
+    id: signal
+    attributes:
+      label: Como detectar (sinal observável)
+  - type: textarea
+    id: fix
+    attributes:
+      label: Correção conhecida e como verificar que funcionou
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Plataforma
+      multiple: true
+      options: [Windows, Linux]

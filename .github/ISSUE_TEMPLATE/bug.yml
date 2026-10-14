@@ -1,0 +1,21 @@
+name: Problema no HelpMyDesk
+description: Algo no próprio app não funcionou como esperado
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu?
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Sistema (ex.: Windows 11 24H2, Ubuntu 24.04)
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Relatório do app (opcional)
+      description: Cole o relatório gerado pelo app. Revise antes e remova qualquer dado pessoal.

@@ -1,0 +1,31 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+
+# Environment and secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Claude Code: version only the Spec Kit skills (agent folder may hold local credentials)
+.claude/*
+!.claude/skills/
+
+# Evaluation raw outputs and lab artifacts (baselines live in evals/baselines/)
+evals/results/
+lab/out/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
