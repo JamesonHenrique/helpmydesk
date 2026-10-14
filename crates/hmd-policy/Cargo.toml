@@ -1,0 +1,15 @@
+[package]
+name = "hmd-policy"
+description = "Deterministic Policy Engine of HelpMyDesk: validates action plan proposals against the catalog"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+hmd-domain = { path = "../hmd-domain" }
+
+[lints]
+workspace = true
