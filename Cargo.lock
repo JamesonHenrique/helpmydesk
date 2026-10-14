@@ -5,3 +5,10 @@ version = 4
 [[package]]
 name = "hmd-domain"
 version = "0.1.0"
+
+[[package]]
+name = "hmd-policy"
+version = "0.1.0"
+dependencies = [
+ "hmd-domain",
+]

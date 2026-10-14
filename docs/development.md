@@ -33,3 +33,4 @@ Veja o plano v1, VIII.4. Crates atuais:
 | Crate | Spec | Conteúdo |
 |---|---|---|
 | `crates/hmd-domain` | 001 | Ciclo de vida do chamado, fases da sessão, gatilhos de relatório, housekeeping |
+| `crates/hmd-policy` | 002 | Policy Engine: validação determinística de planos, nível mínimo e validação do catálogo |
