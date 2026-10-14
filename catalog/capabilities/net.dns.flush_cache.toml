@@ -1,0 +1,29 @@
+id = "net.dns.flush_cache"
+version = "1.0.0"
+kind = "fix"
+family = "connectivity"
+
+# Conservative until spike S-02: assumed to require elevation on both platforms (hence N3).
+# `none_of = ["net.gateway.unreachable"]` will be added when the gateway probe exists.
+[variants.windows]
+risk_level = "N3"
+requires_elevation = true
+verification = "net.dns.resolve"
+max_per_session = 1
+
+[variants.windows.preconditions]
+all_of = ["net.dns.resolution_failing"]
+
+[variants.linux]
+risk_level = "N3"
+requires_elevation = true
+verification = "net.dns.resolve"
+max_per_session = 1
+
+[variants.linux.preconditions]
+all_of = ["net.dns.resolution_failing"]
+
+[copy.pt-BR]
+title = "Limpar a memória de endereços da internet"
+risk = "Muito baixo. Não apaga nada seu. O sistema vai pedir sua permissão."
+undo = "Não é necessário desfazer."

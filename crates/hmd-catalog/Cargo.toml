@@ -1,0 +1,19 @@
+[package]
+name = "hmd-catalog"
+description = "HelpMyDesk capability catalog: TOML format, loading, validation and embedding"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+build = "build.rs"
+
+[dependencies]
+hmd-domain = { path = "../hmd-domain" }
+hmd-policy = { path = "../hmd-policy" }
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.8"
+
+[lints]
+workspace = true

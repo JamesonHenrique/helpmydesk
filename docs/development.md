@@ -34,3 +34,8 @@ Veja o plano v1, VIII.4. Crates atuais:
 |---|---|---|
 | `crates/hmd-domain` | 001 | Ciclo de vida do chamado, fases da sessão, gatilhos de relatório, housekeeping |
 | `crates/hmd-policy` | 002 | Policy Engine: validação determinística de planos, nível mínimo e validação do catálogo |
+| `crates/hmd-catalog` | 003 | Catálogo TOML (`catalog/`): carga estrita, validação, embutido no binário |
+| `crates/hmd-probes` | 004 | Sondas somente leitura: sistema, memória, disco, DNS |
+
+Rodar as sondas na sua máquina: `cargo run -p hmd-probes --example probe_all`.
+Guarda da constituição: `tools/check-no-process-spawn.sh`.
