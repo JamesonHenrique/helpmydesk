@@ -1,0 +1,13 @@
+id = "sys.info.basic"
+version = "1.0.0"
+kind = "probe"
+produces = []
+
+# OS name/version, kernel/build, architecture, uptime. Never host name, user name or serials.
+[variants.windows]
+risk_level = "N1-A"
+max_per_session = 5
+
+[variants.linux]
+risk_level = "N1-A"
+max_per_session = 5

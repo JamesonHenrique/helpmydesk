@@ -1,0 +1,14 @@
+id = "storage.volumes"
+version = "1.0.0"
+kind = "probe"
+family = "storage"
+produces = ["storage.low_space"]
+
+# Total/free space of the system volume. Never volume labels.
+[variants.windows]
+risk_level = "N1-A"
+max_per_session = 5
+
+[variants.linux]
+risk_level = "N1-A"
+max_per_session = 5

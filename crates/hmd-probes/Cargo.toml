@@ -1,0 +1,21 @@
+[package]
+name = "hmd-probes"
+description = "HelpMyDesk read-only probes for Windows and Linux"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+# Safe cross-platform system info; only the features we use (no `user`, no `network`). ADR-021.
+sysinfo = { version = "0.39.6", default-features = false, features = ["system", "disk"] }
+
+[dev-dependencies]
+hmd-catalog = { path = "../hmd-catalog" }
+hmd-policy = { path = "../hmd-policy" }
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+
+[lints]
+workspace = true

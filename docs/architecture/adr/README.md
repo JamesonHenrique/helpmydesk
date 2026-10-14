@@ -24,3 +24,4 @@ Formato: MADR simplificado. Os ADRs ainda sem arquivo próprio estão resumidos 
 | [018](ADR-018-license.md) | Licença GPL-3.0-or-later / CC BY-SA 4.0 | Aceita |
 | 019 | Governança: CODEOWNERS, DCO, releases só pelo CI | Aceita (CONTRIBUTING.md) |
 | [020](ADR-020-p1-analysis.md) | Análise das pendências P1 e autorização para iniciar | Aceita |
+| [021](ADR-021-catalog-format-and-probe-deps.md) | Catálogo em TOML; `sysinfo` para sondas | Aceita |

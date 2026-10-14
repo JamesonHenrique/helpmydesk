@@ -1,0 +1,14 @@
+id = "net.dns.resolve"
+version = "1.0.0"
+kind = "probe"
+family = "connectivity"
+produces = ["net.dns.resolution_failing"]
+
+# Resolves a fixed list of names compiled into the probe; never names from the model or the person.
+[variants.windows]
+risk_level = "N1-B"
+max_per_session = 5
+
+[variants.linux]
+risk_level = "N1-B"
+max_per_session = 5
