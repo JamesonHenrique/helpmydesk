@@ -1,0 +1,8 @@
+# Protected paths (constitution: Development Workflow and Contribution)
+*                         @JamesonHenrique
+/catalog/                 @JamesonHenrique
+/crates/hmd-policy/       @JamesonHenrique
+/crates/hmd-executor/     @JamesonHenrique
+/crates/hmd-elevated/     @JamesonHenrique
+/.github/workflows/       @JamesonHenrique
+/.specify/memory/         @JamesonHenrique
