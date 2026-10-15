@@ -125,6 +125,8 @@ pub struct DiagnoseOptions {
     pub session_ref: String,
     /// Capabilities with an execution in `unknown` (spec 008): the Policy Engine refuses them.
     pub unknown_executions: BTreeSet<String>,
+    /// Capabilities turned off by the signed kill switch (spec 014).
+    pub disabled: BTreeSet<String>,
 }
 
 impl Default for DiagnoseOptions {
@@ -135,6 +137,7 @@ impl Default for DiagnoseOptions {
             consents: BTreeSet::new(),
             session_ref: "local".to_string(),
             unknown_executions: BTreeSet::new(),
+            disabled: BTreeSet::new(),
         }
     }
 }
@@ -201,6 +204,7 @@ pub fn run_authorized_probe(
     let mut ctx = PolicyContext::new(opts.platform);
     ctx.mode = opts.mode;
     ctx.consents = opts.consents.clone();
+    ctx.disabled = opts.disabled.clone();
     let decision = evaluate(
         &proposal(catalog, &[probe_id.to_string()], "p"),
         &catalog.catalog,
@@ -239,6 +243,7 @@ pub fn diagnose_with(
         let mut ctx = PolicyContext::new(opts.platform);
         ctx.mode = opts.mode;
         ctx.consents = opts.consents.clone();
+        ctx.disabled = opts.disabled.clone();
         let decision = evaluate(
             &proposal(catalog, &playbook.probes, "p"),
             &catalog.catalog,
@@ -283,6 +288,7 @@ pub fn diagnose_with(
         let mut ctx = PolicyContext::new(opts.platform);
         ctx.mode = opts.mode;
         ctx.consents = opts.consents.clone();
+        ctx.disabled = opts.disabled.clone();
         ctx.findings = findings.clone();
         ctx.confidence = selection.confidence;
         ctx.counters.unknown_executions = opts.unknown_executions.clone();

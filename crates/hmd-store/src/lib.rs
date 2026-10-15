@@ -749,6 +749,52 @@ impl Store {
         Ok(())
     }
 
+    // ----- kill switch -----
+
+    /// The last accepted kill switch file and its signature, if any.
+    pub fn kill_switch(&self) -> Result<Option<(Vec<u8>, String)>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT payload, signature FROM kill_switch_state WHERE id = 1",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?)
+    }
+
+    /// Replaces the stored kill switch (the caller verified and accepted it) and audits it.
+    pub fn set_kill_switch(
+        &mut self,
+        issued_at: Timestamp,
+        payload: &[u8],
+        signature: &str,
+        now: Timestamp,
+    ) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "INSERT INTO kill_switch_state (id, issued_at, payload, signature, accepted_at)
+             VALUES (1, ?1, ?2, ?3, ?4)
+             ON CONFLICT(id) DO UPDATE SET issued_at = excluded.issued_at,
+                 payload = excluded.payload, signature = excluded.signature,
+                 accepted_at = excluded.accepted_at",
+            params![issued_at, payload, signature, now],
+        )?;
+        audit::append(
+            &tx,
+            &audit::AuditEntry {
+                actor: Actor::System,
+                action: "killswitch.accepted",
+                subject_ref: "killswitch".to_string(),
+                outcome: format!("issued_at={issued_at}"),
+                reason_code: None,
+            },
+            now,
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
     // ----- reports -----
 
     pub fn save_report(

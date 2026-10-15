@@ -39,6 +39,7 @@ Veja o plano v1, VIII.4. Crates atuais:
 | `crates/hmd-executor` | 008 | Hash do plano, checagem da aprovação, execução com diário write-ahead e verificação (sem correção real até o S-02) |
 | `crates/hmd-app` | 012 | Casos de uso que a interface chama: chamados sem duplicar, diagnóstico, plano, aprovação, execução com prova, relatório, privacidade |
 | `crates/hmd-ipc` | 013 | Ponte da interface: visões serializáveis e erros por código sobre o `hmd-app` |
+| `crates/hmd-killswitch` | 014 | Kill switch assinado: formato, assinatura Ed25519, regra de mais novo |
 | `crates/hmd-store` | 007, 008 | Histórico local em SQLite: chamados, eventos, sessões, achados, mensagens, consentimentos, relatórios, retenção, planos, aprovações, diário de execução, auditoria encadeada, exportar e apagar tudo |
 | `crates/hmd-probes` | 004, 005, 010 | Sondas somente leitura: sistema, memória, CPU, processos, disco, DNS, adaptadores, gateway, HTTP/portal cativo, inicialização, som, microfone e câmera |
 

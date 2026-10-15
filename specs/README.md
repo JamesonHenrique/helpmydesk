@@ -18,6 +18,7 @@ Diretórios `NNN-nome` criados pelo Spec Kit. A numeração do Spec Kit é o ID 
 | [011-ui-prototype](011-ui-prototype/spec.md) | F1 (protótipo de telas) | Implementada (Angular, dados de exemplo, textos gerados do catálogo) |
 | [012-app-service](012-app-service/spec.md) | Base do app desktop | Implementada (casos de uso que a interface chama) |
 | [013-desktop-shell](013-desktop-shell/spec.md) | ADR-004 + SPEC-005 (janela de aprovação) | Implementada (Tauri ligado ao núcleo; compila no CI; falta teste manual) |
+| [014-kill-switch](014-kill-switch/spec.md) | SPEC-014 (kill switch) | Implementada (verificação e aplicação; falta a chave do projeto e o download) |
 
 Próximas, na ordem do plano:
 governança de contribuição ao catálogo (SPEC-016).

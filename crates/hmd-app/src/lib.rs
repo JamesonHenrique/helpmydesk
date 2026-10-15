@@ -49,6 +49,7 @@ pub enum AppError {
     NoDiagnosis,
     /// The ticket's state does not allow this use case.
     InvalidState(&'static str),
+    KillSwitch(hmd_killswitch::KillSwitchError),
 }
 
 impl AppError {
@@ -62,6 +63,7 @@ impl AppError {
             AppError::NoPendingPlan => "NO_PENDING_PLAN",
             AppError::NoDiagnosis => "NO_DIAGNOSIS",
             AppError::InvalidState(_) => "INVALID_STATE",
+            AppError::KillSwitch(e) => e.reason_code(),
         }
     }
 }
@@ -74,6 +76,7 @@ impl fmt::Display for AppError {
             AppError::Exec(e) => write!(f, "{e}"),
             AppError::Catalog(n) => write!(f, "INVALID_CATALOG: {n} error(s)"),
             AppError::InvalidState(state) => write!(f, "INVALID_STATE: {state}"),
+            AppError::KillSwitch(e) => write!(f, "{e}"),
             other => write!(f, "{}", other.reason_code()),
         }
     }
@@ -185,6 +188,11 @@ fn autonomy_code(m: AutonomyMode) -> &'static str {
 /// Use cases over one local history file.
 pub struct App {
     store: Store,
+    /// Release keys the kill switch must be signed with (spec 014).
+    trusted_keys: Vec<[u8; 32]>,
+    /// Capabilities turned off by the last accepted kill switch.
+    disabled: BTreeSet<String>,
+    last_kill_switch: Option<i64>,
     catalog: &'static LoadedCatalog,
     platform: Platform,
     registry: Registry,
@@ -210,12 +218,16 @@ impl App {
     fn start(store: Store, open: OpenOutcome, now: Timestamp) -> Result<(App, Startup)> {
         let mut app = App {
             store,
+            trusted_keys: hmd_killswitch::TRUSTED_KEYS.to_vec(),
+            disabled: BTreeSet::new(),
+            last_kill_switch: None,
             catalog: catalog()?,
             platform: current_platform(),
             registry: Registry::production(),
             pending: BTreeMap::new(),
             last_diagnosis: BTreeMap::new(),
         };
+        app.load_kill_switch()?;
         let interrupted = app.store.recover_interrupted(now)?;
         let housekept = app.housekeeping(now)?;
         let purged = app.store.purge(now, &RetentionConfig::default())?;
@@ -239,6 +251,49 @@ impl App {
     pub fn with_platform(mut self, platform: Platform) -> App {
         self.platform = platform;
         self
+    }
+
+    /// Tests use their own release key; the app ships with [`hmd_killswitch::TRUSTED_KEYS`].
+    pub fn with_trusted_keys(mut self, keys: Vec<[u8; 32]>) -> Result<App> {
+        self.trusted_keys = keys;
+        self.load_kill_switch()?;
+        Ok(self)
+    }
+
+    /// Re-verifies the stored kill switch with the trusted keys; a file that no longer verifies
+    /// is ignored.
+    fn load_kill_switch(&mut self) -> Result<()> {
+        self.disabled.clear();
+        self.last_kill_switch = None;
+        if let Some((payload, signature)) = self.store.kill_switch()?
+            && let Ok(ks) = hmd_killswitch::verify(&payload, &signature, &self.trusted_keys)
+        {
+            self.disabled = ks.disabled_capabilities;
+            self.last_kill_switch = Some(ks.issued_at);
+        }
+        Ok(())
+    }
+
+    /// Spec 014: a newly downloaded kill switch. Applied only if signed by a trusted key, newer
+    /// than the last one and not expired; then it is kept for offline use.
+    pub fn apply_kill_switch(
+        &mut self,
+        file: &[u8],
+        signature_hex: &str,
+        now: Timestamp,
+    ) -> Result<BTreeSet<String>> {
+        let ks = hmd_killswitch::verify(file, signature_hex, &self.trusted_keys)
+            .and_then(|ks| hmd_killswitch::accept(ks, self.last_kill_switch, now))
+            .map_err(AppError::KillSwitch)?;
+        self.store
+            .set_kill_switch(ks.issued_at, file, signature_hex, now)?;
+        self.last_kill_switch = Some(ks.issued_at);
+        self.disabled = ks.disabled_capabilities;
+        Ok(self.disabled.clone())
+    }
+
+    pub fn disabled_capabilities(&self) -> &BTreeSet<String> {
+        &self.disabled
     }
 
     fn housekeeping(&mut self, now: Timestamp) -> Result<usize> {
@@ -357,6 +412,7 @@ impl App {
             consents: self.store.consents()?,
             session_ref,
             unknown_executions: self.store.unknown_capabilities()?,
+            disabled: self.disabled.clone(),
         })
     }
 
