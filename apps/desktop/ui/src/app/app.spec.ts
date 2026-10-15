@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { Type } from '@angular/core';
+import { Router } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
@@ -8,6 +9,7 @@ import { routes } from './app.routes';
 import { CORE_API } from './api/core-api';
 import { DiagnosisDto } from './api/types';
 import { FAMILIES, PROBES, probesFor } from './data/catalog';
+import { AiConnectComponent } from './components/ai-connect';
 import { APPROVAL_ARM_MS, ApprovalPage } from './pages/approval';
 import { DiagnosisPage } from './pages/diagnosis';
 import { HomePage } from './pages/home';
@@ -279,5 +281,120 @@ describe('MockApi', () => {
     const b = await api.startTicket('storage');
     expect(b.reused).toBe(true);
     expect(b.ticket.id).toBe(a.ticket.id);
+  });
+});
+
+function aiStub(over: Record<string, unknown> = {}) {
+  let connected = false;
+  return {
+    real: false,
+    aiStatus: async () => ({ connected, consoleUrl: 'https://opencode.ai/auth' }),
+    aiConnect: async (key: string) => {
+      if (key !== 'good') {
+        throw { code: 'AI_KEY_REFUSED', message: '' };
+      }
+      connected = true;
+      return { connected, consoleUrl: '' };
+    },
+    aiDisconnect: async () => {
+      connected = false;
+      return { connected, consoleUrl: '' };
+    },
+    openAiConsole: async () => undefined,
+    aiConnectFromClipboard: async () => {
+      throw { code: 'CLIPBOARD_UNAVAILABLE', message: '' };
+    },
+    ...over,
+  };
+}
+
+async function setupWith(api: unknown): Promise<void> {
+  await TestBed.configureTestingModule({
+    providers: [
+      provideRouter(routes, withComponentInputBinding()),
+      { provide: CORE_API, useValue: api },
+    ],
+  }).compileComponents();
+}
+
+describe('AiConnectComponent (spec 018)', () => {
+  it('a refused code is explained; a good one turns the AI on', async () => {
+    await setupWith(aiStub());
+    const { fixture, el } = await render(AiConnectComponent);
+    const pasteBtn = [...el.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Colar'),
+    ) as HTMLButtonElement;
+    pasteBtn.click();
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+    const input = el.querySelector('#ai-key') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    expect(input.type).toBe('password');
+    input.value = 'bad';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Esse código não funcionou');
+    input.value = 'good';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+    expect(el.textContent).toContain('A ajuda inteligente está ligada');
+    expect(el.textContent).not.toContain('good');
+  });
+});
+
+describe('HomePage with the AI on (spec 018)', () => {
+  it('free text goes to the diagnosis of the family the AI picked', async () => {
+    await setupWith(
+      aiStub({
+        aiStatus: async () => ({ connected: true, consoleUrl: '' }),
+        aiClassify: async () => ({ family: 'storage', confidence: 'high', question: null }),
+      }),
+    );
+    const router = TestBed.inject(Router);
+    const go: unknown[] = [];
+    router.navigate = (async (commands: unknown[]) => {
+      go.push(commands);
+      return true;
+    }) as typeof router.navigate;
+    const { fixture, el } = await render(HomePage);
+    const input = el.querySelector('#free') as HTMLInputElement;
+    expect(input.disabled).toBe(false);
+    input.value = 'apareceu disco cheio';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (el.querySelector('form.free') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(go).toEqual([['/diagnostico', 'storage']]);
+  });
+
+  it('a low-confidence answer asks instead of guessing', async () => {
+    await setupWith(
+      aiStub({
+        aiStatus: async () => ({ connected: true, consoleUrl: '' }),
+        aiClassify: async () => ({
+          family: 'storage',
+          confidence: 'low',
+          question: 'O aviso fala de disco?',
+        }),
+      }),
+    );
+    const { fixture, el } = await render(HomePage);
+    const input = el.querySelector('#free') as HTMLInputElement;
+    input.value = 'algo estranho';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (el.querySelector('form.free') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    for (let i = 0; i < 3; i++) {
+      await fixture.whenStable();
+      await new Promise((r) => setTimeout(r, 0));
+      fixture.detectChanges();
+    }
+    expect(el.textContent).toContain('O aviso fala de disco?');
   });
 });

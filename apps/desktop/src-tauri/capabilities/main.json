@@ -21,6 +21,12 @@
     "allow-set-autonomy",
     "allow-set-consent",
     "allow-export-all",
-    "allow-erase-all"
+    "allow-erase-all",
+    "allow-ai-status",
+    "allow-ai-connect",
+    "allow-ai-disconnect",
+    "allow-ai-classify",
+    "allow-open-ai-console",
+    "allow-ai-connect-from-clipboard"
   ]
 }

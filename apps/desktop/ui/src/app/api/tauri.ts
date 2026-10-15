@@ -5,6 +5,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { UnlistenFn, emit, listen } from '@tauri-apps/api/event';
 
 import {
+  AiClassificationDto,
+  AiStatusDto,
   ApprovalDto,
   CoreApi,
   DiagnosisDto,
@@ -114,6 +116,24 @@ export class TauriApi implements CoreApi {
   }
   system(): Promise<SystemDto> {
     return invoke('system');
+  }
+  aiStatus(): Promise<AiStatusDto> {
+    return invoke('ai_status');
+  }
+  aiConnect(key: string): Promise<AiStatusDto> {
+    return invoke('ai_connect', { key });
+  }
+  aiConnectFromClipboard(): Promise<AiStatusDto> {
+    return invoke('ai_connect_from_clipboard');
+  }
+  aiDisconnect(): Promise<AiStatusDto> {
+    return invoke('ai_disconnect');
+  }
+  aiClassify(text: string): Promise<AiClassificationDto> {
+    return invoke('ai_classify', { text });
+  }
+  openAiConsole(): Promise<void> {
+    return invoke('open_ai_console');
   }
   setAutonomy(mode: SettingsDto['autonomy']): Promise<void> {
     return invoke('set_autonomy', { mode });

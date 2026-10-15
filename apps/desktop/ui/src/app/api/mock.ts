@@ -5,9 +5,12 @@ import { CATALOG_VERSION, SAMPLE_REPORT } from '../data/catalog.generated';
 import { FAMILIES, confidencePhrase, family, fix, probe } from '../data/catalog';
 import { PrototypeState } from '../state/prototype';
 import {
+  AiClassificationDto,
+  AiStatusDto,
   ApprovalDto,
   CoreApi,
   DiagnosisDto,
+  IpcError,
   OutcomeDto,
   PlanDto,
   ReportDto,
@@ -191,6 +194,51 @@ export class MockApi implements CoreApi {
   async settings(): Promise<SettingsDto> {
     return { autonomy: this.state.autonomy(), consents: [...this.state.consents()] };
   }
+
+  async aiStatus(): Promise<AiStatusDto> {
+    return { connected: this.state.aiConnected(), consoleUrl: 'https://opencode.ai/auth' };
+  }
+
+  async aiConnect(key: string): Promise<AiStatusDto> {
+    if (key.trim() === '' || key.includes('errad')) {
+      throw { code: 'AI_KEY_REFUSED', message: 'example' } as IpcError;
+    }
+    this.state.aiConnected.set(true);
+    return this.aiStatus();
+  }
+
+  /** Prototype: there is no clipboard access, so the screen falls back to pasting by hand. */
+  async aiConnectFromClipboard(): Promise<AiStatusDto> {
+    throw { code: 'CLIPBOARD_UNAVAILABLE', message: 'prototype' } as IpcError;
+  }
+
+  async aiDisconnect(): Promise<AiStatusDto> {
+    this.state.aiConnected.set(false);
+    return this.aiStatus();
+  }
+
+  /** Prototype: a few keywords stand in for the model. */
+  async aiClassify(text: string): Promise<AiClassificationDto> {
+    const t = text.toLowerCase();
+    const family = /internet|wi-?fi|site/.test(t)
+      ? 'connectivity'
+      : /lent|trav/.test(t)
+        ? 'performance'
+        : /espaço|disco|cheio/.test(t)
+          ? 'storage'
+          : /som|microfone|câmera|camera/.test(t)
+            ? 'audio_video'
+            : /erro|não abre/.test(t)
+              ? 'app_error'
+              : null;
+    return {
+      family,
+      confidence: family ? 'medium' : 'low',
+      question: family ? null : 'Pode contar um pouco mais? Por exemplo, o que aparece na tela.',
+    };
+  }
+
+  async openAiConsole(): Promise<void> {}
 
   async system(): Promise<SystemDto> {
     const linux = this.state.platform() === 'linux';

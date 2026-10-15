@@ -94,6 +94,18 @@ export interface SystemDto {
   catalogVersion: string;
 }
 
+/** Spec 018: "Ligar a ajuda inteligente". */
+export interface AiStatusDto {
+  connected: boolean;
+  consoleUrl: string;
+}
+
+export interface AiClassificationDto {
+  family: string | null;
+  confidence: 'low' | 'medium' | 'high';
+  question: string | null;
+}
+
 export interface SettingsDto {
   autonomy: 'observe_only' | 'ask_always' | 'auto_simple';
   consents: string[];
@@ -124,6 +136,15 @@ export interface CoreApi {
   history(): Promise<TicketDto[]>;
   settings(): Promise<SettingsDto>;
   system(): Promise<SystemDto>;
+  aiStatus(): Promise<AiStatusDto>;
+  /** Tests the key with the service and keeps it in the system vault only if it works. */
+  aiConnect(key: string): Promise<AiStatusDto>;
+  aiDisconnect(): Promise<AiStatusDto>;
+  /** Desktop: reads the key from the clipboard in the core (it never reaches the screen). */
+  aiConnectFromClipboard(): Promise<AiStatusDto>;
+  aiClassify(text: string): Promise<AiClassificationDto>;
+  /** Opens the OpenCode console (fixed URL, chosen by the core). */
+  openAiConsole(): Promise<void>;
   setAutonomy(mode: SettingsDto['autonomy']): Promise<void>;
   setConsent(scope: string, granted: boolean): Promise<void>;
   exportAll(): Promise<string>;

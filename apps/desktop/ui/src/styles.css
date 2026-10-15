@@ -222,7 +222,8 @@ a {
   font-size: 0.9rem;
 }
 textarea,
-input[type='text'] {
+input[type='text'],
+input[type='password'] {
   font: inherit;
   color: var(--fg);
   background: var(--surface);
@@ -274,4 +275,13 @@ dl.facts dd {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Native check boxes and radios are tiny in WebKitGTK: large enough to see and to hit. */
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--accent, #0b5cad);
+  flex: none;
 }
