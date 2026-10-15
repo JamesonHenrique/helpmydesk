@@ -218,6 +218,18 @@
    "note": "Textos dos playbooks e do relatório escritos; não testados com leigos"
   },
   {
+   "id": "SPEC-016",
+   "phase": "F1",
+   "phase_name": "Fundação open source + protótipo",
+   "phase_order": 2,
+   "title": "Spec 015: governança de contribuição ao catálogo",
+   "status": "done",
+   "weight": 1,
+   "delivered_on": "2026-10-15",
+   "ref": "",
+   "note": "CODEOWNERS só vale com proteção da branch (configuração do GitHub)"
+  },
+  {
    "id": "SPEC-001a",
    "phase": "F2",
    "phase_name": "Núcleo somente leitura + modo básico",

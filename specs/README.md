@@ -19,6 +19,6 @@ Diretórios `NNN-nome` criados pelo Spec Kit. A numeração do Spec Kit é o ID 
 | [012-app-service](012-app-service/spec.md) | Base do app desktop | Implementada (casos de uso que a interface chama) |
 | [013-desktop-shell](013-desktop-shell/spec.md) | ADR-004 + SPEC-005 (janela de aprovação) | Implementada (Tauri ligado ao núcleo; compila no CI; falta teste manual) |
 | [014-kill-switch](014-kill-switch/spec.md) | SPEC-014 (kill switch) | Implementada (verificação e aplicação; falta a chave do projeto e o download) |
+| [015-catalog-governance](015-catalog-governance/spec.md) | SPEC-016 | Implementada (guia, modelos, CODEOWNERS, trava G-SEC no executor) |
 
-Próximas, na ordem do plano:
-governança de contribuição ao catálogo (SPEC-016).
+Próximas, na ordem do plano: elevação UAC/polkit (SPEC-007, depende do spike S-02 em máquinas Windows e Ubuntu/Mint), cliente de IA e orquestração (SPEC-009/010, dependem da consulta Q-01 ao OpenCode), download do kill switch e updater (SPEC-014, F5).

@@ -2,6 +2,9 @@ name: Proposta de nova verificação ou correção
 description: Sugira um problema comum que o HelpMyDesk deveria diagnosticar ou corrigir
 labels: [capability]
 body:
+  - type: markdown
+    attributes:
+      value: "Leia antes: docs/contributing/catalog.md. Não cole dados pessoais, nomes de computador ou registros do seu sistema."
   - type: textarea
     id: problem
     attributes:
@@ -11,11 +14,21 @@ body:
   - type: textarea
     id: signal
     attributes:
-      label: Como detectar (sinal observável)
+      label: Como detectar (sinal observável, só leitura)
+      description: O que a verificação leria e o que ela nunca precisa ler.
   - type: textarea
     id: fix
     attributes:
-      label: Correção conhecida e como verificar que funcionou
+      label: Correção conhecida, como desfazer e como verificar que funcionou
+  - type: textarea
+    id: privilege
+    attributes:
+      label: Precisa de administrador / senha? Em quais sistemas?
+      description: Se não souber, diga "não sei". O padrão é tratar como "precisa".
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidência (documentação oficial, cenário reproduzível)
   - type: dropdown
     id: platform
     attributes:
