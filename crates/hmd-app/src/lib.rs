@@ -35,6 +35,16 @@ use hmd_store::{OpenOutcome, PurgeStats, Store, StoreError};
 /// Setting key for the autonomy mode.
 pub const AUTONOMY_KEY: &str = "autonomy_mode";
 
+/// Setting with the fixes still blocked when the history was erased (comma-separated IDs).
+const CARRIED_BLOCKS_KEY: &str = "carried_blocks";
+
+/// Kept across "Apagar tudo": see [`App::safety_state`].
+#[derive(Debug, Clone, Default)]
+pub struct SafetyState {
+    pub kill_switch: Option<(Vec<u8>, String)>,
+    pub blocked: BTreeSet<String>,
+}
+
 /// Largest edited report kept or saved (a generated one is a few KiB; spec 016).
 pub const MAX_REPORT_BYTES: usize = 64 * 1024;
 
@@ -463,7 +473,7 @@ impl App {
             mode: self.autonomy()?,
             consents: self.store.consents()?,
             session_ref,
-            unknown_executions: self.store.unknown_capabilities()?,
+            unknown_executions: self.blocked_capabilities()?,
             disabled: self.disabled.clone(),
         })
     }
@@ -637,35 +647,123 @@ impl App {
     ) -> Result<usize> {
         let mut clarified = 0;
         for (execution, capability) in self.store.unknown_executions()? {
-            let id = capability
+            let (id, version) = capability
                 .split_once('@')
-                .map_or(capability.as_str(), |(id, _)| id);
-            let Some(variant) = self
-                .catalog
-                .catalog
-                .get(id)
-                .and_then(|c| c.variants.get(&self.platform))
-            else {
-                continue;
-            };
-            let Some(probe) = variant.verification.as_deref() else {
-                continue;
-            };
-            let opts = self.options(format!("clarify:{execution}@{now}"))?;
-            let outcome = run_authorized_probe(self.catalog, &opts, probe, run_probe);
-            if !matches!(outcome, hmd_core::ProbeOutcome::Ran(_)) {
-                continue;
+                .map_or((capability.as_str(), None), |(id, v)| (id, Some(v)));
+            let tag = format!("clarify:{execution}@{now}");
+            if let Some(effect) = self.resolve_blocked(id, version, tag, run_probe)? {
+                self.store.clarify_unknown(execution, effect, now)?;
+                clarified += 1;
             }
-            let idempotent = self.catalog.meta.get(id).is_some_and(|m| m.idempotent);
-            let Some(effect) =
-                unknown_resolution(verification_passed(variant, &outcome), idempotent)
-            else {
-                continue;
-            };
-            self.store.clarify_unknown(execution, effect, now)?;
-            clarified += 1;
+        }
+        // Blocks carried over an "Apagar tudo" (no execution row left): same rule.
+        let mut carried = self.carried_blocks()?;
+        let before = carried.len();
+        for id in carried.clone() {
+            let tag = format!("clarify:carried@{now}");
+            if self.resolve_blocked(&id, None, tag, run_probe)?.is_some() {
+                carried.remove(&id);
+            }
+        }
+        if carried.len() != before {
+            self.set_carried_blocks(&carried, now)?;
+            clarified += before - carried.len();
         }
         Ok(clarified)
+    }
+
+    /// Runs the fix's verification probe for a blocked capability; `None` keeps it blocked.
+    /// A recorded version different from the current catalog's also keeps it blocked: the
+    /// catalog's `idempotent` may not describe the version that ran (independent review).
+    fn resolve_blocked(
+        &self,
+        id: &str,
+        version: Option<&str>,
+        tag: String,
+        run_probe: &impl Fn(&str) -> std::result::Result<ProbeOutput, ProbeError>,
+    ) -> Result<Option<bool>> {
+        let Some(capability) = self.catalog.catalog.get(id) else {
+            return Ok(None);
+        };
+        if version.is_some_and(|v| v != capability.version) {
+            return Ok(None);
+        }
+        let Some(variant) = capability.variants.get(&self.platform) else {
+            return Ok(None);
+        };
+        let Some(probe) = variant.verification.as_deref() else {
+            return Ok(None);
+        };
+        let opts = self.options(tag)?;
+        let outcome = run_authorized_probe(self.catalog, &opts, probe, run_probe);
+        if !matches!(outcome, hmd_core::ProbeOutcome::Ran(_)) {
+            return Ok(None);
+        }
+        let idempotent = self.catalog.meta.get(id).is_some_and(|m| m.idempotent);
+        Ok(unknown_resolution(
+            verification_passed(variant, &outcome),
+            idempotent,
+        ))
+    }
+
+    /// OS facts for "Meu computador", through the Policy Engine with the app's options.
+    pub fn system_summary(
+        &self,
+        run_probe: impl Fn(&str) -> std::result::Result<ProbeOutput, ProbeError>,
+    ) -> Result<Option<hmd_core::report::SystemSummary>> {
+        let opts = self.options(String::from("system"))?;
+        Ok(system_summary_with(self.catalog, &opts, run_probe))
+    }
+
+    /// Capability IDs that cannot run: an execution in `unknown`/`started`, or a block carried
+    /// over an "Apagar tudo".
+    pub fn blocked_capabilities(&self) -> Result<BTreeSet<String>> {
+        let mut out = self.store.unknown_capabilities()?;
+        out.extend(self.carried_blocks()?);
+        Ok(out)
+    }
+
+    fn carried_blocks(&self) -> Result<BTreeSet<String>> {
+        Ok(self
+            .store
+            .setting(CARRIED_BLOCKS_KEY)?
+            .map(|v| {
+                v.split(',')
+                    .filter(|x| !x.is_empty())
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
+    fn set_carried_blocks(&mut self, ids: &BTreeSet<String>, now: Timestamp) -> Result<()> {
+        let joined = ids.iter().cloned().collect::<Vec<_>>().join(",");
+        Ok(self.store.set_setting(CARRIED_BLOCKS_KEY, &joined, now)?)
+    }
+
+    /// What "Apagar tudo" must not erase (independent review, M4): the last accepted kill switch
+    /// (its anti-rollback included) and the fixes that are blocked.
+    pub fn safety_state(&self) -> Result<SafetyState> {
+        Ok(SafetyState {
+            kill_switch: self.store.kill_switch()?,
+            blocked: self.blocked_capabilities()?,
+        })
+    }
+
+    /// Puts the safety state back into a fresh history. The kill switch is verified again with
+    /// the trusted keys; one that no longer verifies is dropped.
+    pub fn restore_safety_state(&mut self, state: SafetyState, now: Timestamp) -> Result<()> {
+        if let Some((payload, signature)) = state.kill_switch
+            && let Ok(ks) = hmd_killswitch::verify(&payload, &signature, &self.trusted_keys)
+        {
+            self.store
+                .set_kill_switch(ks.issued_at, &payload, &signature, now)?;
+            self.load_kill_switch()?;
+        }
+        if !state.blocked.is_empty() {
+            self.set_carried_blocks(&state.blocked, now)?;
+        }
+        Ok(())
     }
 
     /// The interface tells the computer's UTC offset (minutes) so reports show local dates;
@@ -730,7 +828,7 @@ impl App {
         }
         // Independent review, M3: an `unknown` run of the same fix (e.g. from another ticket)
         // that appeared after this plan was proposed still blocks it.
-        let blocked = self.store.unknown_capabilities()?;
+        let blocked = self.blocked_capabilities()?;
         if pending.proposal.steps.iter().any(|s| {
             approval.approved_step_ids.contains(&s.step_id) && blocked.contains(&s.capability)
         }) {
