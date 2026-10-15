@@ -47,6 +47,7 @@ Rodar as sondas na sua máquina: `cargo run -p hmd-probes --example probe_all`.
 Guarda da constituição: `tools/check-no-process-spawn.sh`.
 
 Checar o código Windows a partir do Linux: `rustup target add x86_64-pc-windows-gnu` e
-`cargo clippy --workspace --exclude hmd-store --all-targets --target x86_64-pc-windows-gnu -- -D warnings`.
-O `hmd-store` compila o SQLite em C e precisa de MinGW para esse alvo; sem ele, o Windows desse
-crate é coberto pelo CI (ADR-023).
+`cargo clippy --workspace --all-targets --target x86_64-pc-windows-gnu -- -D warnings`.
+O `hmd-store` compila o SQLite em C e precisa do MinGW para esse alvo
+(`sudo apt install gcc-mingw-w64-x86-64`); sem ele, use `--exclude hmd-store` e deixe o Windows
+desse crate para o CI (ADR-023).
