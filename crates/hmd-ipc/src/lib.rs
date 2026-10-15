@@ -349,7 +349,18 @@ impl Backend {
         self.app = self.app.take().map(f);
     }
 
+    /// After a failed "Apagar tudo" the history may be closed; the next command reopens it, so a
+    /// passing failure does not need an app restart (spec 016, P2).
+    fn reopen_if_closed(&mut self) {
+        if self.app.is_none()
+            && let Some(path) = &self.path
+        {
+            self.app = App::open(path, (self.clock)()).ok().map(|(app, _)| app);
+        }
+    }
+
     fn app(&mut self) -> IpcResult<&mut App> {
+        self.reopen_if_closed();
         self.app
             .as_mut()
             .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))
@@ -373,6 +384,7 @@ impl Backend {
 
     pub fn diagnose(&mut self, ticket_id: &str) -> IpcResult<DiagnosisDto> {
         let now = (self.clock)();
+        self.reopen_if_closed();
         let app = self
             .app
             .as_mut()
@@ -410,6 +422,7 @@ impl Backend {
 
     pub fn execute(&mut self, ticket_id: &str, plan_id: i64) -> IpcResult<OutcomeDto> {
         let now = (self.clock)();
+        self.reopen_if_closed();
         let app = self
             .app
             .as_mut()
@@ -442,6 +455,7 @@ impl Backend {
 
     pub fn make_report(&mut self, ticket_id: &str, symptom: Option<&str>) -> IpcResult<ReportDto> {
         let now = (self.clock)();
+        self.reopen_if_closed();
         let app = self
             .app
             .as_mut()
@@ -535,6 +549,7 @@ impl Backend {
 
     /// "Apagar tudo": removes the history files and starts an empty history.
     pub fn erase_all(&mut self) -> IpcResult<usize> {
+        self.reopen_if_closed();
         let app = self
             .app
             .take()
