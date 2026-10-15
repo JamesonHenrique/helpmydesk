@@ -58,7 +58,8 @@ impl App {
     }
 
     /// The person pasted a key and agreed: one test call; only a key the service accepts is
-    /// kept (in the vault), together with the consent.
+    /// kept (in the vault), together with the consent. The shell runs the call itself, outside
+    /// the backend lock, and then calls [`App::ai_connect_finish`].
     pub fn ai_connect(
         &mut self,
         vault: &dyn KeyVault,
@@ -67,7 +68,24 @@ impl App {
         now: Timestamp,
     ) -> Result<()> {
         let key = key.trim();
-        match hmd_ai::classify(transport, key, DEFAULT_MODEL, CONNECTION_TEST) {
+        let result = hmd_ai::classify(transport, key, DEFAULT_MODEL, CONNECTION_TEST);
+        self.ai_connect_finish(vault, key, result, now)
+    }
+
+    /// The text sent to test a key (it says nothing about the person).
+    pub fn ai_connection_test() -> &'static str {
+        CONNECTION_TEST
+    }
+
+    /// Second half of [`App::ai_connect`]: keeps the key only if the test call proved it works.
+    pub fn ai_connect_finish(
+        &mut self,
+        vault: &dyn KeyVault,
+        key: &str,
+        result: std::result::Result<Classification, AiError>,
+        now: Timestamp,
+    ) -> Result<()> {
+        match result {
             // A 200 with an odd answer still proves the key works.
             Ok(_) | Err(AiError::BadAnswer(_)) => {}
             Err(e) => {
@@ -78,7 +96,7 @@ impl App {
         }
         self.store
             .record_ai_call(DEFAULT_MODEL, Ok("connection_test"), now)?;
-        vault.set(key).map_err(AppError::Vault)?;
+        vault.set(key.trim()).map_err(AppError::Vault)?;
         self.set_consent(AI_CONSENT, true, now)
     }
 
@@ -88,8 +106,7 @@ impl App {
         self.set_consent(AI_CONSENT, false, now)
     }
 
-    /// Classifies what the person wrote. The text is redacted (user and host names) before it
-    /// leaves the computer; only a session the person started calls this.
+    /// Classifies what the person wrote: [`App::ai_prepare`], the call, [`App::ai_finish`].
     pub fn ai_classify(
         &mut self,
         vault: &dyn KeyVault,
@@ -97,6 +114,14 @@ impl App {
         text: &str,
         now: Timestamp,
     ) -> Result<Classification> {
+        let call = self.ai_prepare(vault, text)?;
+        let result = call.run(transport);
+        self.ai_finish(call.model, result, now)
+    }
+
+    /// Everything checked before anything leaves the computer: consent, key, kill switch, and
+    /// the text redacted (user and host names). Only a session the person started calls this.
+    pub fn ai_prepare(&self, vault: &dyn KeyVault, text: &str) -> Result<AiCall> {
         if !self.consents()?.contains(AI_CONSENT) {
             return Err(AppError::AiNotConnected);
         }
@@ -107,13 +132,48 @@ impl App {
         if self.disabled_models.contains(DEFAULT_MODEL) {
             return Err(AppError::Ai(AiError::ModelNotAllowed));
         }
-        let text = hmd_core::report::redact_free_text(text);
-        let result = hmd_ai::classify(transport, &key, DEFAULT_MODEL, &text);
+        Ok(AiCall {
+            key,
+            model: DEFAULT_MODEL,
+            text: hmd_core::report::redact_free_text(text),
+        })
+    }
+
+    /// Records the call (codes only) and returns its result.
+    pub fn ai_finish(
+        &mut self,
+        model: &str,
+        result: std::result::Result<Classification, AiError>,
+        now: Timestamp,
+    ) -> Result<Classification> {
         let outcome = match &result {
             Ok(c) => Ok(c.family.map_or("unknown", |f| f.code())),
             Err(e) => Err(e.reason_code()),
         };
-        self.store.record_ai_call(DEFAULT_MODEL, outcome, now)?;
+        self.store.record_ai_call(model, outcome, now)?;
         result.map_err(AppError::Ai)
+    }
+}
+
+/// A prepared AI call: can run without holding the app (the network may take seconds).
+pub struct AiCall {
+    key: String,
+    pub model: &'static str,
+    pub text: String,
+}
+
+impl AiCall {
+    pub fn run(&self, transport: &dyn Transport) -> std::result::Result<Classification, AiError> {
+        hmd_ai::classify(transport, &self.key, self.model, &self.text)
+    }
+}
+
+impl std::fmt::Debug for AiCall {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Never print the key.
+        f.debug_struct("AiCall")
+            .field("model", &self.model)
+            .field("text", &self.text)
+            .finish_non_exhaustive()
     }
 }
