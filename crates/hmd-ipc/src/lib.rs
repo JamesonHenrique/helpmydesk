@@ -509,7 +509,20 @@ impl Backend {
         std::io::Write::write_all(&mut file, text.as_bytes())
             .map_err(|e| IpcError::new("SAVE_FAILED", e.to_string()))?;
         self.app()?.report_exported(report_id, now)?;
-        Ok(path.display().to_string())
+        // Only "<folder>/<file>": the full path carries the user name (independent review).
+        let folder = dir
+            .file_name()
+            .map(|f| f.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let file = path
+            .file_name()
+            .map(|f| f.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        Ok(if folder.is_empty() {
+            file
+        } else {
+            format!("{folder}/{file}")
+        })
     }
 
     pub fn history(&mut self) -> IpcResult<Vec<TicketDto>> {
@@ -519,13 +532,14 @@ impl Backend {
     pub fn system(&mut self) -> IpcResult<SystemDto> {
         let catalog = hmd_catalog::embedded()
             .map_err(|e| IpcError::new("INVALID_CATALOG", format!("{} error(s)", e.len())))?;
+        self.reopen_if_closed();
+        let app = self
+            .app
+            .as_ref()
+            .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
         let runner = &self.runner;
-        let summary = hmd_core::report::system_summary_with(
-            catalog,
-            &hmd_core::DiagnoseOptions::default(),
-            |id| runner(id),
-        )
-        .unwrap_or_default();
+        // The app's options: consents, platform and the kill switch apply here too.
+        let summary = app.system_summary(|id| runner(id))?.unwrap_or_default();
         Ok(SystemDto {
             os_name: summary.os_name,
             os_version: summary.os_version,
@@ -570,16 +584,21 @@ impl Backend {
         let now = (self.clock)();
         match self.path.clone() {
             Some(path) => {
+                let safety = app.safety_state()?;
                 let removed = app
                     .erase_all(&path)
                     .map_err(|e| IpcError::new("ERASE_FAILED", e.to_string()))?;
-                let (fresh, _) = App::open(&path, now)?;
+                let (mut fresh, _) = App::open(&path, now)?;
+                fresh.restore_safety_state(safety, now)?;
                 self.app = Some(fresh);
                 Ok(removed.len())
             }
             None => {
+                let safety = app.safety_state()?;
                 drop(app);
-                self.app = Some(App::open_in_memory(now)?.0);
+                let (mut fresh, _) = App::open_in_memory(now)?;
+                fresh.restore_safety_state(safety, now)?;
+                self.app = Some(fresh);
                 Ok(0)
             }
         }

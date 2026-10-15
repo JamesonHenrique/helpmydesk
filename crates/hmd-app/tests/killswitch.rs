@@ -151,3 +151,60 @@ fn kill_switch_after_approval_blocks_the_approved_fix() {
     assert!(app.execute(&t.id, plan.plan_id, NOW, dns_failing).is_err());
     assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 0);
 }
+
+/// Independent review, M4: "Apagar tudo" keeps the kill switch (with its anti-rollback) and the
+/// blocked fixes; everything else goes.
+#[test]
+fn erase_all_keeps_the_safety_state() {
+    let dir = std::env::temp_dir().join(format!("hmd-ks-erase-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("history.sqlite3");
+    let mut app = open(&path, NOW);
+    let (file, sig) = signed(NOW, &["net.dns.flush_cache"]);
+    app.apply_kill_switch(&file, &sig, NOW).unwrap();
+    let mut state = app.safety_state().unwrap();
+    state.blocked.insert("x.blocked.fix".into());
+    app.start_ticket(ProblemFamily::Connectivity, NOW).unwrap();
+    app.erase_all(&path).unwrap();
+
+    let mut fresh = open(&path, NOW + 1);
+    assert!(fresh.disabled_capabilities().is_empty(), "fresh history");
+    fresh.restore_safety_state(state, NOW + 1).unwrap();
+    assert!(
+        fresh
+            .disabled_capabilities()
+            .contains("net.dns.flush_cache")
+    );
+    assert!(
+        fresh
+            .blocked_capabilities()
+            .unwrap()
+            .contains("x.blocked.fix")
+    );
+    let (old, old_sig) = signed(NOW - 100, &[]);
+    assert_eq!(
+        fresh
+            .apply_kill_switch(&old, &old_sig, NOW + 2)
+            .unwrap_err()
+            .reason_code(),
+        "KILLSWITCH_NOT_NEWER",
+        "anti-rollback survives the erase"
+    );
+    assert!(fresh.history().unwrap().is_empty(), "tickets are gone");
+    // Survives a restart too (it lives in the new history).
+    drop(fresh);
+    let again = open(&path, NOW + 3);
+    assert!(
+        again
+            .disabled_capabilities()
+            .contains("net.dns.flush_cache")
+    );
+    assert!(
+        again
+            .blocked_capabilities()
+            .unwrap()
+            .contains("x.blocked.fix")
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
