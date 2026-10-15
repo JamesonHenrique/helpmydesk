@@ -43,6 +43,11 @@
     "longDescription": "HelpMyDesk verifica problemas comuns do computador (internet, lentidão, espaço, som, microfone e câmera), explica em palavras simples e só muda algo com a sua permissão.",
     "license": "GPL-3.0-or-later",
     "publisher": "HelpMyDesk",
-    "homepage": "https://github.com/JamesonHenrique/helpmydesk"
+    "homepage": "https://github.com/JamesonHenrique/helpmydesk",
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    }
   }
 }

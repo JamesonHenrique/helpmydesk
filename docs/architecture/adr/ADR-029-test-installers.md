@@ -22,3 +22,12 @@ testadores precisam de algo que se instala com dois cliques.
 - O Windows mostra o aviso do SmartScreen para instalador não assinado; o `.deb` instala sem
   repositório (`sudo apt install ./HelpMyDesk_*.deb`).
 - Baixar artefatos exige estar logado no GitHub.
+
+## Desinstalação (F2-UNINST)
+
+- Windows: o desinstalador pergunta "Apagar também o histórico do HelpMyDesk neste computador?"
+  (`windows/hooks.nsh`, `NSIS_HOOK_POSTUNINSTALL`); em desinstalação silenciosa, guarda os dados.
+  Apaga `%APPDATA%` e `%LOCALAPPDATA%` do app. A chave da IA no Gerenciador de Credenciais sai
+  pelo "Apagar tudo" do app (o desinstalador não mexe no cofre).
+- Linux (`.deb`): `apt remove` não apaga dados da pasta pessoal (padrão dos pacotes). Para tirar
+  tudo, use "Apagar tudo" no app antes de desinstalar.
