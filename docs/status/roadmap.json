@@ -535,11 +535,11 @@
    "phase_name": "Endurecimento e release público",
    "phase_order": 6,
    "title": "Documentação para quem usa",
-   "status": "todo",
+   "status": "doing",
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "Guia para quem usa (docs/usuario/GUIA.md) e Ajuda do app atualizada (IA). Falta revisar com leigos e publicar junto do release"
   },
   {
    "id": "F5-REL",
