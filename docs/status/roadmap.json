@@ -71,7 +71,7 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Instaladores de teste no CI (.deb e NSIS, artefatos por 14 dias, ADR-029). Falta updater e repositório apt assinado"
+   "note": "Instaladores de teste no CI; relatório do spike (docs/spikes/S-06-updater.md): plugin oficial atualiza NSIS e AppImage, não .deb. Recomendação: Windows com plugin; .deb com aviso de versão nova. Falta a chave do atualizador"
   },
   {
    "id": "S-07",
