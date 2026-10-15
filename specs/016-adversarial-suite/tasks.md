@@ -7,3 +7,4 @@
 - [x] T005 Rodada 2: kill switch depois da aprovação (brecha 5) e limite do relatório editado
 - [x] T006 S-04: "Sim" só funciona 1 s depois que o plano aparece (clique sequestrado)
 - [x] T007 Rodada 3: redação com İ/Kelvin (vazava o nome) e estouro no parser do ALSA
+- [x] T008 Modo auto_simple na suíte (19 casos); textos claros para OBSERVE_ONLY, CAPABILITY_DISABLED e NO_PENDING_PLAN no resultado; maxlength no relatório

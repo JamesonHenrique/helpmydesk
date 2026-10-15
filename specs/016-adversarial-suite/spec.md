@@ -20,7 +20,7 @@ plano, daquele ticket, naquele momento.
   plano inexistente e ids extremos; plano e aprovação de outro ticket; ids de ticket forjados;
   aprovar depois de recusar; aprovação vencida; "só observar" antes e depois de aprovar; plano
   antigo depois de um diagnóstico novo (aprovado ou não); planos de um histórico apagado; relatório
-  gigante salvo em Downloads (17 casos). Fora do IPC, em `hmd-app/tests/killswitch.rs`: kill switch
+  gigante salvo em Downloads; modo "automático simples" sem aprovação (19 casos). Fora do IPC, em `hmd-app/tests/killswitch.rs`: kill switch
   que chega entre a aprovação e a execução.
 
 ## Achados e correções (no `hmd-app`)
