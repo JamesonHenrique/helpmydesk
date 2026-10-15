@@ -11,6 +11,7 @@ publish = false
 # Leaf crate (through hmd-app it bundles SQLite; see ADR-023).
 [dependencies]
 hmd-app = { path = "../hmd-app" }
+hmd-ai = { path = "../hmd-ai" }
 hmd-catalog = { path = "../hmd-catalog" }
 hmd-core = { path = "../hmd-core" }
 hmd-domain = { path = "../hmd-domain" }

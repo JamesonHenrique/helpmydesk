@@ -18,9 +18,11 @@ hmd-core = { path = "../hmd-core" }
 hmd-executor = { path = "../hmd-executor" }
 hmd-killswitch = { path = "../hmd-killswitch" }
 hmd-store = { path = "../hmd-store" }
+hmd-ai = { path = "../hmd-ai" }
 
 [dev-dependencies]
 ed25519-dalek = { version = "=3.0.0", default-features = false, features = ["zeroize"] }
+serde_json = "=1.0.151"
 
 [lints]
 workspace = true

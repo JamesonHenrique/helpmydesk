@@ -6,6 +6,8 @@
 
 use std::path::{Path, PathBuf};
 
+use hmd_ai::{Transport, UreqTransport};
+use hmd_app::ai::{KeyVault, MemoryVault};
 use hmd_app::{App, AppError, DiagnosisView, ExecutionOutcome, PlanView, Startup, StepView};
 use hmd_core::{LOCALE, ProbeOutcome, confidence_phrase};
 use hmd_domain::{ProblemFamily, Ticket, Timestamp};
@@ -305,6 +307,27 @@ pub struct Backend {
     path: Option<PathBuf>,
     runner: ProbeRunner,
     clock: Clock,
+    /// Where the AI key lives (the shell plugs in the system vault).
+    vault: Box<dyn KeyVault>,
+    transport: Box<dyn Transport + Send + Sync>,
+}
+
+/// AI connection state for the screens (spec 018).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiStatusDto {
+    pub connected: bool,
+    /// Where the person creates the key (fixed, from the core).
+    pub console_url: String,
+}
+
+/// The AI's classification; the screen starts the ticket of `family` (or shows the menu).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiClassificationDto {
+    pub family: Option<String>,
+    pub confidence: String,
+    pub question: Option<String>,
 }
 
 /// The system clock as Unix seconds (0 if it is before 1970).
@@ -328,6 +351,8 @@ impl Backend {
                 path: Some(path),
                 runner,
                 clock,
+                vault: Box::new(MemoryVault::default()),
+                transport: Box::new(UreqTransport::default()),
             },
             startup_dto(&startup),
         ))
@@ -341,6 +366,73 @@ impl Backend {
             path: None,
             runner,
             clock,
+            vault: Box::new(MemoryVault::default()),
+            transport: Box::new(UreqTransport::default()),
+        })
+    }
+
+    /// The shell plugs in the system vault (Secret Service / Windows Credential Manager).
+    pub fn set_vault(&mut self, vault: Box<dyn KeyVault>) {
+        self.vault = vault;
+    }
+
+    /// Tests replace the network.
+    pub fn set_transport(&mut self, transport: Box<dyn Transport + Send + Sync>) {
+        self.transport = transport;
+    }
+
+    pub fn ai_status(&mut self) -> IpcResult<AiStatusDto> {
+        self.reopen_if_closed();
+        let app = self
+            .app
+            .as_ref()
+            .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
+        let status = app.ai_status(&*self.vault)?;
+        Ok(AiStatusDto {
+            connected: status.connected,
+            console_url: hmd_ai::CONSOLE_URL.to_string(),
+        })
+    }
+
+    pub fn ai_connect(&mut self, key: &str) -> IpcResult<AiStatusDto> {
+        let now = (self.clock)();
+        self.reopen_if_closed();
+        let app = self
+            .app
+            .as_mut()
+            .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
+        app.ai_connect(&*self.vault, &*self.transport, key, now)?;
+        self.ai_status()
+    }
+
+    pub fn ai_disconnect(&mut self) -> IpcResult<AiStatusDto> {
+        let now = (self.clock)();
+        self.reopen_if_closed();
+        let app = self
+            .app
+            .as_mut()
+            .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
+        app.ai_disconnect(&*self.vault, now)?;
+        self.ai_status()
+    }
+
+    pub fn ai_classify(&mut self, text: &str) -> IpcResult<AiClassificationDto> {
+        let now = (self.clock)();
+        self.reopen_if_closed();
+        let app = self
+            .app
+            .as_mut()
+            .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
+        let c = app.ai_classify(&*self.vault, &*self.transport, text, now)?;
+        Ok(AiClassificationDto {
+            family: c.family.map(|f| f.code().to_string()),
+            confidence: match c.confidence {
+                hmd_ai::AiConfidence::Low => "low",
+                hmd_ai::AiConfidence::Medium => "medium",
+                hmd_ai::AiConfidence::High => "high",
+            }
+            .to_string(),
+            question: c.question,
         })
     }
 
