@@ -127,11 +127,15 @@ pub fn classify_http(
     }
 }
 
-pub fn http_findings(outcomes: &[HttpOutcome]) -> Vec<Finding> {
+/// `ip_reachable`: a TCP connection to a fixed public IP worked. When HTTP fails only because
+/// names do not resolve, the internet is up and the DNS probe explains the problem instead.
+pub fn http_findings(outcomes: &[HttpOutcome], ip_reachable: bool) -> Vec<Finding> {
     if outcomes.is_empty() || outcomes.contains(&HttpOutcome::Expected) {
         vec![]
     } else if outcomes.contains(&HttpOutcome::Unexpected) {
         finding(CAPTIVE_PORTAL, Severity::Warning)
+    } else if ip_reachable {
+        vec![]
     } else {
         finding(INTERNET_UNREACHABLE, Severity::Critical)
     }
@@ -232,16 +236,20 @@ mod tests {
     #[test]
     fn batch2_us1_http_findings() {
         use HttpOutcome::*;
-        assert!(http_findings(&[Expected, NoResponse]).is_empty());
+        assert!(http_findings(&[Expected, NoResponse], false).is_empty());
         assert_eq!(
-            codes(http_findings(&[Unexpected, NoResponse])),
+            codes(http_findings(&[Unexpected, NoResponse], false)),
             vec![CAPTIVE_PORTAL]
         );
         assert_eq!(
-            codes(http_findings(&[NoResponse, NoResponse])),
+            codes(http_findings(&[NoResponse, NoResponse], false)),
             vec![INTERNET_UNREACHABLE]
         );
-        assert!(http_findings(&[]).is_empty());
+        assert!(
+            http_findings(&[NoResponse, NoResponse], true).is_empty(),
+            "IPs reachable: DNS issue, not internet down"
+        );
+        assert!(http_findings(&[], false).is_empty());
     }
 
     #[test]

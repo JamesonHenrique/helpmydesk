@@ -93,6 +93,8 @@ const ENDPOINTS: [(&str, &str, u16, Option<&str>); 2] = [
         Some("Microsoft Connect Test"),
     ),
 ];
+/// Fixed public IPs (Cloudflare and Google DNS) used to tell "no internet" from "no DNS".
+const PUBLIC_IPS: [Ipv4Addr; 2] = [Ipv4Addr::new(1, 1, 1, 1), Ipv4Addr::new(8, 8, 8, 8)];
 const HTTP_TIMEOUT: Duration = Duration::from_secs(4);
 const HTTP_DEADLINE: Duration = Duration::from_secs(10);
 const MAX_RESPONSE: usize = 4096;
@@ -139,6 +141,9 @@ pub(crate) fn http_check() -> Result<ProbeOutput, ProbeError> {
     if outcomes.is_empty() {
         return Err(ProbeError::Timeout);
     }
+    let ip_reachable = PUBLIC_IPS
+        .iter()
+        .any(|&ip| tcp_answers(SocketAddr::new(IpAddr::V4(ip), 443), HTTP_TIMEOUT));
     let count = |o: HttpOutcome| outcomes.iter().filter(|&&x| x == o).count() as u64;
     let mut out = ProbeOutput::new("net.http.check");
     out.evidence
@@ -149,6 +154,8 @@ pub(crate) fn http_check() -> Result<ProbeOutput, ProbeError> {
         "no_response",
         Evidence::Uint(count(HttpOutcome::NoResponse)),
     );
-    out.findings = rules::http_findings(&outcomes);
+    out.evidence
+        .insert("public_ip_reachable", Evidence::Bool(ip_reachable));
+    out.findings = rules::http_findings(&outcomes, ip_reachable);
     Ok(out)
 }

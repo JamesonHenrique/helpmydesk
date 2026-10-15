@@ -39,6 +39,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(out, "    ({name:?}, include_str!({path:?})),")?;
     }
     writeln!(out, "];")?;
+
+    let playbooks_dir = catalog_dir.join("playbooks");
+    println!("cargo:rerun-if-changed={}", playbooks_dir.display());
+    let mut playbooks: Vec<PathBuf> = fs::read_dir(&playbooks_dir)?
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "toml"))
+        .collect();
+    playbooks.sort();
+    writeln!(out, "pub(crate) const PLAYBOOK_FILES: &[(&str, &str)] = &[")?;
+    for path in playbooks {
+        let path = path.canonicalize()?;
+        println!("cargo:rerun-if-changed={}", path.display());
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or("non UTF-8 playbook file name")?;
+        writeln!(out, "    ({name:?}, include_str!({path:?})),")?;
+    }
+    writeln!(out, "];")?;
     fs::write(PathBuf::from(env::var("OUT_DIR")?).join("embedded.rs"), out)?;
     Ok(())
 }

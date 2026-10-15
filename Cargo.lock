@@ -87,6 +87,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hmd-core"
+version = "0.1.0"
+dependencies = [
+ "hmd-catalog",
+ "hmd-domain",
+ "hmd-policy",
+ "hmd-probes",
+]
+
+[[package]]
 name = "hmd-domain"
 version = "0.1.0"
 

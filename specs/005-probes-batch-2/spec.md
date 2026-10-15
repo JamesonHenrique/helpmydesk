@@ -51,6 +51,10 @@ gateway, gateway not answering, internet unreachable, and a captive portal (hote
 - **FR-003**: Network targets MUST be fixed: the default gateway (ports 53, 80, 443) and the HTTP
   endpoints `http://connectivitycheck.gstatic.com/generate_204` (expects 204) and
   `http://www.msftconnecttest.com/connecttest.txt` (expects 200 + `Microsoft Connect Test`).
+  When no endpoint answers, a TCP connection to the fixed IPs `1.1.1.1:443` and `8.8.8.8:443`
+  decides between `net.internet.unreachable` (no answer) and a pure DNS problem (answer → no
+  internet finding; the DNS probe explains it). *(Amended 2026-10-14 during spec 006: internet
+  down also makes DNS fail, so the two must be told apart.)*
 - **FR-004**: `startup.apps.list` MUST be N1-S with consent category `startup_apps`; sources:
   Linux XDG autostart (`~/.config/autostart`, `/etc/xdg/autostart`, user overrides system);
   Windows `HKCU`/`HKLM` `…\CurrentVersion\Run` with `StartupApproved\Run` state.

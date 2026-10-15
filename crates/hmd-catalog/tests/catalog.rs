@@ -210,3 +210,120 @@ fn us2_embedded_matches_directory() {
     let ids = |c: &hmd_policy::Catalog| c.iter().cloned().collect::<Vec<_>>();
     assert_eq!(ids(&emb.catalog), ids(&disk.catalog));
 }
+
+// ---- Spec 006: playbook validation ----
+
+const PB_OK: &str = r#"
+id = "PB-NET-001"
+version = "1.0.0"
+family = "connectivity"
+probes = ["net.dns.resolve"]
+[copy.pt-BR]
+title = "Internet"
+[[diagnoses]]
+id = "net.dns"
+when_all = ["net.dns.resolution_failing"]
+confidence = "probable"
+fixes = ["net.dns.flush_cache"]
+[diagnoses.copy.pt-BR]
+title = "T"
+explanation = "E"
+[fallback]
+id = "net.ok"
+confidence = "probable"
+report = "REP-01"
+[fallback.copy.pt-BR]
+title = "T"
+explanation = "E"
+"#;
+
+fn pb_codes(playbooks: &[(&str, &str)]) -> Vec<&'static str> {
+    codes(hmd_catalog::load(
+        MANIFEST,
+        &[
+            ("net.dns.resolve.toml", PROBE),
+            ("net.dns.flush_cache.toml", FIX),
+        ],
+        playbooks,
+    ))
+}
+
+fn pb_with(from: &str, to: &str) -> Vec<&'static str> {
+    let pb = PB_OK.replacen(from, to, 1);
+    assert_ne!(pb, PB_OK, "fixture replacement did not apply: {from}");
+    pb_codes(&[("PB-NET-001.toml", &pb)])
+}
+
+#[test]
+fn fr001_valid_playbook_loads() {
+    assert_eq!(pb_codes(&[("PB-NET-001.toml", PB_OK)]), Vec::<&str>::new());
+}
+
+#[test]
+fn fr001_playbook_errors() {
+    assert_eq!(
+        pb_with(
+            "probes = [\"net.dns.resolve\"]",
+            "probes = [\"net.dns.flush_cache\"]"
+        )[0],
+        "PLAYBOOK_UNKNOWN_PROBE"
+    );
+    assert_eq!(
+        pb_with(
+            "when_all = [\"net.dns.resolution_failing\"]",
+            "when_all = [\"made.up\"]"
+        ),
+        vec!["PLAYBOOK_UNKNOWN_FINDING"]
+    );
+    assert_eq!(
+        pb_with(
+            "fixes = [\"net.dns.flush_cache\"]",
+            "fixes = [\"net.dns.resolve\"]"
+        ),
+        vec!["PLAYBOOK_INVALID_FIX"]
+    );
+    assert_eq!(
+        pb_with("report = \"REP-01\"", "report = \"REP-99\""),
+        vec!["PLAYBOOK_INVALID_REPORT"]
+    );
+    assert_eq!(
+        pb_with("[copy.pt-BR]\ntitle = \"Internet\"", ""),
+        vec!["PLAYBOOK_MISSING_COPY"]
+    );
+    assert_eq!(
+        pb_with(
+            "[fallback]\nid = \"net.ok\"",
+            "[fallback]\nid = \"net.ok\"\nwhen_all = [\"net.dns.resolution_failing\"]"
+        ),
+        vec!["PLAYBOOK_INVALID_FALLBACK"]
+    );
+    assert_eq!(
+        pb_with(
+            "family = \"connectivity\"\nprobes",
+            "family = \"connectivity\"\nrun = 1\nprobes"
+        ),
+        vec!["UNKNOWN_FIELD"]
+    );
+}
+
+#[test]
+fn fr001_one_playbook_per_family_and_coverage() {
+    let second = PB_OK.replace("PB-NET-001", "PB-NET-002");
+    let c = pb_codes(&[("PB-NET-001.toml", PB_OK), ("PB-NET-002.toml", &second)]);
+    assert_eq!(c, vec!["PLAYBOOK_DUPLICATE_FAMILY"]);
+
+    let loaded = hmd_catalog::load(
+        MANIFEST,
+        &[
+            ("net.dns.resolve.toml", PROBE),
+            ("net.dns.flush_cache.toml", FIX),
+        ],
+        &[("PB-NET-001.toml", PB_OK)],
+    )
+    .unwrap();
+    let missing: Vec<_> = hmd_catalog::check_family_coverage(&loaded)
+        .into_iter()
+        .map(|e| e.code)
+        .collect();
+    assert_eq!(missing, vec!["MISSING_FAMILY_PLAYBOOK"; 4]);
+}

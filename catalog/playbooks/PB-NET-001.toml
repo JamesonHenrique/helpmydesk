@@ -1,0 +1,100 @@
+id = "PB-NET-001"
+version = "1.0.0"
+family = "connectivity"
+probes = ["net.adapters.status", "net.gateway.reach", "net.dns.resolve", "net.http.check"]
+
+[copy.pt-BR]
+title = "Internet"
+
+[[diagnoses]]
+id = "net.no_adapter"
+when_all = ["net.no_active_adapter"]
+confidence = "almost_certain"
+[diagnoses.copy.pt-BR]
+title = "O computador não está ligado a nenhuma rede"
+explanation = "Nenhuma conexão de rede está ativa: nem Wi-Fi, nem cabo."
+steps = [
+  "Confira se o Wi-Fi está ligado no ícone de rede (perto do relógio).",
+  "Confira se o modo avião está desligado.",
+  "Se usa cabo, veja se ele está bem encaixado nas duas pontas.",
+]
+
+[[diagnoses]]
+id = "net.no_ip"
+when_all = ["net.no_valid_ip"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "O roteador não deu um endereço para o computador"
+explanation = "Você está ligado à rede, mas o roteador não entregou um endereço válido. É como chegar a um prédio e o porteiro não liberar a entrada."
+steps = [
+  "Desligue o roteador da tomada, espere 30 segundos e ligue de novo.",
+  "Depois que as luzes estabilizarem, desligue e ligue o Wi-Fi do computador.",
+]
+
+[[diagnoses]]
+id = "net.no_gateway"
+when_all = ["net.gateway.missing"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "O computador não sabe por onde sair para a internet"
+explanation = "A rede está ligada, mas não aparece o caminho até o roteador."
+steps = [
+  "Desconecte e conecte de novo na sua rede Wi-Fi.",
+  "Se não resolver, reinicie o roteador (30 segundos fora da tomada).",
+]
+
+[[diagnoses]]
+id = "net.gateway_down"
+when_all = ["net.gateway.unreachable"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "O roteador não está respondendo"
+explanation = "O computador está ligado à rede, mas o roteador não responde."
+steps = [
+  "Desligue o roteador da tomada, espere 30 segundos e ligue de novo.",
+  "Espere uns 2 minutos até as luzes estabilizarem e teste outra vez.",
+]
+
+[[diagnoses]]
+id = "net.captive_portal"
+when_all = ["net.captive_portal_suspected"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "Esta rede pede um login antes de liberar a internet"
+explanation = "Redes de hotel, café ou faculdade costumam mostrar uma página de acesso antes de liberar a internet."
+steps = [
+  "Abra o navegador e tente entrar em qualquer site: a página de acesso da rede deve aparecer.",
+  "Preencha o que ela pedir (ou aceite os termos) e teste de novo.",
+]
+
+[[diagnoses]]
+id = "net.internet_down"
+when_all = ["net.internet.unreachable"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "A internet não está chegando até o seu roteador"
+explanation = "O computador e o roteador estão bem, mas não há saída para a internet. O problema provavelmente está no provedor ou no modem."
+steps = [
+  "Veja se outros aparelhos (celular no Wi-Fi) também estão sem internet.",
+  "Reinicie o modem/roteador.",
+  "Se continuar, ligue para o seu provedor de internet.",
+]
+
+[[diagnoses]]
+id = "net.dns"
+when_all = ["net.dns.resolution_failing"]
+confidence = "probable"
+fixes = ["net.dns.flush_cache"]
+[diagnoses.copy.pt-BR]
+title = "O computador não consegue achar os endereços dos sites"
+explanation = "A rede e o roteador funcionam, mas os nomes dos sites não estão sendo encontrados. É como ter sinal no telefone, mas a agenda de contatos estar com defeito."
+steps = ["Se a correção não resolver, reinicie o roteador e teste de novo."]
+
+[fallback]
+id = "net.ok"
+confidence = "probable"
+report = "REP-01"
+[fallback.copy.pt-BR]
+title = "Não encontrei problema na sua conexão"
+explanation = "Nas verificações que eu faço, a internet está funcionando. Se só um site ou programa não abre, o problema pode ser dele."
+steps = ["Tente abrir o mesmo site em outro navegador ou no celular."]

@@ -1,0 +1,18 @@
+[package]
+name = "hmd-core"
+description = "HelpMyDesk orchestration: playbooks, probe authorization and diagnosis (no execution)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+hmd-domain = { path = "../hmd-domain" }
+hmd-policy = { path = "../hmd-policy" }
+hmd-catalog = { path = "../hmd-catalog" }
+hmd-probes = { path = "../hmd-probes" }
+
+[lints]
+workspace = true
