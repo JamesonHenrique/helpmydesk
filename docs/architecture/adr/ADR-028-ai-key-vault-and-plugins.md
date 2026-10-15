@@ -5,8 +5,9 @@
 ## Decisão
 
 - `keyring =4.2.0` (MIT OR Apache-2.0, publicado em 2026-08-29), modo `v1`: Secret Service (via
-  `zbus`) no Linux e Gerenciador de Credenciais no Windows. Só no shell (`apps/desktop/src-tauri`);
-  o núcleo vê o trait `KeyVault`.
+  `zbus`) no Linux e Gerenciador de Credenciais no Windows. Fica no crate `hmd-vault` (o núcleo vê só o trait
+  `KeyVault`), para o CI testar gravar, ler e apagar no Gerenciador de Credenciais de um Windows
+  real (`HMD_VAULT_TEST=1`).
 - `tauri-plugin-opener =2.7.0` (2026-09-29) e `tauri-plugin-clipboard-manager =2.4.0`
   (2026-09-26), Apache-2.0 OR MIT. Usados só por comandos nossos com comportamento fixo
   (`open_ai_console` abre uma URL constante; `ai_connect_from_clipboard` lê o código e o entrega

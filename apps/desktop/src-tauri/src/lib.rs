@@ -16,8 +16,6 @@ use tauri::{
     WindowEvent,
 };
 
-mod vault;
-
 /// Event the approval window's decision (or its closing) is announced with.
 const APPROVAL_EVENT: &str = "hmd://approval-decided";
 
@@ -341,7 +339,7 @@ pub fn run() {
             )
             .map_err(|e| format!("{}: {}", e.code, e.message))?;
             let mut backend = backend;
-            match vault::SystemVault::new() {
+            match hmd_vault::SystemVault::new() {
                 Ok(v) => backend.set_vault(Box::new(v)),
                 // No system vault (e.g. no Secret Service): the key is kept only while the app
                 // runs, never written in plain text.
