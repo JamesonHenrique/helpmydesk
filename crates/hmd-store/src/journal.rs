@@ -8,6 +8,7 @@ use hmd_executor::{ActionApproval, EvaluatedPlan, ExecutionStart, Journal, Journ
 use hmd_policy::AutonomyMode;
 use rusqlite::{OptionalExtension, params};
 
+use crate::audit::{self, Actor, AuditEntry};
 use crate::{Result, Store, StoreError, parse, platform_code, ticket_id};
 
 fn mode_code(m: AutonomyMode) -> &'static str {
@@ -65,7 +66,8 @@ impl Store {
         {
             return Ok(id);
         }
-        self.conn.execute(
+        let tx = self.conn.transaction()?;
+        tx.execute(
             "INSERT INTO action_plan (ticket_id, session_ref, plan_hash, catalog_version, canonical,
                  created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -78,7 +80,26 @@ impl Store {
                 now
             ],
         )?;
-        Ok(self.conn.last_insert_rowid())
+        let id = tx.last_insert_rowid();
+        let accepted = plan.decision.accepted().count();
+        let total = plan.decision.verdicts.len();
+        audit::append(
+            &tx,
+            &AuditEntry {
+                actor: Actor::System,
+                action: if accepted == 0 {
+                    "plan.rejected"
+                } else {
+                    "plan.accepted"
+                },
+                subject_ref: format!("plan:{id}"),
+                outcome: format!("accepted={accepted} of {total}"),
+                reason_code: None,
+            },
+            now,
+        )?;
+        tx.commit()?;
+        Ok(id)
     }
 
     /// Records the person's approval of `step_ids`; the row ID becomes the nonce (FR-002).
@@ -116,7 +137,8 @@ impl Store {
             .cloned()
             .collect::<Vec<_>>()
             .join(",");
-        self.conn.execute(
+        let tx = self.conn.transaction()?;
+        tx.execute(
             "INSERT INTO action_approval (plan_id, plan_hash, step_ids, mode, decided_at, expires_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
@@ -128,10 +150,20 @@ impl Store {
                 draft.expires_at
             ],
         )?;
-        Ok(ActionApproval {
-            nonce: self.conn.last_insert_rowid(),
-            ..draft
-        })
+        let nonce = tx.last_insert_rowid();
+        audit::append(
+            &tx,
+            &AuditEntry {
+                actor: Actor::User,
+                action: "plan.approved",
+                subject_ref: format!("plan:{plan_id}"),
+                outcome: format!("approval={nonce} steps={joined}"),
+                reason_code: None,
+            },
+            now,
+        )?;
+        tx.commit()?;
+        Ok(ActionApproval { nonce, ..draft })
     }
 
     pub fn approval(&self, nonce: i64) -> Result<Option<ActionApproval>> {
@@ -217,11 +249,32 @@ impl Store {
     /// US2.2: at app start, every `started` execution becomes `unknown`. Returns how many.
     pub fn recover_interrupted(&mut self, now: Timestamp) -> Result<usize> {
         let to = execution::on_startup(ExecutionState::Started);
-        Ok(self.conn.execute(
-            "UPDATE action_execution SET state = ?1, finished_at = ?2, result = 'INTERRUPTED'
-             WHERE state = ?3",
-            params![to.code(), now, ExecutionState::Started.code()],
-        )?)
+        let tx = self.conn.transaction()?;
+        let ids: Vec<i64> = {
+            let mut stmt = tx.prepare("SELECT id FROM action_execution WHERE state = ?1")?;
+            let rows = stmt.query_map([ExecutionState::Started.code()], |r| r.get(0))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        for id in &ids {
+            tx.execute(
+                "UPDATE action_execution SET state = ?1, finished_at = ?2, result = 'INTERRUPTED'
+                 WHERE id = ?3",
+                params![to.code(), now, id],
+            )?;
+            audit::append(
+                &tx,
+                &AuditEntry {
+                    actor: Actor::System,
+                    action: "action.unknown",
+                    subject_ref: format!("execution:{id}"),
+                    outcome: to.code().to_string(),
+                    reason_code: Some("INTERRUPTED"),
+                },
+                now,
+            )?;
+        }
+        tx.commit()?;
+        Ok(ids.len())
     }
 
     /// US2.3: capability IDs (without version) with an execution in `unknown`, for
@@ -285,7 +338,8 @@ impl Store {
             | ExecutionState::RolledBack => Some(to.code().to_string()),
             _ => None,
         });
-        let changed = self.conn.execute(
+        let tx = self.conn.transaction()?;
+        let changed = tx.execute(
             &format!(
                 "UPDATE action_execution SET state = ?1, finished_at = ?2,
                      {column} = coalesce(?3, {column})
@@ -293,11 +347,63 @@ impl Store {
             ),
             params![to.code(), at, note, execution, from.code()],
         )?;
-        if changed == 1 {
-            Ok(())
-        } else {
-            Err(StoreError::ConcurrentChange)
+        if changed != 1 {
+            return Err(StoreError::ConcurrentChange);
         }
+        let action = match to {
+            ExecutionState::VerifiedOk | ExecutionState::VerifiedFailed => "action.verified",
+            ExecutionState::RolledBack => "action.rolled_back",
+            _ => "action.finished",
+        };
+        audit::append(
+            &tx,
+            &AuditEntry {
+                actor: Actor::System,
+                action,
+                subject_ref: format!("execution:{execution}"),
+                outcome: to.code().to_string(),
+                reason_code: None,
+            },
+            at,
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+}
+
+impl Store {
+    /// US2.1 write-ahead record, audited in the same transaction.
+    fn begin_execution(&mut self, start: &ExecutionStart<'_>) -> Result<i64> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "INSERT INTO action_execution (plan_id, approval_id, step_id, capability, platform,
+                 idempotency_key, state, started_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                start.plan_ref,
+                start.approval_nonce,
+                start.step_id,
+                start.capability,
+                platform_code(start.platform),
+                start.idempotency_key,
+                ExecutionState::Started.code(),
+                start.at
+            ],
+        )?;
+        let id = tx.last_insert_rowid();
+        audit::append(
+            &tx,
+            &AuditEntry {
+                actor: Actor::System,
+                action: "action.started",
+                subject_ref: format!("execution:{id}"),
+                outcome: start.capability.clone(),
+                reason_code: None,
+            },
+            start.at,
+        )?;
+        tx.commit()?;
+        Ok(id)
     }
 }
 
@@ -319,24 +425,7 @@ impl Journal for Store {
     }
 
     fn begin(&mut self, start: &ExecutionStart<'_>) -> std::result::Result<i64, JournalError> {
-        self.conn
-            .execute(
-                "INSERT INTO action_execution (plan_id, approval_id, step_id, capability, platform,
-                     idempotency_key, state, started_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-                params![
-                    start.plan_ref,
-                    start.approval_nonce,
-                    start.step_id,
-                    start.capability,
-                    platform_code(start.platform),
-                    start.idempotency_key,
-                    ExecutionState::Started.code(),
-                    start.at
-                ],
-            )
-            .map_err(|e| journal_error(e.into()))?;
-        Ok(self.conn.last_insert_rowid())
+        self.begin_execution(start).map_err(journal_error)
     }
 
     fn advance(

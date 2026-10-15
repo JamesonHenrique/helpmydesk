@@ -5,6 +5,8 @@
 //! reads the clock (spec 001 NFR-001).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod audit;
+mod export;
 mod journal;
 #[doc(hidden)]
 pub mod schema;
@@ -23,6 +25,8 @@ use hmd_policy::{Confidence, Platform};
 use hmd_probes::Severity;
 use rusqlite::{Connection, ErrorCode, OptionalExtension, Row, params};
 
+pub use audit::{Actor, AuditCheck, AuditEvent};
+pub use export::{EXPORT_FORMAT, erase_all};
 pub use journal::StoredExecution;
 pub use schema::SCHEMA_VERSION;
 
@@ -179,6 +183,7 @@ pub struct StoredReport {
 pub struct PurgeStats {
     pub tickets: usize,
     pub messages: usize,
+    pub audit_events: usize,
 }
 
 fn confidence_code(c: Confidence) -> &'static str {
@@ -440,6 +445,22 @@ impl Store {
                 now
             ],
         )?;
+        let actor = match event {
+            // Time-based housekeeping, not the person.
+            TicketEvent::Abandon | TicketEvent::Close => Actor::System,
+            _ => Actor::User,
+        };
+        audit::append(
+            &tx,
+            &audit::AuditEntry {
+                actor,
+                action: &format!("ticket.{}", event.code()),
+                subject_ref: format!("ticket:{row_id}"),
+                outcome: next.state.code().to_string(),
+                reason_code: trigger,
+            },
+            now,
+        )?;
         tx.commit()?;
         Ok(next)
     }
@@ -641,11 +662,47 @@ impl Store {
         notice_version: &str,
         now: Timestamp,
     ) -> Result<()> {
-        self.conn.execute(
+        let tx = self.conn.transaction()?;
+        tx.execute(
             "INSERT INTO consent_record (scope, granted, notice_version, at) VALUES (?1, ?2, ?3, ?4)",
             params![scope, granted, notice_version, now],
         )?;
+        audit::append(
+            &tx,
+            &audit::AuditEntry {
+                actor: Actor::User,
+                action: "consent.changed",
+                subject_ref: format!("consent:{scope}"),
+                outcome: format!(
+                    "{}@{notice_version}",
+                    if granted { "granted" } else { "revoked" }
+                ),
+                reason_code: None,
+            },
+            now,
+        )?;
+        tx.commit()?;
         Ok(())
+    }
+
+    /// Spec 009 US2: grants or revokes a catalog consent category, recording the version of the
+    /// notice the person read. Unknown categories are refused.
+    pub fn set_consent(
+        &mut self,
+        catalog: &LoadedCatalog,
+        scope: &str,
+        granted: bool,
+        now: Timestamp,
+    ) -> Result<()> {
+        let notice = catalog
+            .consents
+            .get(scope)
+            .ok_or_else(|| StoreError::UnknownCode {
+                what: "consent",
+                code: scope.to_string(),
+            })?;
+        let version = notice.version.clone();
+        self.record_consent(scope, granted, &version, now)
     }
 
     /// Scopes whose latest record grants consent.
@@ -690,15 +747,27 @@ impl Store {
 
     /// Called only after the file was saved by the person.
     pub fn mark_exported(&mut self, report: i64, now: Timestamp) -> Result<()> {
-        let changed = self.conn.execute(
+        let tx = self.conn.transaction()?;
+        let changed = tx.execute(
             "UPDATE report SET exported_at = ?1 WHERE id = ?2",
             params![now, report],
         )?;
-        if changed == 1 {
-            Ok(())
-        } else {
-            Err(StoreError::NotFound)
+        if changed != 1 {
+            return Err(StoreError::NotFound);
         }
+        audit::append(
+            &tx,
+            &audit::AuditEntry {
+                actor: Actor::User,
+                action: "report.exported",
+                subject_ref: format!("report:{report}"),
+                outcome: "ok".to_string(),
+                reason_code: None,
+            },
+            now,
+        )?;
+        tx.commit()?;
+        Ok(())
     }
 
     pub fn reports(&self, ticket: &str) -> Result<Vec<StoredReport>> {
@@ -764,6 +833,23 @@ impl Store {
         }
         for id in &expired {
             stats.tickets += tx.execute("DELETE FROM ticket WHERE id = ?1", [ticket_id(id)?])?;
+        }
+        stats.audit_events = audit::purge(&tx, now, cfg)?;
+        if stats != PurgeStats::default() {
+            audit::append(
+                &tx,
+                &audit::AuditEntry {
+                    actor: Actor::System,
+                    action: "retention.purged",
+                    subject_ref: "store".to_string(),
+                    outcome: format!(
+                        "tickets={} messages={} audit_events={}",
+                        stats.tickets, stats.messages, stats.audit_events
+                    ),
+                    reason_code: None,
+                },
+                now,
+            )?;
         }
         tx.commit()?;
         Ok(stats)

@@ -15,3 +15,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Espaço no disco"
+looks_at = "Tamanho e espaço livre do disco do sistema."
+never = "Seus arquivos, nomes de pastas e o nome dos discos."

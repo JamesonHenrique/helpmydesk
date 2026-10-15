@@ -21,7 +21,7 @@ pub use execution::ExecutionState;
 pub use family::ProblemFamily;
 pub use housekeeping::{HousekeepingConfig, due_event};
 pub use report::{ReportTrigger, repeated_reopen_trigger};
-pub use retention::{RetentionConfig, message_expired, ticket_expired};
+pub use retention::{RetentionConfig, audit_expired, message_expired, ticket_expired};
 pub use session::{SessionEvent, SessionPhase};
 pub use ticket::{Ticket, TicketEvent, TicketState};
 

@@ -14,3 +14,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Uso do processador"
+looks_at = "Quanto o processador está sendo usado durante alguns instantes."
+never = "O que os programas estão fazendo."

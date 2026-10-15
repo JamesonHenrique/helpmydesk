@@ -15,3 +15,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Tradução de nomes de sites (DNS)"
+looks_at = "Se três nomes fixos de sites (dns.google, one.one.one.one e www.microsoft.com) viram endereços de internet."
+never = "Os sites que você visita ou seu histórico de navegação."

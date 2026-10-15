@@ -14,3 +14,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Placa de rede e endereço"
+looks_at = "Se há uma placa de rede ligada e se ela tem um endereço válido."
+never = "Endereço físico da placa (MAC), nome da rede Wi-Fi, nomes das placas e endereços IP (o endereço é só conferido)."

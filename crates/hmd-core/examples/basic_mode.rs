@@ -5,6 +5,7 @@
 //! `cargo run -p hmd-core --example basic_mode -- 1`            → diagnose family 1
 //! `... -- 2 --consent-startup-apps`                              → allow the N1-S probe
 //! `... -- 1 --relatorio "a internet caiu"`                       → also print the report (spec 007)
+//! `... -- --o-que-eu-olho`                                       → what each check reads (spec 009)
 //!
 //! Nothing is changed on the computer: fixes are only shown with the Policy Engine decision.
 
@@ -27,6 +28,24 @@ fn main() {
         }
     };
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.iter().any(|a| a == "--o-que-eu-olho") {
+        println!("O que eu olho no seu computador (nada é alterado):\n");
+        for d in catalog.disclosures(hmd_core::current_platform()) {
+            println!("• {}", d.title);
+            println!("  Olho: {}", d.looks_at);
+            println!("  Não guardo nem envio: {}", d.never);
+            if let Some(category) = d.consent {
+                let title = catalog
+                    .consents
+                    .get(category)
+                    .and_then(|c| c.copy.get(LOCALE))
+                    .map_or(category, |c| c.title.as_str());
+                println!("  Só com a sua permissão: {title}");
+            }
+            println!();
+        }
+        return;
+    }
     let report_at = args.iter().position(|a| a == "--relatorio");
     let symptom = report_at
         .and_then(|i| args.get(i + 1))

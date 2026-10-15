@@ -17,3 +17,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Programas que abrem com o computador"
+looks_at = "Os nomes dos programas que abrem junto com o computador e se estão ativados. Só com a sua permissão."
+never = "O conteúdo desses programas e os seus arquivos."

@@ -2,10 +2,10 @@
 //! SQL schema, one entry per `user_version` (spec 007 FR-003). Never edit a released entry:
 //! changes are new migrations.
 
-pub const MIGRATIONS: &[&str] = &[V1, V2];
+pub const MIGRATIONS: &[&str] = &[V1, V2, V3];
 
 /// Schema version this build writes.
-pub const SCHEMA_VERSION: i32 = 2;
+pub const SCHEMA_VERSION: i32 = 3;
 
 #[doc(hidden)]
 pub const V1: &str = r#"
@@ -88,7 +88,8 @@ CREATE INDEX report_by_ticket ON report(ticket_id);
 "#;
 
 /// Spec 008: plans, approvals and the write-ahead execution journal.
-const V2: &str = r#"
+#[doc(hidden)]
+pub const V2: &str = r#"
 CREATE TABLE action_plan (
     id              INTEGER PRIMARY KEY,
     ticket_id       INTEGER NOT NULL REFERENCES ticket(id) ON DELETE CASCADE,
@@ -129,4 +130,21 @@ CREATE TABLE action_execution (
 ) STRICT;
 CREATE INDEX action_execution_by_plan ON action_execution(plan_id);
 CREATE INDEX action_execution_by_state ON action_execution(state);
+"#;
+
+/// Spec 009: local audit trail with a hash chain (references only, no personal content).
+const V3: &str = r#"
+CREATE TABLE audit_event (
+    id          INTEGER PRIMARY KEY,
+    occurred_at INTEGER NOT NULL,
+    actor       TEXT    NOT NULL CHECK (actor IN ('user', 'agent', 'system')),
+    action      TEXT    NOT NULL,
+    subject_ref TEXT    NOT NULL,
+    outcome     TEXT    NOT NULL,
+    reason_code TEXT,
+    prev_hash   TEXT    NOT NULL,
+    hash        TEXT    NOT NULL UNIQUE
+) STRICT;
+CREATE TRIGGER audit_event_no_update BEFORE UPDATE ON audit_event
+BEGIN SELECT RAISE(ABORT, 'audit_event is append-only'); END;
 "#;
