@@ -1,5 +1,5 @@
 # Catalog manifest. Version format: YYYY.MM.patch (Plan v1 VII.3).
-version = "2026.10.3"
+version = "2026.10.4"
 
 # Consent notices (spec 009). Bump `version` whenever the text changes: records keep the version
 # the person agreed to.
@@ -11,8 +11,8 @@ title = "Ver os programas que abrem com o computador"
 text = "Para saber se há programas demais ligando junto com o computador, eu leio os nomes desses programas e se estão ativados. Os nomes ficam só neste computador e não vão para o relatório. Você pode retirar esta permissão quando quiser."
 
 [consents.ai_opencode]
-version = "1"
+version = "2"
 
 [consents.ai_opencode.copy.pt-BR]
 title = "Usar a IA do OpenCode com a sua conta"
-text = "Com a IA ligada, o texto que você escreve e um resumo das verificações, sem seu nome nem o nome do computador, são enviados ao OpenCode usando a sua chave. Só durante uma conversa que você começou. Sem a IA, o modo básico continua funcionando. Você pode desligar quando quiser."
+text = "Com a IA ligada, o texto que você escreve, sem seu nome nem o nome do computador, é enviado ao OpenCode usando a sua chave. Só durante uma conversa que você começou. Sem a IA, o modo básico continua funcionando. Você pode desligar quando quiser."
