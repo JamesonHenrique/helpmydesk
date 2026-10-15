@@ -196,7 +196,15 @@ fn save_report_writes_a_new_file_and_marks_it_exported() {
         first.ends_with("relatorio-helpmydesk-2025-10-14.md"),
         "{first}"
     );
-    assert_eq!(std::fs::read_to_string(&first).unwrap(), "texto editado");
+    assert!(
+        !first.contains(&*dir.parent().unwrap().to_string_lossy()),
+        "no full path: {first}"
+    );
+    let first_file = dir.join(first.rsplit('/').next().unwrap());
+    assert_eq!(
+        std::fs::read_to_string(&first_file).unwrap(),
+        "texto editado"
+    );
     let second = b
         .save_report(report.id, "outra versão", &dir, None)
         .unwrap();
@@ -204,7 +212,15 @@ fn save_report_writes_a_new_file_and_marks_it_exported() {
         second.ends_with("relatorio-helpmydesk-2025-10-14-1.md"),
         "never overwrites"
     );
-    assert_eq!(std::fs::read_to_string(&first).unwrap(), "texto editado");
+    assert!(
+        !first.contains(&*dir.parent().unwrap().to_string_lossy()),
+        "no full path: {first}"
+    );
+    let first_file = dir.join(first.rsplit('/').next().unwrap());
+    assert_eq!(
+        std::fs::read_to_string(&first_file).unwrap(),
+        "texto editado"
+    );
     let missing = dir.join("nao-existe");
     assert_eq!(
         b.save_report(report.id, "x", &missing, None)
