@@ -222,3 +222,28 @@ fn system_view_has_only_os_facts() {
     );
     assert!(!json.to_string().contains("secret-host-name"));
 }
+
+/// Spec 016 (P2): a failed "Apagar tudo" does not leave the app unusable until a restart.
+#[cfg(unix)]
+#[test]
+fn failed_erase_recovers_on_the_next_command() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = std::env::temp_dir().join(format!("hmd-ipc-erase-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let fixed = Arc::new(AtomicBool::new(false));
+    let (c, _) = clock();
+    let (mut b, _) = Backend::open(dir.join("history.sqlite3"), runner(fixed), c).unwrap();
+    b.start_ticket("storage").unwrap();
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o555)).unwrap();
+    let failed = b.erase_all();
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+    if failed.is_ok() {
+        // Running as root: permissions do not stop the deletion; nothing to check here.
+        let _ = std::fs::remove_dir_all(&dir);
+        return;
+    }
+    assert_eq!(failed.unwrap_err().code, "ERASE_FAILED");
+    assert!(b.history().is_ok(), "the history is reopened");
+    let _ = std::fs::remove_dir_all(&dir);
+}
