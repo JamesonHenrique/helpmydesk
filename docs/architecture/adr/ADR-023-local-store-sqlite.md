@@ -21,9 +21,9 @@
 
 ## Consequências
 
-- Compilar exige um compilador C. Ele existe no CI (Linux: gcc; Windows: MSVC), mas não há
-  MinGW na máquina de desenvolvimento. Por isso o check local de Windows usa
-  `--exclude hmd-store`, e o Windows desse crate é coberto só pelo CI.
+- Compilar exige um compilador C: gcc no CI Linux, MSVC no CI Windows e MinGW
+  (`gcc-mingw-w64-x86-64`) para o check local do alvo `x86_64-pc-windows-gnu`, conferido em
+  2026-10-15. Sem MinGW, o check local usa `--exclude hmd-store` e o CI cobre o Windows.
 - O `unsafe` interno do `rusqlite`/SQLite é risco de cadeia de suprimentos, a acompanhar com
   `cargo-deny` e auditoria, como na ADR-022.
 

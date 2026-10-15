@@ -86,5 +86,5 @@ pt-BR Markdown report the person can read, edit and save.
 - ActionPlan, ActionApproval, ActionExecution, AuditEvent, AiCallLog and KillSwitchState arrive
   with the specs that write them, as new migrations.
 - `cancelled` never becomes `closed`; its retention counts from its last change, like `closed`.
-- Local Windows checks exclude `hmd-store` (no MinGW C compiler on the dev machine); CI on
-  Windows (MSVC) builds and tests it.
+- `hmd-store` needs a C compiler: MSVC on CI Windows, MinGW for local `x86_64-pc-windows-gnu`
+  checks (installed on the dev machine 2026-10-15).
