@@ -133,7 +133,7 @@ fn production_build_cannot_run_the_fix_yet() {
         serde_json::to_value(&out).unwrap(),
         serde_json::json!({"kind": "not_available", "stepId": "s1", "trigger": null})
     );
-    let report = b.make_report(&id, Some("não abre nada")).unwrap();
+    let report = b.make_report(&id, Some("não abre nada"), None).unwrap();
     assert!(report.text.starts_with("<!-- report@1 -->"));
     assert_eq!(b.history().unwrap()[0].state, "unresolved");
 }
@@ -188,14 +188,18 @@ fn save_report_writes_a_new_file_and_marks_it_exported() {
     let mut b = backend(&fixed, false);
     let id = b.start_ticket("storage").unwrap().ticket.id;
     b.diagnose(&id).unwrap();
-    let report = b.make_report(&id, None).unwrap();
-    let first = b.save_report(report.id, "texto editado", &dir).unwrap();
+    let report = b.make_report(&id, None, None).unwrap();
+    let first = b
+        .save_report(report.id, "texto editado", &dir, None)
+        .unwrap();
     assert!(
         first.ends_with("relatorio-helpmydesk-2025-10-14.md"),
         "{first}"
     );
     assert_eq!(std::fs::read_to_string(&first).unwrap(), "texto editado");
-    let second = b.save_report(report.id, "outra versão", &dir).unwrap();
+    let second = b
+        .save_report(report.id, "outra versão", &dir, None)
+        .unwrap();
     assert!(
         second.ends_with("relatorio-helpmydesk-2025-10-14-1.md"),
         "never overwrites"
@@ -203,7 +207,9 @@ fn save_report_writes_a_new_file_and_marks_it_exported() {
     assert_eq!(std::fs::read_to_string(&first).unwrap(), "texto editado");
     let missing = dir.join("nao-existe");
     assert_eq!(
-        b.save_report(report.id, "x", &missing).unwrap_err().code,
+        b.save_report(report.id, "x", &missing, None)
+            .unwrap_err()
+            .code,
         "SAVE_FAILED"
     );
     let _ = std::fs::remove_dir_all(&dir);
@@ -245,5 +251,37 @@ fn failed_erase_recovers_on_the_next_command() {
     }
     assert_eq!(failed.unwrap_err().code, "ERASE_FAILED");
     assert!(b.history().is_ok(), "the history is reopened");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Spec 016 (P2): reports show the computer's date, not UTC; implausible offsets fall back to UTC.
+#[test]
+fn report_dates_follow_the_computer_clock() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    let id = b.start_ticket("storage").unwrap().ticket.id;
+    b.diagnose(&id).unwrap();
+    // NOW is midnight UTC on 2025-10-14: still the 13th in Brasília (UTC-3).
+    let local = b.make_report(&id, None, Some(-180)).unwrap();
+    assert!(
+        local.text.contains("- Data: 2025-10-13\n"),
+        "{}",
+        local.text
+    );
+    let bogus = b.make_report(&id, None, Some(100_000)).unwrap();
+    assert!(
+        bogus.text.contains("- Data: 2025-10-14 (UTC)"),
+        "{}",
+        bogus.text
+    );
+
+    let dir = std::env::temp_dir().join(format!("hmd-ipc-tz-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = b.save_report(local.id, "x", &dir, Some(-180)).unwrap();
+    assert!(
+        path.ends_with("relatorio-helpmydesk-2025-10-13.md"),
+        "{path}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }

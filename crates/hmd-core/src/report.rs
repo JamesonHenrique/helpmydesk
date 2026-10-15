@@ -115,6 +115,24 @@ pub struct ReportInput<'a> {
     pub created_at: Timestamp,
     /// Fixes started for this ticket (from the journal); 0 = only read-only checks ran.
     pub fixes_attempted: usize,
+    /// The computer's offset from UTC in minutes (from the interface); `None` = UTC.
+    pub utc_offset_minutes: Option<i32>,
+}
+
+/// Largest real UTC offset (UTC+14); anything beyond comes from a broken or hostile caller.
+pub const MAX_UTC_OFFSET_MINUTES: i32 = 14 * 60;
+
+/// The offset if it is a plausible one.
+pub fn valid_utc_offset(minutes: i32) -> Option<i32> {
+    (minutes.abs() <= MAX_UTC_OFFSET_MINUTES).then_some(minutes)
+}
+
+/// `YYYY-MM-DD` on the computer's clock when the offset is known, UTC otherwise.
+pub fn local_date(ts: Timestamp, utc_offset_minutes: Option<i32>) -> String {
+    let shift = utc_offset_minutes
+        .and_then(valid_utc_offset)
+        .map_or(0, |m| i64::from(m) * 60);
+    utc_date(ts.saturating_add(shift))
 }
 
 /// `YYYY-MM-DD` (UTC) from Unix seconds, without a date library (civil-from-days algorithm).
@@ -164,7 +182,15 @@ pub fn render(input: &ReportInput<'_>) -> String {
     // `write!` into a String cannot fail; results are ignored on purpose.
     let _ = writeln!(s, "<!-- {REPORT_FORMAT} -->");
     let _ = writeln!(s, "# Relatório do HelpMyDesk: não consegui resolver\n");
-    let _ = writeln!(s, "- Data: {}", utc_date(input.created_at));
+    let date = local_date(input.created_at, input.utc_offset_minutes);
+    match input.utc_offset_minutes.and_then(valid_utc_offset) {
+        Some(_) => {
+            let _ = writeln!(s, "- Data: {date}");
+        }
+        None => {
+            let _ = writeln!(s, "- Data: {date} (UTC)");
+        }
+    }
     let _ = writeln!(
         s,
         "- Motivo: {} ({})\n",

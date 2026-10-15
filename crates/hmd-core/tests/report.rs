@@ -53,6 +53,7 @@ fn report_for(d: &DiagnosisReport, trigger: ReportTrigger, symptom: Option<&str>
         }),
         created_at: NOW,
         fixes_attempted: 0,
+        utc_offset_minutes: None,
     })
 }
 
@@ -196,6 +197,7 @@ fn sc002_real_report_has_no_identity() {
             system: system.as_ref(),
             created_at: NOW,
             fixes_attempted: 0,
+            utc_offset_minutes: None,
         })
         .to_lowercase();
         for name in [&user, &host] {
