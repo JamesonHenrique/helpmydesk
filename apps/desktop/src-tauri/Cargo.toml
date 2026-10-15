@@ -15,6 +15,13 @@ publish = false
 [lib]
 name = "helpmydesk_lib"
 
+# `custom-protocol` makes the binary serve the built UI (`frontendDist`); without it Tauri runs in
+# dev mode and loads `devUrl` (http://localhost:4200). On by default because this project builds
+# with plain cargo; for live reload use `ng serve` + `cargo run --no-default-features`.
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "=2.7.1", features = [] }
 

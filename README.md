@@ -43,7 +43,7 @@ App desktop no Linux (mesma sequência do CI; precisa do WebKitGTK, instalado um
 
 ```sh
 (cd apps/desktop/ui && npm ci --ignore-scripts && npx ng build)
-(cd apps/desktop/src-tauri && cargo run --locked)
+(cd apps/desktop/src-tauri && cargo run --locked)   # a interface já vem embutida
 ```
 
 ## Princípios

@@ -33,9 +33,11 @@
     </div>
   </div>
 </header>
-<p class="proto" role="note">
-  Protótipo: as telas usam dados de exemplo. Nada é verificado nem alterado no seu computador.
-</p>
+@if (!api.real) {
+  <p class="proto" role="note">
+    Protótipo: as telas usam dados de exemplo. Nada é verificado nem alterado no seu computador.
+  </p>
+}
 <main id="conteudo" class="inner" tabindex="-1">
   <router-outlet />
 </main>

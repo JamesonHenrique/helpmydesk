@@ -48,6 +48,9 @@ fn with<T>(
 
 #[tauri::command]
 async fn startup(state: State<'_, Shared>) -> IpcResult<StartupDto> {
+    // The interface calls this first: the CI smoke test waits for this line to prove the built
+    // UI really loaded (not only that the process stayed up).
+    eprintln!("helpmydesk: interface ready");
     Ok(state.startup.clone())
 }
 
