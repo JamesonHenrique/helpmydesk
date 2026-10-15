@@ -27,6 +27,9 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test
         run: cargo test --workspace --locked
+        env:
+          # hmd-vault writes and deletes a test entry in the real system vault (S-08).
+          HMD_VAULT_TEST: "1"
       - name: UI texts match the catalog
         if: runner.os == 'Linux'
         run: |
