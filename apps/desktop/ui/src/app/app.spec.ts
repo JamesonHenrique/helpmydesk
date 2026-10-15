@@ -157,7 +157,7 @@ describe('ApprovalPage', () => {
     expect(el.textContent).toContain('Este plano não está mais disponível');
   });
 
-  it('"Sim" only works a moment after the plan is shown (no click-through)', async () => {
+  it('nothing is pre-selected and "Sim" waits after showing or regaining focus', async () => {
     const approved: string[][] = [];
     const plan = {
       planId: 1,
@@ -191,12 +191,21 @@ describe('ApprovalPage', () => {
     }).compileComponents();
     const { fixture, el } = await render(ApprovalPage, { ticket: '1', plan: '1' });
     const yes = el.querySelector('button.primary') as HTMLButtonElement;
+    const box = el.querySelector('input[type=checkbox]') as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    box.click();
+    fixture.detectChanges();
     expect(yes.disabled).toBe(true);
     yes.click();
     expect(approved.length).toBe(0);
     await new Promise((resolve) => setTimeout(resolve, APPROVAL_ARM_MS + 50));
     fixture.detectChanges();
     expect(yes.disabled).toBe(false);
+    window.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+    expect(yes.disabled).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, APPROVAL_ARM_MS + 50));
+    fixture.detectChanges();
     yes.click();
     await fixture.whenStable();
     expect(approved).toEqual([['s1']]);
