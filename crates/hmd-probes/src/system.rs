@@ -146,7 +146,7 @@ pub(crate) fn top_processes() -> Result<ProbeOutput, ProbeError> {
         .filter(|p| p.thread_kind().is_none())
         .map(|p| {
             (
-                crate::sanitize_untrusted(&p.name().to_string_lossy(), 60),
+                crate::redact_identity(&crate::sanitize_untrusted(&p.name().to_string_lossy(), 60)),
                 p.cpu_usage(),
                 p.memory(),
             )

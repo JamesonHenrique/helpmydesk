@@ -117,6 +117,48 @@ pub fn sanitize_untrusted(text: &str, max_chars: usize) -> String {
         .to_string()
 }
 
+/// Replaces the user name and the host name inside untrusted text (process and app names can
+/// contain them) with neutral placeholders. Case-insensitive; names shorter than 3 characters are
+/// ignored to avoid mangling unrelated words. The real names are read only to be removed.
+pub fn redact_identity(text: &str) -> String {
+    let user = std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_default();
+    let host = sysinfo::System::host_name().unwrap_or_default();
+    redact_names(
+        text,
+        &[
+            (user.as_str(), "[usuário]"),
+            (host.as_str(), "[computador]"),
+        ],
+    )
+}
+
+/// Pure part of [`redact_identity`], testable with fixed names.
+pub fn redact_names(text: &str, names: &[(&str, &str)]) -> String {
+    let mut out = text.to_string();
+    for (name, placeholder) in names {
+        if name.chars().count() < 3 {
+            continue;
+        }
+        let lower_name = name.to_lowercase();
+        let mut result = String::with_capacity(out.len());
+        let mut rest = out.as_str();
+        while let Some(pos) = rest.to_lowercase().find(&lower_name) {
+            // `to_lowercase` can change byte lengths for some scripts; only cut on char boundaries.
+            if !rest.is_char_boundary(pos) || !rest.is_char_boundary(pos + lower_name.len()) {
+                break;
+            }
+            result.push_str(&rest[..pos]);
+            result.push_str(placeholder);
+            rest = &rest[pos + lower_name.len()..];
+        }
+        result.push_str(rest);
+        out = result;
+    }
+    out
+}
+
 /// Runs a probe by catalog ID. Unknown IDs are rejected, never interpreted.
 pub fn run(probe_id: &str) -> Result<ProbeOutput, ProbeError> {
     match probe_id {
@@ -131,5 +173,25 @@ pub fn run(probe_id: &str) -> Result<ProbeOutput, ProbeError> {
         "perf.top_processes" => system::top_processes(),
         "startup.apps.list" => startup::list(),
         _ => Err(ProbeError::UnknownProbe),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fr005_redacts_user_and_host_case_insensitively() {
+        let names = [("runner", "[usuário]"), ("fv-az123", "[computador]")];
+        assert_eq!(
+            redact_names("Runner.Worker on fv-AZ123", &names),
+            "[usuário].Worker on [computador]"
+        );
+        assert_eq!(redact_names("chrome", &names), "chrome");
+        assert_eq!(
+            redact_names("ab-tool", &[("ab", "[x]")]),
+            "ab-tool",
+            "short names ignored"
+        );
     }
 }
