@@ -29,3 +29,6 @@ lab/out/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local copies of planning docs (canonical ones live in docs/planning/)
+/PLANEJAMENTO-*.md

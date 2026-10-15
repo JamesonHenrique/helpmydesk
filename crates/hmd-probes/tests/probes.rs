@@ -82,7 +82,15 @@ fn fr005_no_identifying_data() {
         .or_else(|_| std::env::var("USERNAME"))
         .unwrap_or_default()
         .to_lowercase();
-    for id in ["sys.info.basic", "perf.memory.snapshot", "storage.volumes"] {
+    for id in [
+        "sys.info.basic",
+        "perf.memory.snapshot",
+        "storage.volumes",
+        "net.adapters.status",
+        "perf.cpu.snapshot",
+        "perf.top_processes",
+        "startup.apps.list",
+    ] {
         let out = run(id).unwrap();
         for (key, value) in &out.evidence {
             // `os_name` is the OS product name (e.g. "Windows", "Debian GNU/Linux"), allowed.
@@ -97,6 +105,31 @@ fn fr005_no_identifying_data() {
                     }
                 }
             }
+        }
+    }
+}
+
+#[test]
+fn batch2_local_probes_run_without_privileges() {
+    for id in [
+        "net.adapters.status",
+        "perf.cpu.snapshot",
+        "perf.top_processes",
+        "startup.apps.list",
+    ] {
+        let out = run(id).unwrap_or_else(|e| panic!("{id}: {e}"));
+        assert_eq!(out.probe_id, id);
+    }
+}
+
+/// Network probes must always finish and return structured output (or TIMEOUT), even on CI
+/// runners whose gateway ignores TCP; findings are not asserted here.
+#[test]
+fn batch2_network_probes_terminate() {
+    for id in ["net.gateway.reach", "net.http.check"] {
+        match run(id) {
+            Ok(out) => assert_eq!(out.probe_id, id),
+            Err(e) => assert_eq!(e, ProbeError::Timeout, "{id}"),
         }
     }
 }

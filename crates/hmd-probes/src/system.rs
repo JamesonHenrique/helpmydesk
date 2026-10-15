@@ -90,3 +90,82 @@ fn same_mount(a: &Path, b: &Path) -> bool {
         a == b
     }
 }
+
+/// Sampling window for CPU usage (must be ≥ `sysinfo::MINIMUM_CPU_UPDATE_INTERVAL`).
+fn cpu_sample_window() -> std::time::Duration {
+    sysinfo::MINIMUM_CPU_UPDATE_INTERVAL.max(std::time::Duration::from_millis(500))
+}
+
+/// `perf.cpu.snapshot`: global CPU usage over a short sample.
+pub(crate) fn cpu() -> Result<ProbeOutput, ProbeError> {
+    let mut sys = System::new();
+    sys.refresh_cpu_usage();
+    std::thread::sleep(cpu_sample_window());
+    sys.refresh_cpu_usage();
+    let cpus = sys.cpus().len();
+    if cpus == 0 {
+        return Err(ProbeError::NoData);
+    }
+    let usage = sys.global_cpu_usage();
+    let mut out = ProbeOutput::new("perf.cpu.snapshot");
+    out.evidence.insert(
+        "cpu_usage_pct",
+        Evidence::Float((f64::from(usage) * 10.0).round() / 10.0),
+    );
+    out.evidence
+        .insert("logical_cpus", Evidence::Uint(cpus as u64));
+    out.findings = rules::cpu_findings(usage);
+    Ok(out)
+}
+
+const TOP_KEYS: [&str; 5] = [
+    "process_1",
+    "process_2",
+    "process_3",
+    "process_4",
+    "process_5",
+];
+
+/// `perf.top_processes`: the 5 processes using the most memory. Only executable name, CPU and
+/// memory are refreshed: no command line, path, environment or user (spec 005 FR-005).
+pub(crate) fn top_processes() -> Result<ProbeOutput, ProbeError> {
+    use sysinfo::{ProcessRefreshKind, ProcessesToUpdate};
+    // `without_tasks`: on Linux threads would otherwise be listed as separate processes.
+    let kind = ProcessRefreshKind::nothing()
+        .with_memory()
+        .with_cpu()
+        .without_tasks();
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, kind);
+    std::thread::sleep(cpu_sample_window());
+    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, kind);
+
+    let mut procs: Vec<(String, f32, u64)> = sys
+        .processes()
+        .values()
+        .filter(|p| p.thread_kind().is_none())
+        .map(|p| {
+            (
+                crate::sanitize_untrusted(&p.name().to_string_lossy(), 60),
+                p.cpu_usage(),
+                p.memory(),
+            )
+        })
+        .collect();
+    if procs.is_empty() {
+        return Err(ProbeError::NoData);
+    }
+    procs.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| a.0.cmp(&b.0)));
+    let mut out = ProbeOutput::new("perf.top_processes");
+    for (key, (name, cpu, mem)) in TOP_KEYS.iter().zip(procs) {
+        out.evidence.insert(
+            key,
+            Evidence::Text(format!(
+                "{name} — {:.1} MB, {:.0}% CPU",
+                mem as f64 / 1_048_576.0,
+                cpu
+            )),
+        );
+    }
+    Ok(out)
+}

@@ -1,0 +1,16 @@
+id = "startup.apps.list"
+version = "1.0.0"
+kind = "probe"
+family = "performance"
+produces = ["startup.many_apps"]
+
+# Lists names of startup apps (personal data): requires consent category `startup_apps`.
+[variants.windows]
+risk_level = "N1-S"
+consent_category = "startup_apps"
+max_per_session = 5
+
+[variants.linux]
+risk_level = "N1-S"
+consent_category = "startup_apps"
+max_per_session = 5

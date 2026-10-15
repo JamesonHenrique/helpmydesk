@@ -7,6 +7,8 @@
 pub mod rules;
 
 mod dns;
+mod net;
+mod startup;
 mod system;
 
 use std::collections::BTreeMap;
@@ -28,6 +30,7 @@ pub struct Finding {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Evidence {
+    Bool(bool),
     Uint(u64),
     Float(f64),
     Text(String),
@@ -86,7 +89,33 @@ pub const PROBES: &[(&str, &[&str])] = &[
     ("perf.memory.snapshot", &[rules::MEMORY_HIGH]),
     ("storage.volumes", &[rules::LOW_SPACE]),
     ("net.dns.resolve", &[rules::DNS_FAILING]),
+    (
+        "net.adapters.status",
+        &[rules::NO_ACTIVE_ADAPTER, rules::NO_VALID_IP],
+    ),
+    (
+        "net.gateway.reach",
+        &[rules::GATEWAY_MISSING, rules::GATEWAY_UNREACHABLE],
+    ),
+    (
+        "net.http.check",
+        &[rules::INTERNET_UNREACHABLE, rules::CAPTIVE_PORTAL],
+    ),
+    ("perf.cpu.snapshot", &[rules::CPU_HIGH]),
+    ("perf.top_processes", &[]),
+    ("startup.apps.list", &[rules::MANY_STARTUP]),
 ];
+
+/// Untrusted text from the system (app names, process names) is truncated and stripped of
+/// control and invisible characters before it can reach the UI or the AI (Plan v1 V.9).
+pub fn sanitize_untrusted(text: &str, max_chars: usize) -> String {
+    text.chars()
+        .filter(|c| !c.is_control() && !matches!(*c, '\u{200B}'..='\u{200F}' | '\u{2028}'..='\u{202E}' | '\u{2060}'..='\u{2069}' | '\u{FEFF}'))
+        .take(max_chars)
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
 
 /// Runs a probe by catalog ID. Unknown IDs are rejected, never interpreted.
 pub fn run(probe_id: &str) -> Result<ProbeOutput, ProbeError> {
@@ -95,6 +124,12 @@ pub fn run(probe_id: &str) -> Result<ProbeOutput, ProbeError> {
         "perf.memory.snapshot" => system::memory(),
         "storage.volumes" => system::volumes(),
         "net.dns.resolve" => dns::resolve(dns::NAMES, dns::TIMEOUT),
+        "net.adapters.status" => Ok(net::adapters()),
+        "net.gateway.reach" => Ok(net::gateway_reach()),
+        "net.http.check" => net::http_check(),
+        "perf.cpu.snapshot" => system::cpu(),
+        "perf.top_processes" => system::top_processes(),
+        "startup.apps.list" => startup::list(),
         _ => Err(ProbeError::UnknownProbe),
     }
 }

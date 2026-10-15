@@ -1,0 +1,13 @@
+id = "net.adapters.status"
+version = "1.0.0"
+kind = "probe"
+family = "connectivity"
+produces = ["net.no_active_adapter", "net.no_valid_ip"]
+
+[variants.windows]
+risk_level = "N1-A"
+max_per_session = 5
+
+[variants.linux]
+risk_level = "N1-A"
+max_per_session = 5

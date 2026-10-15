@@ -1,0 +1,13 @@
+id = "net.gateway.reach"
+version = "1.0.0"
+kind = "probe"
+family = "connectivity"
+produces = ["net.gateway.missing", "net.gateway.unreachable"]
+
+[variants.windows]
+risk_level = "N1-B"
+max_per_session = 5
+
+[variants.linux]
+risk_level = "N1-B"
+max_per_session = 5
