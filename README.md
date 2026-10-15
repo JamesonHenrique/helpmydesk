@@ -38,6 +38,8 @@ cargo run -p hmd-core --example basic_mode -- 1       # verifica a internet
 cargo run -p hmd-core --example basic_mode -- --o-que-eu-olho
 ```
 
+**Para quem usa:** [guia em português simples](docs/usuario/GUIA.md).
+
 **Testar sem compilar:** a cada mudança na `main`, o CI gera um `.deb` (Ubuntu/Mint/Debian) e um
 instalador para Windows. Abra a última execução em *Actions → CI* (logado no GitHub), baixe
 `helpmydesk-deb` ou `helpmydesk-nsis` em *Artifacts* e instale (no Linux:
