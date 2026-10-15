@@ -850,6 +850,34 @@ impl Store {
         Ok(())
     }
 
+    /// Spec 018 (F3-TRANSP): one AI call, recorded with codes only (model and outcome; never
+    /// the text that was sent).
+    pub fn record_ai_call(
+        &mut self,
+        model: &str,
+        outcome: std::result::Result<&str, &'static str>,
+        now: Timestamp,
+    ) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        let (result, reason) = match outcome {
+            Ok(family) => (format!("ok:{family}"), None),
+            Err(code) => ("refused".to_string(), Some(code)),
+        };
+        audit::append(
+            &tx,
+            &audit::AuditEntry {
+                actor: Actor::Agent,
+                action: "ai.classify",
+                subject_ref: format!("model:{model}"),
+                outcome: result,
+                reason_code: reason,
+            },
+            now,
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
     pub fn reports(&self, ticket: &str) -> Result<Vec<StoredReport>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, ticket_id, trigger, content, created_at, updated_at, exported_at

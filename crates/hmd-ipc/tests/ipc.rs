@@ -301,3 +301,33 @@ fn report_dates_follow_the_computer_clock() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+struct NetAnswer;
+
+impl hmd_ai::Transport for NetAnswer {
+    fn post(&self, _: &str, _: &str) -> Result<(u16, String), hmd_ai::AiError> {
+        let content = r#"{"family": "connectivity", "confidence": "medium", "question": "Acontece no Wi-Fi e no cabo?"}"#;
+        Ok((
+            200,
+            serde_json::json!({"choices": [{"message": {"content": content}}]}).to_string(),
+        ))
+    }
+}
+
+/// Spec 018: the AI use cases as the JSON the screens receive.
+#[test]
+fn ai_connect_and_classify_as_json() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    b.set_transport(Box::new(NetAnswer));
+    let status = serde_json::to_value(b.ai_status().unwrap()).unwrap();
+    assert_eq!(status["connected"], false);
+    assert_eq!(status["consoleUrl"], hmd_ai::CONSOLE_URL);
+    assert_eq!(b.ai_classify("x").unwrap_err().code, "AI_NOT_CONNECTED");
+    assert_eq!(b.ai_connect("k").unwrap().connected, true);
+    let c = serde_json::to_value(b.ai_classify("o wifi caiu").unwrap()).unwrap();
+    assert_eq!(c["family"], "connectivity");
+    assert_eq!(c["confidence"], "medium");
+    assert_eq!(c["question"], "Acontece no Wi-Fi e no cabo?");
+    assert_eq!(b.ai_disconnect().unwrap().connected, false);
+}
