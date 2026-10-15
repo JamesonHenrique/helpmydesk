@@ -78,7 +78,8 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
             </button>
           } @else {
             <span role="alert"
-              >Apagar histórico, relatórios e permissões? Não dá para desfazer.</span
+              >Apagar histórico, relatórios, permissões e o código da ajuda inteligente? Não dá para
+              desfazer.</span
             >
             <button type="button" class="btn" (click)="confirming.set(false)">Cancelar</button>
             <button type="button" class="btn danger" (click)="erase()">Sim, apagar tudo</button>
