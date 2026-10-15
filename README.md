@@ -38,6 +38,12 @@ cargo run -p hmd-core --example basic_mode -- 1       # verifica a internet
 cargo run -p hmd-core --example basic_mode -- --o-que-eu-olho
 ```
 
+**Testar sem compilar:** a cada mudança na `main`, o CI gera um `.deb` (Ubuntu/Mint/Debian) e um
+instalador para Windows. Abra a última execução em *Actions → CI* (logado no GitHub), baixe
+`helpmydesk-deb` ou `helpmydesk-nsis` em *Artifacts* e instale (no Linux:
+`sudo apt install ./HelpMyDesk_0.1.0_amd64.deb`). São versões de teste, sem assinatura; o roteiro
+está em [docs/testing/roteiro-teste-manual.md](docs/testing/roteiro-teste-manual.md).
+
 App desktop no Linux (mesma sequência do CI; precisa do WebKitGTK, instalado uma vez com
 `sudo apt install libwebkit2gtk-4.1-dev`):
 
