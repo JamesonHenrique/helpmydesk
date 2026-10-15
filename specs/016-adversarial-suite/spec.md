@@ -80,3 +80,15 @@ com motivo `PANICKED` (`catch_unwind`), sem deixar a linha `started` nem envenen
 | Exportação forjada | comando `report_exported` removido; `save_report` registra |
 | `erase_all` que falha | o comando seguinte reabre o histórico |
 | Validade da aprovação | também por relógio monotônico (`approval_too_old`) |
+
+## Rodada 6: P2 restantes (15/10)
+
+| Item | Correção |
+|---|---|
+| Saída de `unknown` podia repetir correção não idempotente | campo `idempotent` no catálogo (só fixes; `INVALID_IDEMPOTENT`); sem ele, problema persistente mantém o bloqueio (`unknown_resolution`). DNS flush marcado como idempotente; catálogo 2026.10.3 |
+| Data do relatório em UTC | a interface informa o fuso (`getTimezoneOffset`, validado em ±14 h); relatório e nome do arquivo usam a data do computador; sem fuso (terminal) a data diz "(UTC)" |
+| `windows-latest` sem versão | CI fixado em `windows-2025` (imagem em uso em 15/10: `windows-2025-vs2026`) |
+
+Ficam como P2 (dependem de pessoas ou de dados): revisão independente, teste com leigos (textos e
+atraso de 1 s), cópia offline da chave do kill switch, limite de 8 programas (só informativo; trocar
+com dados do S-01/E-01).
