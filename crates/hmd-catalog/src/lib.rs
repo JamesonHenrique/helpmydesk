@@ -33,6 +33,35 @@ pub struct Copy {
     pub title: String,
     pub risk: Option<String>,
     pub undo: Option<String>,
+    /// Probes only: what is read (spec 009).
+    pub looks_at: Option<String>,
+    /// Probes only: what is never kept or sent.
+    pub never: Option<String>,
+}
+
+/// Text the person reads before granting a consent category (spec 009).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConsentNotice {
+    /// Stored with every consent record (`notice_version`).
+    pub version: String,
+    pub copy: BTreeMap<String, ConsentCopy>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConsentCopy {
+    pub title: String,
+    pub text: String,
+}
+
+/// One line of the "o que eu olho" screen.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProbeDisclosure<'a> {
+    pub probe_id: &'a str,
+    pub title: &'a str,
+    pub looks_at: &'a str,
+    pub never: &'a str,
+    /// Consent category needed on the given platform, if any.
+    pub consent: Option<&'a str>,
 }
 
 /// Catalog data that the Policy Engine does not need but the app does.
@@ -48,12 +77,33 @@ pub struct LoadedCatalog {
     pub catalog: Catalog,
     pub meta: BTreeMap<String, EntryMeta>,
     pub playbooks: BTreeMap<String, Playbook>,
+    pub consents: BTreeMap<String, ConsentNotice>,
 }
 
 impl LoadedCatalog {
     /// The playbook of a problem family (one per family, spec 006).
     pub fn playbook_for(&self, family: ProblemFamily) -> Option<&Playbook> {
         self.playbooks.values().find(|p| p.family == family)
+    }
+
+    /// Spec 009 "o que eu olho": every probe available on `platform`, in catalog order, with its
+    /// pt-BR disclosure (guaranteed present by validation).
+    pub fn disclosures(&self, platform: Platform) -> Vec<ProbeDisclosure<'_>> {
+        self.catalog
+            .iter()
+            .filter(|c| c.kind == CapabilityKind::Probe)
+            .filter_map(|c| {
+                let variant = c.variants.get(&platform)?;
+                let copy = self.meta.get(&c.id)?.copy.get(REQUIRED_LOCALE)?;
+                Some(ProbeDisclosure {
+                    probe_id: &c.id,
+                    title: &copy.title,
+                    looks_at: copy.looks_at.as_deref()?,
+                    never: copy.never.as_deref()?,
+                    consent: variant.consent_category.as_deref(),
+                })
+            })
+            .collect()
     }
 
     /// Every finding code some probe declares in `produces`.
@@ -115,19 +165,20 @@ pub fn load(
     playbook_files: &[(&str, &str)],
 ) -> Result<LoadedCatalog, Vec<LoadError>> {
     let mut errors = Vec::new();
-    let version = match toml::from_str::<RawManifest>(manifest) {
-        Ok(m) if is_catalog_version(&m.version) => m.version,
+    let (version, consents) = match toml::from_str::<RawManifest>(manifest) {
         Ok(m) => {
-            errors.push(err(
-                "catalog.toml",
-                "INVALID_MANIFEST",
-                format!("version `{}` is not YYYY.MM.patch", m.version),
-            ));
-            String::new()
+            if !is_catalog_version(&m.version) {
+                errors.push(err(
+                    "catalog.toml",
+                    "INVALID_MANIFEST",
+                    format!("version `{}` is not YYYY.MM.patch", m.version),
+                ));
+            }
+            (m.version, consents(m.consents, &mut errors))
         }
         Err(e) => {
             errors.push(parse_error("catalog.toml", e));
-            String::new()
+            (String::new(), BTreeMap::new())
         }
     };
 
@@ -182,6 +233,17 @@ pub fn load(
     for cap in catalog.iter() {
         let file = file_of(&cap.id);
         cross_check(cap, &catalog, &known, &meta, &file, &mut errors);
+        for v in cap.variants.values() {
+            if let Some(category) = &v.consent_category
+                && !consents.contains_key(category)
+            {
+                errors.push(err(
+                    &file,
+                    "UNKNOWN_CONSENT",
+                    format!("consent category `{category}` is not declared in catalog.toml"),
+                ));
+            }
+        }
     }
 
     let mut loaded = LoadedCatalog {
@@ -189,6 +251,7 @@ pub fn load(
         catalog,
         meta,
         playbooks: BTreeMap::new(),
+        consents,
     };
     let playbooks = playbook::parse(playbook_files, &mut errors);
     playbook::validate(&playbooks, &loaded, &mut errors);
@@ -255,6 +318,22 @@ fn cross_check(
             }
         }
     }
+    if cap.kind == CapabilityKind::Probe {
+        let disclosed = entry
+            .and_then(|m| m.copy.get(REQUIRED_LOCALE))
+            .is_some_and(|c| {
+                !c.title.trim().is_empty()
+                    && c.looks_at.as_deref().is_some_and(|t| !t.trim().is_empty())
+                    && c.never.as_deref().is_some_and(|t| !t.trim().is_empty())
+            });
+        if !disclosed {
+            errors.push(err(
+                file,
+                "PROBE_MISSING_DISCLOSURE",
+                format!("[copy.{REQUIRED_LOCALE}] of a probe needs title, looks_at and never"),
+            ));
+        }
+    }
     if cap.kind != CapabilityKind::Probe {
         let complete = entry
             .and_then(|m| m.copy.get(REQUIRED_LOCALE))
@@ -267,6 +346,47 @@ fn cross_check(
             ));
         }
     }
+}
+
+/// Spec 009: consent notices from the manifest; each needs a version and pt-BR title and text.
+fn consents(
+    raw: BTreeMap<String, crate::raw::RawConsent>,
+    errors: &mut Vec<LoadError>,
+) -> BTreeMap<String, ConsentNotice> {
+    raw.into_iter()
+        .map(|(id, c)| {
+            let complete = !c.version.trim().is_empty()
+                && c.copy
+                    .get(REQUIRED_LOCALE)
+                    .is_some_and(|t| !t.title.trim().is_empty() && !t.text.trim().is_empty());
+            if !complete {
+                errors.push(err(
+                    "catalog.toml",
+                    "CONSENT_MISSING_COPY",
+                    format!(
+                        "consent `{id}` needs version and [copy.{REQUIRED_LOCALE}] title and text"
+                    ),
+                ));
+            }
+            let notice = ConsentNotice {
+                version: c.version,
+                copy: c
+                    .copy
+                    .into_iter()
+                    .map(|(l, t)| {
+                        (
+                            l,
+                            ConsentCopy {
+                                title: t.title,
+                                text: t.text,
+                            },
+                        )
+                    })
+                    .collect(),
+            };
+            (id, notice)
+        })
+        .collect()
 }
 
 fn is_catalog_version(v: &str) -> bool {
@@ -309,6 +429,8 @@ fn convert(raw: RawCapability) -> (Capability, EntryMeta) {
                         title: c.title,
                         risk: c.risk,
                         undo: c.undo,
+                        looks_at: c.looks_at,
+                        never: c.never,
                     },
                 )
             })

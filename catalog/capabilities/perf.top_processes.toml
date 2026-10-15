@@ -14,3 +14,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Programas que mais usam o computador"
+looks_at = "Os 5 programas que mais usam memória, só pelo nome do programa, com o uso de memória e de processador."
+never = "Linha de comando, pastas, documentos abertos e de qual usuário é cada programa."

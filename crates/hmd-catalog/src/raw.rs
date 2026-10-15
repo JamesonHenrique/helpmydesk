@@ -9,6 +9,24 @@ use serde::Deserialize;
 #[serde(deny_unknown_fields)]
 pub(crate) struct RawManifest {
     pub version: String,
+    /// Consent notices by category (spec 009).
+    #[serde(default)]
+    pub consents: BTreeMap<String, RawConsent>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RawConsent {
+    pub version: String,
+    #[serde(default)]
+    pub copy: BTreeMap<String, RawConsentCopy>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RawConsentCopy {
+    pub title: String,
+    pub text: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -152,6 +170,12 @@ pub(crate) struct RawCopy {
     pub risk: Option<String>,
     #[serde(default)]
     pub undo: Option<String>,
+    /// Probes: what is read, in lay words (spec 009 "o que eu olho").
+    #[serde(default)]
+    pub looks_at: Option<String>,
+    /// Probes: what is never kept or sent (it may be read only to decide, e.g. an IP).
+    #[serde(default)]
+    pub never: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]

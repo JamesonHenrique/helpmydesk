@@ -10,6 +10,8 @@ pub struct RetentionConfig {
     pub ticket_after_end: i64,
     /// Free-text messages, counted from their creation.
     pub message_after: i64,
+    /// Local audit events, counted from when they happened (spec 009; "igual ao chamado").
+    pub audit_after: i64,
 }
 
 impl Default for RetentionConfig {
@@ -17,6 +19,7 @@ impl Default for RetentionConfig {
         RetentionConfig {
             ticket_after_end: 180 * DAY,
             message_after: 90 * DAY,
+            audit_after: 180 * DAY,
         }
     }
 }
@@ -34,6 +37,13 @@ pub fn ticket_expired(ticket: &Ticket, now: Timestamp, cfg: &RetentionConfig) ->
 pub fn message_expired(created_at: Timestamp, now: Timestamp, cfg: &RetentionConfig) -> bool {
     now.checked_sub(created_at)
         .is_some_and(|age| age >= cfg.message_after)
+}
+
+/// An audit event expires `audit_after` after it happened. Only a prefix of the chain is ever
+/// removed, so what stays can still be verified.
+pub fn audit_expired(occurred_at: Timestamp, now: Timestamp, cfg: &RetentionConfig) -> bool {
+    now.checked_sub(occurred_at)
+        .is_some_and(|age| age >= cfg.audit_after)
 }
 
 #[cfg(test)]
@@ -72,6 +82,15 @@ mod tests {
         let now = 1_000 * DAY;
         assert!(message_expired(now - 90 * DAY, now, &cfg));
         assert!(!message_expired(now - 89 * DAY, now, &cfg));
+    }
+
+    #[test]
+    fn audit_events_expire_after_180_days() {
+        let cfg = RetentionConfig::default();
+        let now = 1_000 * DAY;
+        assert!(audit_expired(now - 180 * DAY, now, &cfg));
+        assert!(!audit_expired(now - 179 * DAY, now, &cfg));
+        assert!(!audit_expired(now + 1, now, &cfg));
     }
 
     #[test]

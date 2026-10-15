@@ -16,6 +16,10 @@ kind = "probe"
 produces = ["net.dns.resolution_failing"]
 [variants.linux]
 risk_level = "N1-B"
+[copy.pt-BR]
+title = "DNS"
+looks_at = "Nomes fixos"
+never = "Histórico"
 "#;
 
 const FIX: &str = r#"
@@ -326,4 +330,78 @@ fn fr001_one_playbook_per_family_and_coverage() {
         .map(|e| e.code)
         .collect();
     assert_eq!(missing, vec!["MISSING_FAMILY_PLAYBOOK"; 4]);
+}
+
+const CONSENT_MANIFEST: &str = r#"
+version = "2026.10.0"
+[consents.startup_apps]
+version = "1"
+[consents.startup_apps.copy.pt-BR]
+title = "T"
+text = "X"
+"#;
+
+const SENSITIVE: &str = r#"
+id = "startup.apps.list"
+version = "1.0.0"
+kind = "probe"
+[variants.linux]
+risk_level = "N1-S"
+consent_category = "startup_apps"
+[copy.pt-BR]
+title = "Inicialização"
+looks_at = "Nomes"
+never = "Arquivos"
+"#;
+
+/// Spec 009 US1: every probe says what it looks at and what it never reads.
+#[test]
+fn us1_probe_without_disclosure_is_rejected() {
+    let bare = PROBE.replace("never = \"Histórico\"\n", "");
+    assert_ne!(bare, PROBE);
+    let c = codes(load_from_sources(
+        MANIFEST,
+        &[("net.dns.resolve.toml", &bare)],
+    ));
+    assert_eq!(c, vec!["PROBE_MISSING_DISCLOSURE"]);
+}
+
+/// Spec 009 US2: consent categories must be declared with a versioned pt-BR notice.
+#[test]
+fn us2_consent_category_must_be_declared() {
+    let c = codes(load_from_sources(
+        MANIFEST,
+        &[("startup.apps.list.toml", SENSITIVE)],
+    ));
+    assert_eq!(c, vec!["UNKNOWN_CONSENT"]);
+    let ok = load_from_sources(CONSENT_MANIFEST, &[("startup.apps.list.toml", SENSITIVE)]).unwrap();
+    assert_eq!(ok.consents["startup_apps"].version, "1");
+    let no_text = CONSENT_MANIFEST.replace("text = \"X\"", "text = \" \"");
+    let c = codes(load_from_sources(
+        &no_text,
+        &[("startup.apps.list.toml", SENSITIVE)],
+    ));
+    assert_eq!(c, vec!["CONSENT_MISSING_COPY"]);
+}
+
+#[test]
+fn us1_real_catalog_discloses_every_probe_on_both_platforms() {
+    let catalog = embedded().unwrap();
+    for platform in [Platform::Linux, Platform::Windows] {
+        let list = catalog.disclosures(platform);
+        let probes = catalog
+            .catalog
+            .iter()
+            .filter(|c| c.kind == CapabilityKind::Probe && c.variants.contains_key(&platform))
+            .count();
+        assert_eq!(list.len(), probes, "{platform:?}");
+        let startup = list
+            .iter()
+            .find(|d| d.probe_id == "startup.apps.list")
+            .unwrap();
+        assert_eq!(startup.consent, Some("startup_apps"));
+    }
+    for id in ["startup_apps", "ai_opencode"] {
+        assert!(catalog.consents.contains_key(id), "{id}");
+    }
 }

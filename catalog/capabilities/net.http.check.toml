@@ -14,3 +14,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Acesso à internet"
+looks_at = "Se endereços fixos de teste do Google e da Microsoft respondem como esperado e, se não, se os endereços públicos 1.1.1.1 e 8.8.8.8 respondem."
+never = "Os sites que você visita. Nada seu é enviado: só um pedido de teste fixo."

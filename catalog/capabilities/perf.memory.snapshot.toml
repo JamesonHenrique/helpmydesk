@@ -14,3 +14,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Uso da memória"
+looks_at = "Quanta memória o computador tem e quanto está em uso."
+never = "O conteúdo da memória ou dos programas abertos."

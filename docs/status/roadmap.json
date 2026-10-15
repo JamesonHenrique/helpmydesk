@@ -307,11 +307,11 @@
    "phase_name": "Núcleo somente leitura + modo básico",
    "phase_order": 3,
    "title": "Redação, privacidade e consentimento (spec formal + tela \"o que eu olho\")",
-   "status": "doing",
+   "status": "done",
    "weight": 2,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": "Mascaramento de nome e consentimentos já existem; falta a spec e a tela"
+   "note": "A tela no app vem com o app desktop"
   },
   {
    "id": "F2-APP",
@@ -331,11 +331,11 @@
    "phase_name": "Núcleo somente leitura + modo básico",
    "phase_order": 3,
    "title": "Desinstalação limpa (apagar histórico e cofre)",
-   "status": "todo",
+   "status": "doing",
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "Apagar tudo pronto (erase_all); falta o desinstalador oferecer"
   },
   {
    "id": "F2-LAB",

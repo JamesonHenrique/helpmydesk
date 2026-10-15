@@ -14,3 +14,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Conexão com o roteador"
+looks_at = "Se o roteador responde a uma conexão de teste."
+never = "O endereço do roteador (é só usado para o teste), senhas e configurações dele."

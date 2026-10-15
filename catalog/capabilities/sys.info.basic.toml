@@ -14,3 +14,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Dados do sistema"
+looks_at = "Nome e versão do sistema, versão do núcleo, arquitetura e há quanto tempo o computador está ligado."
+never = "Nome do computador, nome de usuário e números de série."
