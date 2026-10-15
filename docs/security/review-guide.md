@@ -40,9 +40,9 @@ Rodar tudo: `tools/check-all.sh` (o mesmo que o CI).
 - Resolvidos em 15/10: exportação forjada (comando `report_exported` removido), purga com salto
   de relógio (espera uma sessão normal), validade da aprovação também por relógio monotônico,
   saída de `unknown` pela sonda de verificação, `erase_all` que falha reabre no comando seguinte.
-- A saída de `unknown` marca "não aplicada" quando o problema continua; isso permite propor a
-  mesma correção de novo (com aprovação nova). Para correções não idempotentes, revise antes de
-  liberar.
+- A saída de `unknown` só marca "não aplicada" (e permite propor de novo, com aprovação nova)
+  correções com `idempotent = true` no catálogo; as demais continuam bloqueadas até a sonda ver o
+  problema resolvido. Ao liberar uma correção real, confira se o `idempotent` dela é verdadeiro.
 - O registro de correções de produção está vazio (`Registry::production()`). Revise de novo quando
   a primeira correção real entrar (depende do spike S-02 e da elevação, SPEC-007).
 - Ainda não foram revisados: o helper de elevação (não existe), o updater, a assinatura dos
