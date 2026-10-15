@@ -27,6 +27,37 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test
         run: cargo test --workspace --locked
+      - name: UI texts match the catalog
+        if: runner.os == 'Linux'
+        run: |
+          cargo run -q --locked -p hmd-core --example ui_fixtures > /tmp/catalog.generated.ts
+          diff -u apps/desktop/ui/src/app/data/catalog.generated.ts /tmp/catalog.generated.ts
+
+  ui:
+    name: UI prototype (Angular)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop/ui
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/ui/package-lock.json
+      - name: Install (no install scripts)
+        run: npm ci --ignore-scripts
+      - name: Audit
+        run: npm audit --audit-level=high
+      - name: Format
+        run: npx prettier --check "src/**/*.{ts,html,css}"
+      - name: Test
+        run: npx ng test --watch=false
+      - name: Build
+        run: npx ng build
 
   guards:
     name: Constitution guards
