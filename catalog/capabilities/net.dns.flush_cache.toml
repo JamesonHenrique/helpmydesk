@@ -2,6 +2,8 @@ id = "net.dns.flush_cache"
 version = "1.0.0"
 kind = "fix"
 family = "connectivity"
+# Flushing an already empty cache changes nothing: safe to propose again after an `unknown` run.
+idempotent = true
 
 # Conservative until spike S-02: assumed to require elevation on both platforms (hence N3).
 # The gateway probe now exists, so DNS flush is only offered when the gateway answers.
