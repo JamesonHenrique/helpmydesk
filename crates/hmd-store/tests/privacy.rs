@@ -130,6 +130,27 @@ fn us3_retention_removes_only_an_old_prefix_and_the_chain_still_verifies() {
     assert_eq!(s.verify_audit_chain().unwrap().broken_at, None);
 }
 
+/// Spec 016 (P2): a clock that jumps more than the retention period past the last recorded
+/// event does not wipe the history; the purge waits for a session with a sane clock.
+#[test]
+fn clock_jump_does_not_wipe_the_history() {
+    let mut s = Store::open_in_memory().unwrap();
+    let id = some_activity(&mut s);
+    let before = s.audit_events().unwrap().len();
+    let stats = s
+        .purge(NOW + 400 * DAY, &RetentionConfig::default())
+        .unwrap();
+    assert_eq!(stats.audit_events, 0);
+    assert_eq!(stats.tickets, 0);
+    assert_eq!(s.audit_events().unwrap().len(), before);
+    // Normal use at the new time, then the next start purges as usual.
+    s.apply(&id, TicketEvent::Close, NOW + 400 * DAY).unwrap();
+    let stats = s
+        .purge(NOW + 400 * DAY + 1, &RetentionConfig::default())
+        .unwrap();
+    assert!(stats.audit_events > 0);
+}
+
 #[test]
 fn us2_consent_records_the_notice_version() {
     let mut s = Store::open_in_memory().unwrap();

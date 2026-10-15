@@ -886,6 +886,15 @@ impl Store {
     /// US3: deletes expired tickets (cascading to everything attached) and expired messages.
     /// The decisions are the pure rules of [`hmd_domain::retention`].
     pub fn purge(&mut self, now: Timestamp, cfg: &RetentionConfig) -> Result<PurgeStats> {
+        // Spec 016 (P2): if the clock is further past the last recorded event than the audit
+        // retention, it most likely jumped; deleting now would wipe everything. Wait for a
+        // session that records events at the new time (a long absence only delays one start).
+        let last: Option<i64> =
+            self.conn
+                .query_row("SELECT MAX(occurred_at) FROM audit_event", [], |r| r.get(0))?;
+        if last.is_some_and(|last| now.saturating_sub(last) > cfg.audit_after) {
+            return Ok(PurgeStats::default());
+        }
         let expired: Vec<String> = self
             .tickets()?
             .into_iter()
