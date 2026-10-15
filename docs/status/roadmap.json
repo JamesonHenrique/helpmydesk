@@ -383,7 +383,7 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "IA só classifica a família do texto livre na tela inicial; resto do fluxo determinístico. Falta enviar o resumo das verificações e perguntas de acompanhamento"
+   "note": "IA só classifica a família; se em dúvida pergunta, a resposta soma ao relato (prévia mostra o texto inteiro); no máximo 2 rodadas, depois o menu. Falta enviar o resumo das verificações"
   },
   {
    "id": "SPEC-015",

@@ -49,3 +49,9 @@ então uma resposta lenta não trava as outras telas.
   calculado no núcleo (a mesma redação usada no envio).
 - Em Configurações, com a IA ligada: a lista das últimas chamadas (data, modelo, resultado em
   palavras simples). O texto enviado nunca é guardado, por isso não aparece nessa lista.
+
+## Pergunta de acompanhamento (SPEC-010)
+
+Se a IA não tiver certeza, a pergunta dela aparece; a resposta da pessoa é somada ao relato e
+classificada de novo (a prévia mostra o texto inteiro que vai sair). No máximo 2 rodadas; depois,
+o app pede para escolher no menu, sem insistir.
