@@ -39,6 +39,6 @@ Com um código falso: a chamada HTTPS real ao `opencode.ai` foi feita e recusada
 
 ## Fora do escopo
 
-Enviar o resumo das verificações para a IA (só o texto vai hoje); suíte de avaliação (E-04);
-a ligação da chamada à IA fora do lock do backend (uma chamada lenta segura os outros comandos
-por até 30 s).
+Enviar o resumo das verificações para a IA (só o texto vai hoje); suíte de avaliação (E-04).
+A chamada à IA roda fora do lock do backend (preparar → rede em thread de bloqueio → registrar),
+então uma resposta lenta não trava as outras telas.
