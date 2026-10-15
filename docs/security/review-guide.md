@@ -1,8 +1,8 @@
 # Guia para a revisão de segurança independente
 
 Estado em 15/10/2026. Este guia serve para quem vai revisar o HelpMyDesk sem ter escrito o código.
-A suíte adversarial (spec 016) foi escrita pelo mesmo autor das defesas, então **não substitui**
-esta revisão (roadmap F5-SEC).
+A suíte adversarial (spec 016) foi escrita pelo mesmo autor das defesas. Uma primeira revisão
+independente foi feita por outro modelo (15/10); uma revisão humana externa continua desejável.
 
 ## O que proteger
 
@@ -49,6 +49,8 @@ Rodar tudo: `tools/check-all.sh` (o mesmo que o CI).
   binários e o cliente de IA.
 
 ## Histórico
+
+Revisão independente (modelo Opus, contexto limpo, só leitura) feita em 15/10/2026; achados e correções na rodada 7.
 
 Os achados da spec 016 e as correções estão em
 [`specs/016-adversarial-suite/spec.md`](../../specs/016-adversarial-suite/spec.md).
