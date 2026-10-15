@@ -55,11 +55,11 @@
    "phase_name": "Validação e spikes",
    "phase_order": 1,
    "title": "Spike S-04: isolamento da janela de aprovação",
-   "status": "todo",
+   "status": "doing",
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "Conteúdo vem do núcleo; só a janela de aprovação aprova (ACL testada); \"Sim\" com atraso de 1 s contra clique sequestrado (spec 016). Falta testar na mão no Windows e no Linux"
   },
   {
    "id": "S-06",

@@ -34,6 +34,14 @@ plano, daquele ticket, naquele momento.
 | Kill switch depois da aprovação | a correção desligada rodava | `apply_kill_switch` descarta planos afetados; `execute` recusa com `CAPABILITY_DISABLED` |
 | Relatório editado sem limite | qualquer tamanho ia para o banco e para Downloads | `MAX_REPORT_BYTES` = 64 KiB, `REPORT_TOO_LARGE` |
 
+## Janela de aprovação (S-04, parte que dá para testar sem abrir o app)
+
+- O conteúdo vem do núcleo (`plan`), nunca da janela principal; a principal não emite eventos e
+  só a janela `approval` pode aprovar (ACL testada desde a spec 013).
+- Clique sequestrado: a janela principal pode chamar `open_approval` a qualquer momento, e o
+  plano já vem com todos os passos marcados. Por isso o "Sim" só funciona 1 segundo depois que o
+  plano aparece (`APPROVAL_ARM_MS`), como nos diálogos de permissão dos navegadores. Teste na UI.
+
 ## Fora do escopo
 
 Revisão de segurança independente (quem escreveu os ataques também escreveu as defesas), fuzzing,
