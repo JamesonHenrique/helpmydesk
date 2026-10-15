@@ -42,3 +42,10 @@ Com um código falso: a chamada HTTPS real ao `opencode.ai` foi feita e recusada
 Enviar o resumo das verificações para a IA (só o texto vai hoje); suíte de avaliação (E-04).
 A chamada à IA roda fora do lock do backend (preparar → rede em thread de bloqueio → registrar),
 então uma resposta lenta não trava as outras telas.
+
+## Transparência (F3-TRANSP)
+
+- Embaixo do campo de texto livre: "Vai para a IA, sem seu nome nem o do computador: «…»",
+  calculado no núcleo (a mesma redação usada no envio).
+- Em Configurações, com a IA ligada: a lista das últimas chamadas (data, modelo, resultado em
+  palavras simples). O texto enviado nunca é guardado, por isso não aparece nessa lista.

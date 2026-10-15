@@ -27,6 +27,8 @@
     "allow-ai-disconnect",
     "allow-ai-classify",
     "allow-open-ai-console",
-    "allow-ai-connect-from-clipboard"
+    "allow-ai-connect-from-clipboard",
+    "allow-ai-preview",
+    "allow-ai-log"
   ]
 }

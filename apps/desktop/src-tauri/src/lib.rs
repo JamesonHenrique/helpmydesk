@@ -6,9 +6,9 @@
 use std::sync::Mutex;
 
 use hmd_ipc::{
-    AiClassificationDto, AiStatusDto, ApprovalDto, Backend, DiagnosisDto, IpcError, IpcResult,
-    OutcomeDto, PlanDto, ReportDto, SettingsDto, StartDto, StartupDto, SystemDto, TicketDto,
-    system_clock,
+    AiClassificationDto, AiLogDto, AiStatusDto, ApprovalDto, Backend, DiagnosisDto, IpcError,
+    IpcResult, OutcomeDto, PlanDto, ReportDto, SettingsDto, StartDto, StartupDto, SystemDto,
+    TicketDto, system_clock,
 };
 use serde::Serialize;
 use tauri::{
@@ -280,6 +280,17 @@ async fn ai_connect_from_clipboard<R: Runtime>(
     Ok(status)
 }
 
+/// F3-TRANSP: the text exactly as it would be sent (local only).
+#[tauri::command]
+async fn ai_preview(state: State<'_, Shared>, text: String) -> IpcResult<String> {
+    with(&state, |b| Ok(b.ai_preview(&text)))
+}
+
+#[tauri::command]
+async fn ai_log(state: State<'_, Shared>) -> IpcResult<Vec<AiLogDto>> {
+    with(&state, Backend::ai_log)
+}
+
 /// Opens the OpenCode console in the person's browser. The URL is fixed in the core: the
 /// interface cannot choose what gets opened.
 #[tauri::command]
@@ -320,6 +331,8 @@ fn commands<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         ai_classify,
         open_ai_console,
         ai_connect_from_clipboard,
+        ai_preview,
+        ai_log,
     ])
 }
 

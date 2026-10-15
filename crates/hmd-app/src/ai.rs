@@ -139,6 +139,30 @@ impl App {
         })
     }
 
+    /// F3-TRANSP: exactly the text that would leave the computer (after the redaction).
+    pub fn ai_preview(text: &str) -> String {
+        hmd_core::report::redact_free_text(text)
+    }
+
+    /// F3-TRANSP: the AI calls recorded in the audit (newest first): when, which model, outcome.
+    /// The text is never stored, so it cannot be shown here.
+    pub fn ai_log(&self, limit: usize) -> Result<Vec<AiLogEntry>> {
+        let mut out: Vec<AiLogEntry> = self
+            .store
+            .audit_events()?
+            .into_iter()
+            .filter(|e| e.action == "ai.classify")
+            .map(|e| AiLogEntry {
+                at: e.occurred_at,
+                model: e.subject_ref.trim_start_matches("model:").to_string(),
+                outcome: e.reason_code.unwrap_or(e.outcome),
+            })
+            .collect();
+        out.reverse();
+        out.truncate(limit);
+        Ok(out)
+    }
+
     /// Records the call (codes only) and returns its result.
     pub fn ai_finish(
         &mut self,
@@ -153,6 +177,15 @@ impl App {
         self.store.record_ai_call(model, outcome, now)?;
         result.map_err(AppError::Ai)
     }
+}
+
+/// One recorded AI call.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AiLogEntry {
+    pub at: Timestamp,
+    pub model: String,
+    /// `ok:<family>`, `ok:connection_test` or an error code.
+    pub outcome: String,
 }
 
 /// A prepared AI call: can run without holding the app (the network may take seconds).
