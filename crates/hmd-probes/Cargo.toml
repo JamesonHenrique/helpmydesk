@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+netdev = { version = "0.46.3", default-features = false, features = ["gateway"] }
 # Safe cross-platform system info; only the features we use (no `user`, no `network`). ADR-021.
 sysinfo = { version = "0.39.6", default-features = false, features = ["system", "disk"] }
 
@@ -19,3 +20,6 @@ sysinfo = { version = "0.39.6", default-features = false, features = ["system"] 
 
 [lints]
 workspace = true
+
+[target."cfg(windows)".dependencies]
+winreg = "0.56.0"

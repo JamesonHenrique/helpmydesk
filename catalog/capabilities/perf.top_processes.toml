@@ -1,0 +1,13 @@
+id = "perf.top_processes"
+version = "1.0.0"
+kind = "probe"
+family = "performance"
+produces = []
+
+[variants.windows]
+risk_level = "N1-A"
+max_per_session = 5
+
+[variants.linux]
+risk_level = "N1-A"
+max_per_session = 5

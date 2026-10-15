@@ -4,7 +4,7 @@ kind = "fix"
 family = "connectivity"
 
 # Conservative until spike S-02: assumed to require elevation on both platforms (hence N3).
-# `none_of = ["net.gateway.unreachable"]` will be added when the gateway probe exists.
+# The gateway probe now exists, so DNS flush is only offered when the gateway answers.
 [variants.windows]
 risk_level = "N3"
 requires_elevation = true
@@ -13,6 +13,7 @@ max_per_session = 1
 
 [variants.windows.preconditions]
 all_of = ["net.dns.resolution_failing"]
+none_of = ["net.gateway.unreachable", "net.gateway.missing"]
 
 [variants.linux]
 risk_level = "N3"
@@ -22,6 +23,7 @@ max_per_session = 1
 
 [variants.linux.preconditions]
 all_of = ["net.dns.resolution_failing"]
+none_of = ["net.gateway.unreachable", "net.gateway.missing"]
 
 [copy.pt-BR]
 title = "Limpar a memória de endereços da internet"
