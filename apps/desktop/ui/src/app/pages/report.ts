@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Stage H: the "não consegui" report, made by the core (report@1) and editable before it leaves
 // the computer. Without a diagnosis, the browser prototype shows a sample.
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { CORE_API } from '../api/core-api';
@@ -14,7 +14,7 @@ import { Session } from '../state/session';
   imports: [RouterLink],
   template: `
     <section class="page" aria-labelledby="t">
-      <h1 id="t">Isso eu não consigo resolver com segurança</h1>
+      <h1 id="t">{{ heading() }}</h1>
       <p>Preparo um relatório para você mostrar a quem for te ajudar.</p>
       <div class="card small">
         <div class="row">
@@ -82,6 +82,14 @@ import { Session } from '../state/session';
   `,
 })
 export class ReportPage implements OnInit {
+  /** Only say "não consigo" when something really could not be solved; a report the person
+   * asked for after a clean check is just a report. */
+  protected readonly heading = computed(() => {
+    const d = this.session.diagnosis();
+    const o = this.session.outcome();
+    const failed = (o && o.kind !== 'verified') || !!d?.trigger;
+    return failed ? 'Isso eu não consigo resolver com segurança' : 'Relatório para levar a alguém';
+  });
   private readonly api = inject(CORE_API);
   protected readonly session = inject(Session);
   protected readonly text = signal('');
