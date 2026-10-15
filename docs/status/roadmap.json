@@ -59,7 +59,7 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Conteúdo vem do núcleo; só a janela de aprovação aprova (ACL testada); \"Sim\" com atraso de 1 s contra clique sequestrado (spec 016). Falta testar na mão no Windows e no Linux"
+   "note": "Conteúdo vem do núcleo; só a janela de aprovação aprova (ACL testada, inclusive a recusa); nada pré-marcado; Sim espera 1 s ao abrir e ao ganhar foco. Falta testar na mão no Windows"
   },
   {
    "id": "S-06",
@@ -335,7 +335,7 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "App Tauri ligado ao núcleo; no CI ele compila e abre sem cair (Linux e Windows); falta alguém usar na mão (precisa do WebKitGTK local)"
+   "note": "App aberto e usado de verdade (Xvfb, 15/10): boas-vindas, diagnóstico real de Internet e relatório funcionam; interface carrega no Linux e no Windows (teste de fumaça no CI). Falta teste do mantenedor na mão"
   },
   {
    "id": "F2-UNINST",
@@ -527,7 +527,7 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Spec 016 (6 rodadas): ataques pela interface nos 3 modos, entradas do sistema e revisão de leitura; todos barrados; brechas e P2 técnicos corrigidos. Falta revisão independente e suíte da IA"
+   "note": "Spec 016 (7 rodadas) + revisão independente por outro modelo (15/10): achados médios e baixos corrigidos; 21 ataques com código esperado. Falta revisão humana externa e suíte da IA"
   },
   {
    "id": "F5-DOCS",
