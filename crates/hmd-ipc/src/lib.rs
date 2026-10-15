@@ -325,6 +325,15 @@ pub struct AiStatusDto {
     pub console_url: String,
 }
 
+/// One recorded AI call (F3-TRANSP).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiLogDto {
+    pub at: i64,
+    pub model: String,
+    pub outcome: String,
+}
+
 /// The AI's classification; the screen starts the ticket of `family` (or shows the menu).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -401,6 +410,24 @@ impl Backend {
     /// The transport, for a call made outside the backend lock (the shell).
     pub fn ai_transport(&self) -> Arc<dyn Transport + Send + Sync> {
         Arc::clone(&self.transport)
+    }
+
+    /// F3-TRANSP: what would be sent for `text` (local, nothing leaves the computer).
+    pub fn ai_preview(&self, text: &str) -> String {
+        App::ai_preview(text)
+    }
+
+    pub fn ai_log(&mut self) -> IpcResult<Vec<AiLogDto>> {
+        Ok(self
+            .app()?
+            .ai_log(20)?
+            .into_iter()
+            .map(|e| AiLogDto {
+                at: e.at,
+                model: e.model,
+                outcome: e.outcome,
+            })
+            .collect())
     }
 
     /// Checks and prepares an AI call; the shell runs it without holding the backend.
