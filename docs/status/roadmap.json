@@ -347,7 +347,7 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Apagar tudo pronto (erase_all); falta o desinstalador oferecer"
+   "note": "Apagar tudo remove histórico, relatórios, consentimentos e a chave da IA; desinstalador do Windows oferece apagar o histórico. Falta testar a desinstalação num Windows real"
   },
   {
    "id": "F2-LAB",
