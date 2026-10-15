@@ -101,7 +101,12 @@ fn main() {
             ProbeOutcome::Failed(code) => format!("? não consegui verificar ({code})"),
             ProbeOutcome::NotAuthorized(code) => format!("– pulado ({code})"),
         };
-        println!("  {:<22} {line}", probe.probe_id);
+        let title = catalog
+            .meta
+            .get(&probe.probe_id)
+            .and_then(|m| m.copy.get(LOCALE))
+            .map_or(probe.probe_id.as_str(), |c| c.title.as_str());
+        println!("  {title:<38} {line}");
     }
     println!(
         "\n{}: {}\n{}",

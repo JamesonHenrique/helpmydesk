@@ -116,8 +116,9 @@ fn us1_nothing_found_uses_fallback_with_report() {
 }
 
 #[test]
-fn us1_families_without_probes_are_guidance_plus_report() {
-    for family in [ProblemFamily::AudioVideo, ProblemFamily::AppError] {
+fn us1_family_without_probes_is_guidance_plus_report() {
+    {
+        let family = ProblemFamily::AppError;
         let r = run(family, &[], &[], &DiagnoseOptions::default());
         assert!(r.probes.is_empty(), "{family:?} must not fake checks");
         assert!(r.is_fallback);
@@ -193,4 +194,51 @@ fn sc002_real_diagnosis_for_every_family() {
             .unwrap_or_else(|e| panic!("{family:?}: {e}"));
         assert!(!r.copy.title.is_empty(), "{family:?}");
     }
+}
+
+/// Spec 010: sound, microphone and camera diagnoses, most certain first.
+#[test]
+fn spec010_audio_video_diagnoses() {
+    let opts = DiagnoseOptions {
+        platform: hmd_policy::Platform::Windows,
+        ..DiagnoseOptions::default()
+    };
+    let r = run(
+        ProblemFamily::AudioVideo,
+        &[
+            ("av.privacy.mic_camera", &["av.mic.blocked_by_privacy"]),
+            ("av.audio.devices", &["av.no_output_device"]),
+        ],
+        &[],
+        &opts,
+    );
+    assert_eq!(r.diagnosis_id, "av.mic_blocked");
+    assert_eq!(r.confidence, Confidence::AlmostCertain);
+    assert!(r.fix_decision.is_none(), "guidance only");
+
+    let linux = DiagnoseOptions {
+        platform: hmd_policy::Platform::Linux,
+        ..DiagnoseOptions::default()
+    };
+    let r = run(
+        ProblemFamily::AudioVideo,
+        &[
+            ("av.audio.devices", &["av.no_output_device"]),
+            ("av.camera.present", &["av.no_camera"]),
+        ],
+        &[],
+        &linux,
+    );
+    assert_eq!(r.diagnosis_id, "av.no_output", "sound before camera");
+    assert!(
+        r.probes
+            .iter()
+            .any(|p| p.probe_id == "av.privacy.mic_camera"
+                && p.outcome == ProbeOutcome::NotAuthorized("PLATFORM_UNSUPPORTED")),
+        "Windows-only probe is skipped on Linux, not faked"
+    );
+
+    let r = run(ProblemFamily::AudioVideo, &[], &[], &linux);
+    assert!(r.is_fallback);
+    assert_eq!(r.report.map(|t| t.code()), Some("REP-01"));
 }

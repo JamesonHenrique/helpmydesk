@@ -26,11 +26,11 @@ fn fr002_probes_match_catalog() {
             .get(id)
             .unwrap_or_else(|| panic!("{id} not in catalog"));
         assert_eq!(cap.kind, CapabilityKind::Probe, "{id}");
-        assert!(
-            cap.variants.contains_key(&platform()),
-            "{id} lacks {:?}",
-            platform()
-        );
+        if !cap.variants.contains_key(&platform()) {
+            // Platform-specific probes (spec 010) have no data elsewhere, never fake results.
+            assert_eq!(run(id).unwrap_err(), ProbeError::NoData, "{id}");
+            continue;
+        }
         let produces = &cat.meta[*id].produces;
         for f in *emits {
             assert!(produces.iter().any(|p| p == f), "{id} emits undeclared {f}");
@@ -90,8 +90,16 @@ fn fr005_no_identifying_data() {
         "perf.cpu.snapshot",
         "perf.top_processes",
         "startup.apps.list",
+        "av.audio.devices",
+        "av.camera.present",
+        "av.privacy.mic_camera",
     ] {
-        let out = run(id).unwrap();
+        let out = match run(id) {
+            Ok(out) => out,
+            // Sound probes have no data on machines without audio (CI runners).
+            Err(ProbeError::NoData) if id.starts_with("av.") => continue,
+            Err(e) => panic!("{id}: {e}"),
+        };
         for (key, value) in &out.evidence {
             // `os_name` is the OS product name (e.g. "Windows", "Debian GNU/Linux"), allowed.
             if *key != "os_name" {

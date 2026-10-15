@@ -270,12 +270,12 @@
    "phase": "F2",
    "phase_name": "Núcleo somente leitura + modo básico",
    "phase_order": 3,
-   "title": "Sondas de áudio, registros do sistema e permissões de mic/câmera",
-   "status": "todo",
+   "title": "Sondas de som, microfone e câmera (spec 010)",
+   "status": "done",
    "weight": 2,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": "Dependem de APIs nativas (COM/WinRT/D-Bus)"
+   "note": "Leitura do registro do Windows a confirmar no S-01; registros do sistema (logs) ficam para depois"
   },
   {
    "id": "SPEC-002",

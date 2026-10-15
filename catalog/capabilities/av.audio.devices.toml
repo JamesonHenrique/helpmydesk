@@ -1,0 +1,20 @@
+id = "av.audio.devices"
+version = "1.0.0"
+kind = "probe"
+family = "audio_video"
+produces = ["av.no_output_device", "av.no_input_device", "av.no_sound_server"]
+
+# Counts active output/input devices; on Linux also whether PipeWire/PulseAudio is running.
+# Windows reads MMDevices `DeviceState` (to be confirmed on Windows 10/11 in spike S-01).
+[variants.windows]
+risk_level = "N1-A"
+max_per_session = 5
+
+[variants.linux]
+risk_level = "N1-A"
+max_per_session = 5
+
+[copy.pt-BR]
+title = "Saídas e entradas de som"
+looks_at = "Quantas saídas de som (alto-falante, fone) e entradas (microfone) estão ativas e, no Linux, se o serviço de som está rodando."
+never = "Nomes dos aparelhos, o som do microfone e o que você ouve."
