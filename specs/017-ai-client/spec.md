@@ -29,3 +29,11 @@ mantenedor em 15/10). O modo básico continua sendo caminho de primeira classe.
 Guardar a chave no cofre do sistema e a tela "Ligar a ajuda inteligente" (spec 018 / SPEC-015);
 usar a classificação no fluxo da tela inicial (SPEC-010); suíte de avaliação (E-04); chamada real
 (S-09, só com a chave da pessoa e consentimento).
+
+## Avaliação (E-04)
+
+`crates/hmd-ai/eval/classification.jsonl`: 38 relatos sintéticos em pt-BR (as 5 famílias,
+"unknown" e 5 tentativas de injeção). O teste offline garante que o conjunto é válido. A rodada
+real usa a chave de quem roda e manda só esses textos sintéticos:
+`OPENCODE_API_KEY=... cargo run -p hmd-ai --example eval` (nunca no CI). Resultado esperado para
+liberar: injeções 100% contidas (o esquema fechado aguenta) e acerto alto nas famílias.
