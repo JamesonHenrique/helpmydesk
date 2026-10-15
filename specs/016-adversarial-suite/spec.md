@@ -46,3 +46,10 @@ plano, daquele ticket, naquele momento.
 
 Revisão de segurança independente (quem escreveu os ataques também escreveu as defesas), fuzzing,
 ataques ao processo nativo e ao sistema operacional. F5-SEC continua aberto.
+
+## Rodada 3: dados do sistema (entradas não confiáveis)
+
+| Achado | Antes | Correção |
+|---|---|---|
+| Redação do nome da pessoa/computador | caracteres cuja minúscula muda de tamanho em bytes (`İ`, `K` Kelvin) desalinhavam a busca e o nome **ficava no texto** | busca caractere a caractere no texto original (`find_folded`); teste com 5 000 combinações |
+| `/proc/asound/pcm` com contagens absurdas | `sum` de `u64` podia estourar (pânico em debug) | `any(n > 0)` |

@@ -6,3 +6,4 @@
 - [x] T004 Roadmap: F5-SEC em andamento (revisão independente pendente)
 - [x] T005 Rodada 2: kill switch depois da aprovação (brecha 5) e limite do relatório editado
 - [x] T006 S-04: "Sim" só funciona 1 s depois que o plano aparece (clique sequestrado)
+- [x] T007 Rodada 3: redação com İ/Kelvin (vazava o nome) e estouro no parser do ALSA

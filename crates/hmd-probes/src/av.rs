@@ -14,17 +14,18 @@ pub fn parse_asound_pcm(text: &str) -> (u64, u64) {
     let mut outputs = 0;
     let mut inputs = 0;
     for line in text.lines() {
-        let count = |kind: &str| {
+        // `any`, not a sum: absurd counts in the file must not overflow (spec 016).
+        let has = |kind: &str| {
             line.split(':')
                 .map(str::trim)
                 .filter_map(|part| part.strip_prefix(kind))
                 .filter_map(|n| n.trim().parse::<u64>().ok())
-                .sum::<u64>()
+                .any(|n| n > 0)
         };
-        if count("playback") > 0 {
+        if has("playback") {
             outputs += 1;
         }
-        if count("capture") > 0 {
+        if has("capture") {
             inputs += 1;
         }
     }
@@ -217,6 +218,13 @@ mod tests {
 00-03: HDMI 0 : HDMI 0 : playback 1\n\
 00-07: HDMI 1 : HDMI 1 : playback 1\n\
 00-08: HDMI 2 : HDMI 2 : playback 1\n";
+
+    #[test]
+    fn asound_pcm_with_absurd_counts_does_not_overflow() {
+        let line = "00-00: x : playback 18446744073709551615 : playback 1 : capture 0\n";
+        assert_eq!(parse_asound_pcm(line), (1, 0));
+        assert_eq!(parse_asound_pcm(":::\nplayback\n\u{0}"), (0, 0));
+    }
 
     #[test]
     fn asound_pcm_counts_outputs_and_inputs() {
