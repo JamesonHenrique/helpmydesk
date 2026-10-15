@@ -271,10 +271,15 @@ pub fn execute_step(
             at: input.now,
         })
         .map_err(journal)?;
-    let (state, reason) = match implementation.run(step) {
-        FixOutcome::Succeeded => (ExecutionState::Succeeded, None),
-        FixOutcome::Failed(code) => (ExecutionState::Failed, Some(code)),
-        FixOutcome::Unknown => (ExecutionState::Unknown, None),
+    // Spec 016: a panic inside a fix must not skip the journal update (the row would stay
+    // `started`) nor unwind into the caller, which holds the backend lock.
+    let outcome =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| implementation.run(step)));
+    let (state, reason) = match outcome {
+        Ok(FixOutcome::Succeeded) => (ExecutionState::Succeeded, None),
+        Ok(FixOutcome::Failed(code)) => (ExecutionState::Failed, Some(code)),
+        Ok(FixOutcome::Unknown) => (ExecutionState::Unknown, None),
+        Err(_) => (ExecutionState::Unknown, Some("PANICKED")),
     };
     journal_impl
         .advance(execution, state, reason, input.now)

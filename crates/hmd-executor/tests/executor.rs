@@ -460,3 +460,28 @@ fn verification_of_a_failed_execution_is_refused_by_the_journal() {
     .unwrap_err();
     assert_eq!(err.reason_code(), "JOURNAL_ERROR");
 }
+
+struct Panics;
+
+impl FixImpl for Panics {
+    fn run(&self, _: &ProposedStep) -> FixOutcome {
+        panic!("bug inside a fix");
+    }
+}
+
+/// Spec 016: a bug (panic) inside a fix is recorded as `unknown`, never left `started`, and does
+/// not unwind through the caller (which holds the backend lock).
+#[test]
+fn panic_inside_a_fix_is_recorded_as_unknown() {
+    let f = Fixture::new();
+    let approval = f.approve(1);
+    let registry = Registry::default().with(FIX, Box::new(Panics));
+    let mut j = MemJournal::default();
+    let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
+    assert_eq!(run.state, ExecutionState::Unknown);
+    assert_eq!(run.reason, Some("PANICKED"));
+    assert_eq!(
+        j.history,
+        vec![(1, ExecutionState::Started), (1, ExecutionState::Unknown)]
+    );
+}
