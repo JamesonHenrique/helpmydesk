@@ -15,6 +15,29 @@ lento", "o som não sai") e o app:
 4. **verifica** se resolveu e pergunta se a pessoa também percebe a melhora;
 5. quando não consegue, diz isso e gera um **relatório** para a pessoa levar a quem for ajudar.
 
+## O que já funciona (outubro de 2026)
+
+- **Modo básico completo no núcleo:** 13 verificações somente leitura (internet, lentidão,
+  espaço, som, microfone e câmera) e roteiros de diagnóstico para as 5 famílias de problema, nas
+  duas plataformas.
+- **Correções com segurança:** política determinística, aprovação presa ao plano exato numa janela
+  separada, diário que sobrevive a quedas e verificação depois de cada correção. Nenhuma correção
+  real está liberada ainda: elas esperam a medição de privilégios em Windows e Linux (spike S-02).
+- **Histórico local** (SQLite) com auditoria encadeada, retenção automática, exportar e apagar
+  tudo, e o **relatório "não consegui"**.
+- **App desktop (Tauri)** ligado ao núcleo: compila e abre no CI em Linux e Windows. Ainda não
+  há instalador.
+- **Kill switch assinado** para desligar uma capacidade sem lançar versão (falta a chave do
+  projeto).
+
+Experimente no terminal, sem instalar nada:
+
+```sh
+cargo run -p hmd-core --example basic_mode            # menu
+cargo run -p hmd-core --example basic_mode -- 1       # verifica a internet
+cargo run -p hmd-core --example basic_mode -- --o-que-eu-olho
+```
+
 ## Princípios
 
 - **A IA propõe, o código decide.** A IA nunca executa nada: só escolhe entre opções de um
@@ -54,7 +77,7 @@ O projeto segue **Spec-Driven Development** com o [GitHub Spec Kit](https://gith
 [docs/development.md](docs/development.md).
 
 ```sh
-cargo test --workspace
+tools/check-all.sh      # tudo o que o CI roda
 ```
 
 ## Licença
