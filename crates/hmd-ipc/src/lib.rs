@@ -731,6 +731,11 @@ impl Backend {
     /// "Apagar tudo": removes the history files and starts an empty history.
     pub fn erase_all(&mut self) -> IpcResult<usize> {
         self.reopen_if_closed();
+        // The AI key is personal data too: it goes first, so a failure leaves nothing behind
+        // silently (the error is reported and the history is kept).
+        self.vault
+            .delete()
+            .map_err(|e| IpcError::new("ERASE_FAILED", format!("vault: {e}")))?;
         let app = self
             .app
             .take()
