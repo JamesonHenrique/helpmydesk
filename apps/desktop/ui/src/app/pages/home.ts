@@ -8,6 +8,9 @@ import { IpcError } from '../api/types';
 import { FAMILIES, FAMILY_HINTS } from '../data/catalog';
 import { PrototypeState } from '../state/prototype';
 
+/** Questions the AI may ask before the app falls back to the menu. */
+const MAX_ROUNDS = 2;
+
 @Component({
   selector: 'app-home',
   imports: [RouterLink],
@@ -85,6 +88,9 @@ export class HomePage implements OnInit {
   protected readonly text = signal('');
   /** F3-TRANSP: exactly what would be sent (computed locally by the core). */
   protected readonly preview = signal('');
+  /** What the person said before answering the AI's question, and how many tries so far. */
+  private story = '';
+  private rounds = 0;
   protected readonly question = signal('');
   protected readonly error = signal('');
 
@@ -99,7 +105,8 @@ export class HomePage implements OnInit {
   protected async typed(value: string): Promise<void> {
     this.text.set(value);
     try {
-      this.preview.set(value.trim() ? await this.api.aiPreview(value) : '');
+      const said = [this.story, value.trim()].filter((t) => t).join('. ');
+      this.preview.set(value.trim() ? await this.api.aiPreview(said) : '');
     } catch {
       this.preview.set('');
     }
@@ -115,14 +122,27 @@ export class HomePage implements OnInit {
     this.error.set('');
     this.question.set('');
     this.busy.set(true);
+    // SPEC-010: an answer to the AI's question is added to what was said before.
+    const said = [this.story, this.text().trim()].filter((t) => t).join('. ');
     try {
-      const c = await this.api.aiClassify(this.text());
+      const c = await this.api.aiClassify(said);
       if (c.family && c.confidence !== 'low') {
         this.start(c.family);
         return;
       }
+      this.rounds += 1;
+      if (this.rounds >= MAX_ROUNDS) {
+        // No insisting: after two tries the menu decides.
+        this.story = '';
+        this.rounds = 0;
+        this.question.set('Ainda não tenho certeza. Escolha uma opção abaixo, por favor.');
+        return;
+      }
+      this.story = said;
+      this.text.set('');
+      this.preview.set('');
       this.question.set(
-        c.question ?? 'Não tenho certeza do que é. Escolha uma opção abaixo ou conte mais.',
+        c.question ?? 'Não tenho certeza do que é. Conte um pouco mais ou escolha abaixo.',
       );
     } catch (e) {
       const code = (e as IpcError).code;

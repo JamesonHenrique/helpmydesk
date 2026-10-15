@@ -395,6 +395,37 @@ describe('HomePage with the AI on (spec 018)', () => {
     expect(el.textContent).toContain('«o PC do [usuário] travou»');
   });
 
+  it('the answer to the question is added to the story, then the menu decides', async () => {
+    const sent: string[] = [];
+    await setupWith(
+      aiStub({
+        aiStatus: async () => ({ connected: true, consoleUrl: '' }),
+        aiClassify: async (t: string) => {
+          sent.push(t);
+          return { family: null, confidence: 'low', question: 'Pode contar mais?' };
+        },
+      }),
+    );
+    const { fixture, el } = await render(HomePage);
+    const send = async (text: string) => {
+      const input = el.querySelector('#free') as HTMLInputElement;
+      input.value = text;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      (el.querySelector('form.free') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      for (let i = 0; i < 3; i++) {
+        await fixture.whenStable();
+        await new Promise((r) => setTimeout(r, 0));
+        fixture.detectChanges();
+      }
+    };
+    await send('está estranho');
+    expect(el.textContent).toContain('Pode contar mais?');
+    await send('a tela pisca');
+    expect(sent).toEqual(['está estranho', 'está estranho. a tela pisca']);
+    expect(el.textContent).toContain('Escolha uma opção abaixo, por favor');
+  });
+
   it('a low-confidence answer asks instead of guessing', async () => {
     await setupWith(
       aiStub({
