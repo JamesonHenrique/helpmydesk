@@ -215,6 +215,22 @@ const ATTACKS: &[(&str, Attack)] = &[
         l.b.erase_all().unwrap();
         err(l.b.execute(&id, plan))
     }),
+    ("auto simple: execute without approval", |l| {
+        l.b.set_autonomy("auto_simple").unwrap();
+        let (id, plan) = l.dns_plan();
+        err(l.b.execute(&id, plan))
+    }),
+    ("auto simple: guessed plan ids without approval", |l| {
+        l.b.set_autonomy("auto_simple").unwrap();
+        let id = l.b.start_ticket("connectivity").unwrap().ticket.id;
+        l.b.diagnose(&id).unwrap();
+        for p in [0, 1, 2] {
+            if l.b.execute(&id, p).is_ok() {
+                return Ok(());
+            }
+        }
+        Err("all refused".into())
+    }),
     ("save a huge report into Downloads", |l| {
         let (id, _) = l.dns_plan();
         let report = l.b.make_report(&id, None).unwrap();
@@ -249,7 +265,7 @@ fn every_attack_is_blocked_and_the_fix_never_runs() {
     );
     assert_eq!(
         ATTACKS.len(),
-        17,
+        19,
         "update the count in docs when adding cases"
     );
 }

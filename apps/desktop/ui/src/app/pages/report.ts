@@ -64,7 +64,12 @@ import { Session } from '../state/session';
             ><strong>Ver e editar o relatório</strong>
             <span class="small muted">(apague o que não quiser compartilhar)</span></label
           >
-          <textarea id="rel" [value]="text()" (input)="edit($any($event.target).value)"></textarea>
+          <textarea
+            id="rel"
+            maxlength="20000"
+            [value]="text()"
+            (input)="edit($any($event.target).value)"
+          ></textarea>
           <div class="actions">
             <button type="button" class="btn" (click)="copy()">Copiar texto</button>
             <button type="button" class="btn primary" (click)="save()">Salvar arquivo</button>

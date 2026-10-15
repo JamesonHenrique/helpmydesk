@@ -7,6 +7,14 @@ import { CORE_API } from '../api/core-api';
 import { IpcError, OutcomeDto } from '../api/types';
 import { Session } from '../state/session';
 
+/** Plain words for the refusals a person can actually meet here (spec 016). */
+const WHY: Record<string, string> = {
+  OBSERVE_ONLY: 'O modo "só observar" está ligado, então eu não mudo nada. Nada foi alterado.',
+  CAPABILITY_DISABLED: 'Esta correção foi desligada pelo projeto por segurança. Nada foi alterado.',
+  NO_PENDING_PLAN:
+    'O plano mudou ou passou do prazo. Nada foi alterado; comece de novo para eu olhar outra vez.',
+};
+
 @Component({
   selector: 'app-result',
   imports: [RouterLink],
@@ -19,7 +27,7 @@ import { Session } from '../state/session';
         </p>
       } @else if (error(); as e) {
         <h1 id="t">Não consegui fazer a correção</h1>
-        <p class="notice">Algo deu errado do meu lado ({{ e.code }}).</p>
+        <p class="notice">{{ why(e.code) }}</p>
         <div class="actions">
           <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
         </div>
@@ -126,6 +134,10 @@ export class ResultPage implements OnInit {
     } finally {
       this.running.set(false);
     }
+  }
+
+  protected why(code: string): string {
+    return WHY[code] ?? `Algo deu errado do meu lado (${code}).`;
   }
 
   protected async confirm(fixed: boolean): Promise<void> {

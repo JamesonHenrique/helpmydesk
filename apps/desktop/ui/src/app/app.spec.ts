@@ -6,6 +6,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
 import { CORE_API } from './api/core-api';
+import { DiagnosisDto } from './api/types';
 import { FAMILIES, PROBES, probesFor } from './data/catalog';
 import { APPROVAL_ARM_MS, ApprovalPage } from './pages/approval';
 import { DiagnosisPage } from './pages/diagnosis';
@@ -199,6 +200,32 @@ describe('ApprovalPage', () => {
     yes.click();
     await fixture.whenStable();
     expect(approved).toEqual([['s1']]);
+  });
+});
+
+describe('ResultPage', () => {
+  it('explains a refusal in plain words', async () => {
+    await TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes, withComponentInputBinding()),
+        {
+          provide: CORE_API,
+          useValue: {
+            real: false,
+            execute: async () => {
+              throw { code: 'OBSERVE_ONLY', message: '' };
+            },
+          },
+        },
+      ],
+    }).compileComponents();
+    TestBed.inject(Session).diagnosis.set({
+      ticket: { id: '1' },
+      plan: { planId: 1, planHash: 'x', steps: [] },
+    } as unknown as DiagnosisDto);
+    const { el } = await render(ResultPage, { family: 'connectivity' });
+    expect(el.textContent).toContain('só observar');
+    expect(el.textContent).not.toContain('OBSERVE_ONLY');
   });
 });
 
