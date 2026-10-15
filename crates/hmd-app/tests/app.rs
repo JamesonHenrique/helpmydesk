@@ -435,3 +435,11 @@ fn observe_only_never_proposes_fixes() {
     assert!(view.plan.is_none(), "LEVEL_EXCEEDS_MODE → guidance only");
     assert_ne!(view.ticket.state, TicketState::AwaitingUser);
 }
+
+/// Spec 016 (P2): the monotonic check behind the wall-clock one.
+#[test]
+fn approval_validity_also_uses_monotonic_time() {
+    use std::time::Duration;
+    assert!(!hmd_app::approval_too_old(Duration::from_secs(600)));
+    assert!(hmd_app::approval_too_old(Duration::from_secs(601)));
+}

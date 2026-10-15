@@ -191,6 +191,14 @@ struct Pending {
     proposal: ActionPlanProposal,
     decision: PolicyDecision,
     approval: Option<ActionApproval>,
+    /// Monotonic time of the approval: moving the wall clock back cannot stretch the
+    /// 10-minute validity (spec 016, P2).
+    approved_at: Option<std::time::Instant>,
+}
+
+/// Whether an approval given `elapsed` ago (monotonic) is past [`hmd_executor::APPROVAL_TTL`].
+pub fn approval_too_old(elapsed: std::time::Duration) -> bool {
+    elapsed.as_secs() > u64::try_from(hmd_executor::APPROVAL_TTL).unwrap_or(0)
 }
 
 fn autonomy_code(m: AutonomyMode) -> &'static str {
@@ -534,6 +542,7 @@ impl App {
                     proposal,
                     decision,
                     approval: None,
+                    approved_at: None,
                 },
             );
             ticket = self
@@ -586,6 +595,7 @@ impl App {
         };
         let approval = self.store.approve(plan_id, &plan, step_ids, mode, now)?;
         pending.approval = Some(approval.clone());
+        pending.approved_at = Some(std::time::Instant::now());
         if ticket.state == TicketState::AwaitingUser {
             self.store
                 .apply(&ticket.id, TicketEvent::UserResponded, now)?;
@@ -671,6 +681,12 @@ impl App {
         }
         let pending = self.take_pending(&ticket.id, plan_id)?;
         let approval = pending.approval.as_ref().ok_or(AppError::NoPendingPlan)?;
+        if pending
+            .approved_at
+            .is_none_or(|at| approval_too_old(at.elapsed()))
+        {
+            return Err(AppError::Exec(ExecError::ApprovalExpired));
+        }
         if pending.proposal.steps.iter().any(|s| {
             approval.approved_step_ids.contains(&s.step_id) && self.disabled.contains(&s.capability)
         }) {
