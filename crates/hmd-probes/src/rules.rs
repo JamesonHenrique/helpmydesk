@@ -157,6 +157,54 @@ pub fn startup_findings(enabled: usize) -> Vec<Finding> {
     }
 }
 
+pub const NO_OUTPUT_DEVICE: &str = "av.no_output_device";
+pub const NO_INPUT_DEVICE: &str = "av.no_input_device";
+pub const NO_SOUND_SERVER: &str = "av.no_sound_server";
+pub const NO_CAMERA: &str = "av.no_camera";
+pub const MIC_BLOCKED: &str = "av.mic.blocked_by_privacy";
+pub const CAMERA_BLOCKED: &str = "av.camera.blocked_by_privacy";
+
+fn warn(code: &'static str) -> Finding {
+    Finding {
+        code,
+        severity: Severity::Warning,
+    }
+}
+
+/// Spec 010: no active output/input device; sound server not running (Linux, when known).
+pub fn audio_findings(outputs: u64, inputs: u64, sound_server: Option<bool>) -> Vec<Finding> {
+    let mut out = Vec::new();
+    if outputs == 0 {
+        out.push(warn(NO_OUTPUT_DEVICE));
+    }
+    if inputs == 0 {
+        out.push(warn(NO_INPUT_DEVICE));
+    }
+    if sound_server == Some(false) {
+        out.push(warn(NO_SOUND_SERVER));
+    }
+    out
+}
+
+pub fn camera_findings(camera_nodes: u64) -> Vec<Finding> {
+    if camera_nodes == 0 {
+        vec![warn(NO_CAMERA)]
+    } else {
+        vec![]
+    }
+}
+
+pub fn privacy_findings(mic_denied: bool, camera_denied: bool) -> Vec<Finding> {
+    let mut out = Vec::new();
+    if mic_denied {
+        out.push(warn(MIC_BLOCKED));
+    }
+    if camera_denied {
+        out.push(warn(CAMERA_BLOCKED));
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -258,5 +306,23 @@ mod tests {
         assert!(cpu_findings(40.0).is_empty());
         assert_eq!(codes(startup_findings(8)), vec![MANY_STARTUP]);
         assert!(startup_findings(7).is_empty());
+    }
+
+    #[test]
+    fn spec010_av_findings() {
+        let codes = |f: Vec<Finding>| f.into_iter().map(|f| f.code).collect::<Vec<_>>();
+        assert!(audio_findings(2, 1, Some(true)).is_empty());
+        assert_eq!(
+            codes(audio_findings(0, 0, Some(false))),
+            vec![NO_OUTPUT_DEVICE, NO_INPUT_DEVICE, NO_SOUND_SERVER]
+        );
+        assert_eq!(codes(audio_findings(1, 1, None)), Vec::<&str>::new());
+        assert_eq!(codes(camera_findings(0)), vec![NO_CAMERA]);
+        assert!(camera_findings(2).is_empty());
+        assert_eq!(
+            codes(privacy_findings(true, true)),
+            vec![MIC_BLOCKED, CAMERA_BLOCKED]
+        );
+        assert!(privacy_findings(false, false).is_empty());
     }
 }

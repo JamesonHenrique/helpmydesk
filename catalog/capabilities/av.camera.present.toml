@@ -1,0 +1,15 @@
+id = "av.camera.present"
+version = "1.0.0"
+kind = "probe"
+family = "audio_video"
+produces = ["av.no_camera"]
+
+# Linux only: counts /dev/video* nodes. Windows needs a device API (later batch).
+[variants.linux]
+risk_level = "N1-A"
+max_per_session = 5
+
+[copy.pt-BR]
+title = "Câmera conectada"
+looks_at = "Se o sistema enxerga alguma câmera conectada."
+never = "Imagens da câmera e o nome dela."

@@ -1,5 +1,5 @@
 # Catalog manifest. Version format: YYYY.MM.patch (Plan v1 VII.3).
-version = "2026.10.0"
+version = "2026.10.1"
 
 # Consent notices (spec 009). Bump `version` whenever the text changes: records keep the version
 # the person agreed to.

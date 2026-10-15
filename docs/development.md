@@ -38,7 +38,7 @@ Veja o plano v1, VIII.4. Crates atuais:
 | `crates/hmd-core` | 006, 007 | Playbooks, autorização das sondas, diagnóstico, avaliação das correções (sem executar) e relatório "não consegui" |
 | `crates/hmd-executor` | 008 | Hash do plano, checagem da aprovação, execução com diário write-ahead e verificação (sem correção real até o S-02) |
 | `crates/hmd-store` | 007, 008 | Histórico local em SQLite: chamados, eventos, sessões, achados, mensagens, consentimentos, relatórios, retenção, planos, aprovações, diário de execução, auditoria encadeada, exportar e apagar tudo |
-| `crates/hmd-probes` | 004, 005 | Sondas somente leitura: sistema, memória, CPU, processos, disco, DNS, adaptadores, gateway, HTTP/portal cativo, inicialização |
+| `crates/hmd-probes` | 004, 005, 010 | Sondas somente leitura: sistema, memória, CPU, processos, disco, DNS, adaptadores, gateway, HTTP/portal cativo, inicialização, som, microfone e câmera |
 
 Modo básico (texto, sem IA): `cargo run -p hmd-core --example basic_mode` (menu) e
 `cargo run -p hmd-core --example basic_mode -- 1` (diagnóstico de Internet). Para ver o relatório:

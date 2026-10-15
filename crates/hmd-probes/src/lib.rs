@@ -4,6 +4,7 @@
 //! Thresholds live in [`rules`] as pure functions.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod av;
 pub mod rules;
 
 mod dns;
@@ -104,6 +105,19 @@ pub const PROBES: &[(&str, &[&str])] = &[
     ("perf.cpu.snapshot", &[rules::CPU_HIGH]),
     ("perf.top_processes", &[]),
     ("startup.apps.list", &[rules::MANY_STARTUP]),
+    (
+        "av.audio.devices",
+        &[
+            rules::NO_OUTPUT_DEVICE,
+            rules::NO_INPUT_DEVICE,
+            rules::NO_SOUND_SERVER,
+        ],
+    ),
+    ("av.camera.present", &[rules::NO_CAMERA]),
+    (
+        "av.privacy.mic_camera",
+        &[rules::MIC_BLOCKED, rules::CAMERA_BLOCKED],
+    ),
 ];
 
 /// Untrusted text from the system (app names, process names) is truncated and stripped of
@@ -192,6 +206,9 @@ pub fn run(probe_id: &str) -> Result<ProbeOutput, ProbeError> {
         "perf.cpu.snapshot" => system::cpu(),
         "perf.top_processes" => system::top_processes(),
         "startup.apps.list" => startup::list(),
+        "av.audio.devices" => av::audio_devices(),
+        "av.camera.present" => av::camera(),
+        "av.privacy.mic_camera" => av::privacy(),
         _ => Err(ProbeError::UnknownProbe),
     }
 }

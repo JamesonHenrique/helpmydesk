@@ -1,10 +1,93 @@
 id = "PB-AV-001"
-version = "1.0.0"
+version = "1.1.0"
 family = "audio_video"
-probes = []
+probes = ["av.privacy.mic_camera", "av.audio.devices", "av.camera.present"]
 
 [copy.pt-BR]
 title = "Som, microfone ou câmera"
+
+[[diagnoses]]
+id = "av.mic_blocked"
+when_all = ["av.mic.blocked_by_privacy"]
+confidence = "almost_certain"
+[diagnoses.copy.pt-BR]
+title = "O Windows está bloqueando o microfone"
+explanation = "A chave de privacidade do Windows impede que os aplicativos usem o microfone. Por isso ninguém consegue ouvir você."
+steps = [
+  "No Windows 11, abra Configurações > Privacidade e segurança > Microfone.",
+  "No Windows 10, abra Configurações > Privacidade > Microfone.",
+  "Ligue o acesso ao microfone e a opção que deixa os aplicativos usarem o microfone.",
+  "Feche e abra de novo o programa da chamada.",
+]
+
+[[diagnoses]]
+id = "av.camera_blocked"
+when_all = ["av.camera.blocked_by_privacy"]
+confidence = "almost_certain"
+[diagnoses.copy.pt-BR]
+title = "O Windows está bloqueando a câmera"
+explanation = "A chave de privacidade do Windows impede que os aplicativos usem a câmera."
+steps = [
+  "No Windows 11, abra Configurações > Privacidade e segurança > Câmera.",
+  "No Windows 10, abra Configurações > Privacidade > Câmera.",
+  "Ligue o acesso à câmera e a opção que deixa os aplicativos usarem a câmera.",
+  "Feche e abra de novo o programa da chamada.",
+]
+
+[[diagnoses]]
+id = "av.no_sound_server"
+when_all = ["av.no_sound_server"]
+confidence = "probable"
+report = "REP-01"
+[diagnoses.copy.pt-BR]
+title = "O serviço de som não está rodando"
+explanation = "O programa do sistema que cuida do som (PipeWire ou PulseAudio) não está rodando na sua sessão. Sem ele, nada toca e o microfone não funciona."
+steps = [
+  "Salve o que estiver fazendo, saia da sessão e entre de novo.",
+  "Se continuar sem som, reinicie o computador.",
+]
+
+[[diagnoses]]
+id = "av.no_output"
+when_all = ["av.no_output_device"]
+confidence = "probable"
+report = "REP-01"
+[diagnoses.copy.pt-BR]
+title = "Não encontrei nenhuma saída de som ativa"
+explanation = "O sistema não tem nenhum alto-falante ou fone ativo no momento. Pode ser um aparelho desligado, desconectado ou desativado."
+steps = [
+  "Confira se a caixa de som ou o fone está ligado e bem conectado.",
+  "Se for USB ou Bluetooth, desconecte e conecte de novo.",
+  "Reinicie o computador.",
+]
+
+[[diagnoses]]
+id = "av.no_input"
+when_all = ["av.no_input_device"]
+confidence = "probable"
+report = "REP-01"
+[diagnoses.copy.pt-BR]
+title = "Não encontrei nenhum microfone ativo"
+explanation = "O sistema não tem nenhum microfone ativo no momento. Pode ser um fone sem microfone, um aparelho desconectado ou desativado."
+steps = [
+  "Confira se o fone ou o microfone está bem conectado.",
+  "Se for USB ou Bluetooth, desconecte e conecte de novo.",
+  "Reinicie o computador.",
+]
+
+[[diagnoses]]
+id = "av.no_camera"
+when_all = ["av.no_camera"]
+confidence = "unsure"
+report = "REP-01"
+[diagnoses.copy.pt-BR]
+title = "Se o problema é a câmera: não encontrei nenhuma"
+explanation = "O som e o microfone parecem certos, mas o sistema não enxerga nenhuma câmera. Se o seu problema é com o som, este aviso pode ser ignorado."
+steps = [
+  "Se a câmera é USB, desconecte e conecte em outra porta.",
+  "Em notebooks, veja se há uma tampinha ou uma tecla que desliga a câmera.",
+  "Reinicie o computador.",
+]
 
 [fallback]
 id = "av.guided"
@@ -12,10 +95,10 @@ confidence = "unsure"
 report = "REP-01"
 [fallback.copy.pt-BR]
 title = "Vamos verificar juntos"
-explanation = "Ainda não consigo examinar som, microfone e câmera automaticamente. Siga estes passos; se não resolver, eu preparo um relatório para você levar a quem for ajudar."
+explanation = "Nas verificações que eu faço, os aparelhos de som e as permissões parecem certos. Siga estes passos; se não resolver, eu preparo um relatório para você levar a quem for ajudar."
 steps = [
   "Veja se o som não está no mudo (ícone de alto-falante perto do relógio).",
   "Confira se o fone, a caixa de som ou o microfone certo está escolhido nas configurações de som.",
   "Desconecte e conecte de novo o fone ou a câmera.",
-  "No Windows, em Configurações > Privacidade, confira se os aplicativos podem usar o microfone e a câmera.",
+  "No programa da chamada, confira se o microfone e a câmera certos estão escolhidos.",
 ]

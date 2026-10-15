@@ -1,0 +1,16 @@
+id = "av.privacy.mic_camera"
+version = "1.0.0"
+kind = "probe"
+family = "audio_video"
+produces = ["av.mic.blocked_by_privacy", "av.camera.blocked_by_privacy"]
+
+# Windows only: CapabilityAccessManager\ConsentStore microphone/webcam `Value` (Allow/Deny) in
+# HKLM and HKCU (to be confirmed on Windows 10/11 in spike S-01).
+[variants.windows]
+risk_level = "N1-A"
+max_per_session = 5
+
+[copy.pt-BR]
+title = "Permissões de microfone e câmera"
+looks_at = "Se a chave de privacidade do Windows bloqueia o microfone ou a câmera para todos os aplicativos."
+never = "Quais aplicativos usaram o microfone ou a câmera."
