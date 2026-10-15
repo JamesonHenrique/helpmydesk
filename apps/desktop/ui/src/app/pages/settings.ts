@@ -116,7 +116,7 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
       <h2 id="sobre">Sobre</h2>
       <dl class="facts card">
         <dt>Versão</dt>
-        <dd>protótipo 0.1.0</dd>
+        <dd>0.1.0 (pré-alfa)</dd>
         <dt>Catálogo</dt>
         <dd>{{ catalogVersion }}</dd>
         <dt>Licença</dt>
