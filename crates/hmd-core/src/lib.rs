@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Orchestration of one diagnosis (spec 006): authorize the playbook's probes through the Policy
 //! Engine, run them, select a diagnosis deterministically and evaluate the proposed fixes.
-//! Nothing is executed on the system here; execution is a later spec.
+//! Nothing is executed on the system here; execution is a later spec. [`report`] renders the
+//! "não consegui" report (spec 007).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use std::collections::BTreeSet;
@@ -14,6 +15,8 @@ use hmd_policy::{
     ProposedStep, StepVerdict, evaluate,
 };
 use hmd_probes::{ProbeError, ProbeOutput};
+
+pub mod report;
 
 /// Locale used for texts in the MVP.
 pub const LOCALE: &str = "pt-BR";
@@ -32,6 +35,15 @@ pub fn lower(c: Confidence) -> Confidence {
     match c {
         Confidence::AlmostCertain => Confidence::Probable,
         Confidence::Probable | Confidence::Unsure => Confidence::Unsure,
+    }
+}
+
+/// How sure the app is, in words for the person.
+pub fn confidence_phrase(c: Confidence) -> &'static str {
+    match c {
+        Confidence::AlmostCertain => "Tenho quase certeza",
+        Confidence::Probable => "Acho provável",
+        Confidence::Unsure => "Não tenho certeza",
     }
 }
 

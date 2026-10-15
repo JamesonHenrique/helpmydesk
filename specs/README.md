@@ -11,6 +11,7 @@ Diretórios `NNN-nome` criados pelo Spec Kit. A numeração do Spec Kit é o ID 
 | [004-read-only-probes](004-read-only-probes/spec.md) | SPEC-001 (sondas, 1º lote) | Implementada (4 sondas) |
 | [005-probes-batch-2](005-probes-batch-2/spec.md) | SPEC-001 (sondas, 2º lote) | Implementada (6 sondas) |
 | [006-playbooks-basic-mode](006-playbooks-basic-mode/spec.md) | SPEC-002 | Implementada (5 playbooks + modo básico em texto) |
+| [007-local-history-report](007-local-history-report/spec.md) | SPEC-003 | Implementada (histórico SQLite + relatório `report@1`) |
 
-Próximas, na ordem do plano: chamado/histórico local e relatório (SPEC-003), executor/verificação/diário (SPEC-006), aprovação (SPEC-005),
+Próximas, na ordem do plano: executor/verificação/diário (SPEC-006), aprovação (SPEC-005),
 redação/privacidade (SPEC-011), governança de contribuição ao catálogo (SPEC-016).

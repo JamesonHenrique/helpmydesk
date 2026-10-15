@@ -20,6 +20,11 @@ pub enum TicketState {
 }
 
 impl TicketState {
+    /// Parses a stored [`TicketState::code`]; unknown codes return `None` (never a panic).
+    pub fn from_code(code: &str) -> Option<TicketState> {
+        TicketState::ALL.into_iter().find(|v| v.code() == code)
+    }
+
     pub const ALL: [TicketState; 10] = [
         TicketState::Open,
         TicketState::InProgress,

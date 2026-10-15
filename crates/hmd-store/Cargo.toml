@@ -1,0 +1,25 @@
+[package]
+name = "hmd-store"
+description = "HelpMyDesk local history: tickets, sessions, consents and reports in SQLite (spec 007)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Leaf crate: nothing else in the workspace depends on it (bundled SQLite needs a C compiler, see
+# ADR-023), so local cross-checks for Windows can exclude it.
+[dependencies]
+hmd-domain = { path = "../hmd-domain" }
+hmd-catalog = { path = "../hmd-catalog" }
+hmd-core = { path = "../hmd-core" }
+hmd-policy = { path = "../hmd-policy" }
+hmd-probes = { path = "../hmd-probes" }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+
+[dev-dependencies]
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+
+[lints]
+workspace = true

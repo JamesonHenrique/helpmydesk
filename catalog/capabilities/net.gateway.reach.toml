@@ -11,3 +11,6 @@ max_per_session = 5
 [variants.linux]
 risk_level = "N1-B"
 max_per_session = 5
+
+[copy.pt-BR]
+title = "Conexão com o roteador"

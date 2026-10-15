@@ -12,3 +12,6 @@ max_per_session = 5
 [variants.linux]
 risk_level = "N1-B"
 max_per_session = 5
+
+[copy.pt-BR]
+title = "Tradução de nomes de sites (DNS)"

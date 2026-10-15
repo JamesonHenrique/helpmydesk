@@ -24,6 +24,11 @@ pub enum ReportTrigger {
 }
 
 impl ReportTrigger {
+    /// Parses a stored [`ReportTrigger::code`]; unknown codes return `None` (never a panic).
+    pub fn from_code(code: &str) -> Option<ReportTrigger> {
+        ReportTrigger::ALL.into_iter().find(|v| v.code() == code)
+    }
+
     pub const ALL: [ReportTrigger; 8] = [
         ReportTrigger::NoApplicableFix,
         ReportTrigger::LowConfidence,

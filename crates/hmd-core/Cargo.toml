@@ -14,5 +14,9 @@ hmd-policy = { path = "../hmd-policy" }
 hmd-catalog = { path = "../hmd-catalog" }
 hmd-probes = { path = "../hmd-probes" }
 
+[dev-dependencies]
+# Only to read the host name in the privacy test (SC-002).
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+
 [lints]
 workspace = true
