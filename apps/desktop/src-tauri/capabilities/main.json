@@ -18,6 +18,7 @@
     "allow-save-report",
     "allow-history",
     "allow-settings",
+    "allow-system",
     "allow-set-autonomy",
     "allow-set-consent",
     "allow-export-all",

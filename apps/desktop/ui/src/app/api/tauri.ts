@@ -14,6 +14,7 @@ import {
   SettingsDto,
   StartDto,
   StartupDto,
+  SystemDto,
   TicketDto,
 } from './types';
 
@@ -108,6 +109,9 @@ export class TauriApi implements CoreApi {
   }
   settings(): Promise<SettingsDto> {
     return invoke('settings');
+  }
+  system(): Promise<SystemDto> {
+    return invoke('system');
   }
   setAutonomy(mode: SettingsDto['autonomy']): Promise<void> {
     return invoke('set_autonomy', { mode });

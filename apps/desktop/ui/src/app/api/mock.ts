@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Browser prototype: answers like the core would, from the catalog texts and example data.
 // Nothing is checked or changed on the computer.
-import { SAMPLE_REPORT } from '../data/catalog.generated';
+import { CATALOG_VERSION, SAMPLE_REPORT } from '../data/catalog.generated';
 import { FAMILIES, confidencePhrase, family, fix, probe } from '../data/catalog';
 import { PrototypeState } from '../state/prototype';
 import {
@@ -14,6 +14,7 @@ import {
   SettingsDto,
   StartDto,
   StartupDto,
+  SystemDto,
   TicketDto,
 } from './types';
 
@@ -190,6 +191,17 @@ export class MockApi implements CoreApi {
 
   async settings(): Promise<SettingsDto> {
     return { autonomy: this.state.autonomy(), consents: [...this.state.consents()] };
+  }
+
+  async system(): Promise<SystemDto> {
+    const linux = this.state.platform() === 'linux';
+    return {
+      osName: linux ? 'Ubuntu (exemplo)' : 'Windows (exemplo)',
+      osVersion: linux ? '24.04' : '11',
+      kernelVersion: null,
+      arch: 'x86_64',
+      catalogVersion: CATALOG_VERSION,
+    };
   }
 
   async setAutonomy(mode: SettingsDto['autonomy']): Promise<void> {

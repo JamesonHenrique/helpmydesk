@@ -144,6 +144,18 @@ pub struct StartupDto {
     pub housekept: usize,
 }
 
+/// "Meu computador": OS facts only (never host or user names), from the policy-authorized
+/// `sys.info.basic` probe.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemDto {
+    pub os_name: Option<String>,
+    pub os_version: Option<String>,
+    pub kernel_version: Option<String>,
+    pub arch: Option<String>,
+    pub catalog_version: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsDto {
@@ -480,6 +492,25 @@ impl Backend {
 
     pub fn history(&mut self) -> IpcResult<Vec<TicketDto>> {
         Ok(self.app()?.history()?.iter().map(ticket_dto).collect())
+    }
+
+    pub fn system(&mut self) -> IpcResult<SystemDto> {
+        let catalog = hmd_catalog::embedded()
+            .map_err(|e| IpcError::new("INVALID_CATALOG", format!("{} error(s)", e.len())))?;
+        let runner = &self.runner;
+        let summary = hmd_core::report::system_summary_with(
+            catalog,
+            &hmd_core::DiagnoseOptions::default(),
+            |id| runner(id),
+        )
+        .unwrap_or_default();
+        Ok(SystemDto {
+            os_name: summary.os_name,
+            os_version: summary.os_version,
+            kernel_version: summary.kernel_version,
+            arch: summary.arch,
+            catalog_version: catalog.version.clone(),
+        })
     }
 
     pub fn settings(&mut self) -> IpcResult<SettingsDto> {
