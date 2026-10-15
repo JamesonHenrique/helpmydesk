@@ -172,7 +172,6 @@ export class MockApi implements CoreApi {
   }
 
   async editReport(): Promise<void> {}
-  async reportExported(): Promise<void> {}
 
   async saveReport(_reportId: number, text: string): Promise<string> {
     const name = 'relatorio-helpmydesk.md';

@@ -119,7 +119,6 @@ export interface CoreApi {
   confirm(ticketId: string, fixed: boolean): Promise<TicketDto>;
   makeReport(ticketId: string, symptom: string | null): Promise<ReportDto>;
   editReport(reportId: number, text: string): Promise<void>;
-  reportExported(reportId: number): Promise<void>;
   /** Desktop: saves into the Downloads folder and returns the path. Prototype: browser download. */
   saveReport(reportId: number, text: string): Promise<string>;
   history(): Promise<TicketDto[]>;
