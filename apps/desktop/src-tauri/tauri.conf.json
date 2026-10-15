@@ -21,11 +21,28 @@
     "security": {
       "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'none'",
       "freezePrototype": true,
-      "dangerousDisableAssetCspModification": ["style-src"]
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ]
     }
   },
   "bundle": {
-    "active": false,
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"]
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "targets": [
+      "deb",
+      "nsis"
+    ],
+    "category": "Utility",
+    "shortDescription": "Ajuda com problemas do computador, com segurança",
+    "longDescription": "HelpMyDesk verifica problemas comuns do computador (internet, lentidão, espaço, som, microfone e câmera), explica em palavras simples e só muda algo com a sua permissão.",
+    "license": "GPL-3.0-or-later",
+    "publisher": "HelpMyDesk",
+    "homepage": "https://github.com/JamesonHenrique/helpmydesk"
   }
 }
