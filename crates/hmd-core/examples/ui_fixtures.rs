@@ -65,7 +65,11 @@ fn main() {
          // Source: catalog/ (version {}). SPDX-License-Identifier: GPL-3.0-or-later\n",
         catalog.version
     );
-    let _ = writeln!(s, "export const CATALOG_VERSION = {};\n", lit(&catalog.version));
+    let _ = writeln!(
+        s,
+        "export const CATALOG_VERSION = {};\n",
+        lit(&catalog.version)
+    );
 
     let _ = writeln!(s, "export const CONFIDENCE_PHRASES = {{");
     for c in [
@@ -91,11 +95,19 @@ fn main() {
         let _ = writeln!(s, "  {{");
         let _ = writeln!(s, "    code: {},", lit(family.code()));
         let _ = writeln!(s, "    title: {},", lit(title));
-        let _ = writeln!(s, "    playbook: {},", lit(&format!("{}@{}", pb.id, pb.version)));
+        let _ = writeln!(
+            s,
+            "    playbook: {},",
+            lit(&format!("{}@{}", pb.id, pb.version))
+        );
         let _ = writeln!(
             s,
             "    probes: [{}],",
-            pb.probes.iter().map(|p| lit(p)).collect::<Vec<_>>().join(", ")
+            pb.probes
+                .iter()
+                .map(|p| lit(p))
+                .collect::<Vec<_>>()
+                .join(", ")
         );
         let _ = writeln!(s, "    diagnoses: [");
         for d in pb.diagnoses.iter().chain(std::iter::once(&pb.fallback)) {
@@ -104,18 +116,30 @@ fn main() {
             };
             let _ = writeln!(s, "      {{");
             let _ = writeln!(s, "        id: {},", lit(&d.id));
-            let _ = writeln!(s, "        confidence: {},", lit(confidence_code(d.confidence)));
+            let _ = writeln!(
+                s,
+                "        confidence: {},",
+                lit(confidence_code(d.confidence))
+            );
             let _ = writeln!(s, "        title: {},", lit(&copy.title));
             let _ = writeln!(s, "        explanation: {},", lit(&copy.explanation));
             let _ = writeln!(
                 s,
                 "        steps: [{}],",
-                copy.steps.iter().map(|x| lit(x)).collect::<Vec<_>>().join(", ")
+                copy.steps
+                    .iter()
+                    .map(|x| lit(x))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             );
             let _ = writeln!(
                 s,
                 "        fixes: [{}],",
-                d.fixes.iter().map(|x| lit(x)).collect::<Vec<_>>().join(", ")
+                d.fixes
+                    .iter()
+                    .map(|x| lit(x))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             );
             let _ = writeln!(s, "        report: {},", opt(d.report.map(|r| r.code())));
             let _ = writeln!(s, "      }},");
