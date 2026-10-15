@@ -51,4 +51,5 @@
 
 - Nobody has launched the desktop app yet: it compiles in CI, but a manual run needs
   `libwebkit2gtk-4.1-dev` on the dev machine (or a Windows machine).
-- Saving the report uses a browser download; in WebKitGTK this may need the dialog plugin later.
+- Saving the report in the desktop app writes it into the Downloads folder (then Documents, then
+  home) without overwriting, and tells the person the path (added 2026-10-15); no file dialog yet.

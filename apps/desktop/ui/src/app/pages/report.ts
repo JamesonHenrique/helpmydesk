@@ -139,18 +139,21 @@ export class ReportPage implements OnInit {
   }
 
   protected async save(): Promise<void> {
-    await this.keepEdits();
-    const blob = new Blob([this.text()], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'relatorio-helpmydesk.md';
-    a.click();
-    URL.revokeObjectURL(url);
-    const id = this.reportId();
-    if (id !== null) {
-      await this.api.reportExported(id);
+    try {
+      const id = this.reportId();
+      if (id === null) {
+        // Prototype sample without a stored report.
+        const name = await this.api.saveReport(0, this.text());
+        this.status.set(`Arquivo salvo como ${name}.`);
+        return;
+      }
+      const where = await this.api.saveReport(id, this.text());
+      this.edited = false;
+      this.status.set(`Salvei o relatório em ${where}.`);
+    } catch (e) {
+      this.status.set(
+        `Não consegui salvar o arquivo (${(e as IpcError).code}). Use "Copiar texto".`,
+      );
     }
-    this.status.set('Arquivo salvo como relatorio-helpmydesk.md.');
   }
 }

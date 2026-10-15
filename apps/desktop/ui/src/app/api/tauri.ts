@@ -100,6 +100,9 @@ export class TauriApi implements CoreApi {
   reportExported(reportId: number): Promise<void> {
     return invoke('report_exported', { reportId });
   }
+  saveReport(reportId: number, text: string): Promise<string> {
+    return invoke('save_report', { reportId, text });
+  }
   history(): Promise<TicketDto[]> {
     return invoke('history');
   }

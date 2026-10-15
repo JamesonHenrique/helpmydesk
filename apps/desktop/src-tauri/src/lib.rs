@@ -157,6 +157,27 @@ async fn report_exported(state: State<'_, Shared>, report_id: i64) -> IpcResult<
     with(&state, |b| b.report_exported(report_id))
 }
 
+/// Saves the report into the person's Downloads folder (or Documents, or home) and returns the
+/// path, so the screen can say where it is.
+#[tauri::command]
+async fn save_report<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, Shared>,
+    report_id: i64,
+    text: String,
+) -> IpcResult<String> {
+    let paths = app.path();
+    let dir = paths
+        .download_dir()
+        .or_else(|_| paths.document_dir())
+        .or_else(|_| paths.home_dir())
+        .map_err(|e| IpcError {
+            code: "NO_FOLDER".into(),
+            message: e.to_string(),
+        })?;
+    with(&state, |b| b.save_report(report_id, &text, &dir))
+}
+
 #[tauri::command]
 async fn history(state: State<'_, Shared>) -> IpcResult<Vec<TicketDto>> {
     with(&state, Backend::history)
@@ -202,6 +223,7 @@ fn commands<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         make_report,
         edit_report,
         report_exported,
+        save_report,
         history,
         settings,
         set_autonomy,
