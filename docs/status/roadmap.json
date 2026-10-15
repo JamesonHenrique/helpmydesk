@@ -323,7 +323,7 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "App Tauri ligado ao núcleo e compilando no CI (Linux e Windows); falta abrir e testar na mão (precisa do WebKitGTK local)"
+   "note": "App Tauri ligado ao núcleo; no CI ele compila e abre sem cair (Linux e Windows); falta alguém usar na mão (precisa do WebKitGTK local)"
   },
   {
    "id": "F2-UNINST",
