@@ -83,7 +83,7 @@ pub enum FixOutcome {
 
 /// A native, fixed implementation of one catalog fix. It receives only the catalog step (ID,
 /// version and catalog-validated params), never free text.
-pub trait FixImpl {
+pub trait FixImpl: Send + Sync {
     fn run(&self, step: &ProposedStep) -> FixOutcome;
 
     /// Called only when the catalog declares `rollback = "implemented"`.

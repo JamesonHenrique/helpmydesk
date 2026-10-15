@@ -1,0 +1,28 @@
+[package]
+name = "hmd-ipc"
+description = "HelpMyDesk UI bridge: serializable views and errors over hmd-app, without Tauri (spec 013)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Leaf crate (through hmd-app it bundles SQLite; see ADR-023).
+[dependencies]
+hmd-app = { path = "../hmd-app" }
+hmd-catalog = { path = "../hmd-catalog" }
+hmd-core = { path = "../hmd-core" }
+hmd-domain = { path = "../hmd-domain" }
+hmd-policy = { path = "../hmd-policy" }
+hmd-probes = { path = "../hmd-probes" }
+hmd-store = { path = "../hmd-store" }
+serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+hmd-executor = { path = "../hmd-executor" }
+# Only to check the JSON shape the UI receives (Tauri serializes with serde_json).
+serde_json = "=1.0.151"
+
+[lints]
+workspace = true
