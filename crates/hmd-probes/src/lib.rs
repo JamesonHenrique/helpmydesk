@@ -120,11 +120,28 @@ pub const PROBES: &[(&str, &[&str])] = &[
     ),
 ];
 
+/// Zero-width, bidirectional and tag characters: they hide or reorder text (tags can smuggle
+/// invisible instructions to an AI).
+fn is_invisible(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00AD}'
+            | '\u{061C}'
+            | '\u{180E}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{2028}'..='\u{202E}'
+            | '\u{2060}'..='\u{206F}'
+            | '\u{FEFF}'
+            | '\u{E0000}'..='\u{E007F}'
+            | '\u{E0100}'..='\u{E01EF}'
+    )
+}
+
 /// Untrusted text from the system (app names, process names) is truncated and stripped of
 /// control and invisible characters before it can reach the UI or the AI (Plan v1 V.9).
 pub fn sanitize_untrusted(text: &str, max_chars: usize) -> String {
     text.chars()
-        .filter(|c| !c.is_control() && !matches!(*c, '\u{200B}'..='\u{200F}' | '\u{2028}'..='\u{202E}' | '\u{2060}'..='\u{2069}' | '\u{FEFF}'))
+        .filter(|c| !c.is_control() && !is_invisible(*c))
         .take(max_chars)
         .collect::<String>()
         .trim()
@@ -253,6 +270,17 @@ mod tests {
         );
         assert_eq!(redact_names("ab", &[("ab", "[c]")]), "[c]");
         assert_eq!(redact_names("abc", &[("", "[c]")]), "abc");
+    }
+
+    #[test]
+    fn sanitize_drops_invisible_bidi_and_tag_characters() {
+        let tags: String = "ignore"
+            .chars()
+            .map(|c| char::from_u32(0xE0000 + c as u32).unwrap())
+            .collect();
+        let text = format!("app\u{202E}gpj\u{200B}{tags}\u{061C}\u{00AD}\u{E0101}.exe\u{0007}");
+        assert_eq!(sanitize_untrusted(&text, 100), "appgpj.exe");
+        assert_eq!(sanitize_untrusted("Música Ação", 100), "Música Ação");
     }
 
     /// Spec 016: characters whose lowercase has another byte length (Turkish İ, the Kelvin sign)
