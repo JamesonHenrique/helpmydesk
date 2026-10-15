@@ -355,10 +355,16 @@ mod tests {
                 json!({"ticketId": "1", "planId": 1, "stepIds": ["s1"]}),
             )
             .unwrap_err();
-            let text = err.to_string();
+            // An ACL refusal is a plain string from Tauri, never one of our `{code, message}`
+            // errors (a wrong argument would also be an error: check the reason too).
             assert!(
-                !text.contains("NO_PENDING_PLAN") && !text.contains("NO_SUCH_TICKET"),
-                "{cmd} reached the command from the main window: {text}"
+                err.get("code").is_none(),
+                "{cmd} reached the command: {err}"
+            );
+            let text = err.as_str().unwrap_or_default();
+            assert!(
+                text.contains("not allowed"),
+                "{cmd}: unexpected refusal {err}"
             );
         }
     }
@@ -371,6 +377,18 @@ mod tests {
         let approval = window(&app, "approval");
         let err = call(&approval, "plan", json!({"ticketId": "1", "planId": 1})).unwrap_err();
         assert_eq!(err["code"], "NO_PENDING_PLAN", "{err}");
+        for cmd in ["approve", "decline"] {
+            let err = call(
+                &approval,
+                cmd,
+                json!({"ticketId": "1", "planId": 1, "stepIds": ["s1"]}),
+            )
+            .unwrap_err();
+            assert_eq!(
+                err["code"], "NO_SUCH_TICKET",
+                "{cmd} must reach the core: {err}"
+            );
+        }
         let err = call(&approval, "start_ticket", json!({"family": "storage"})).unwrap_err();
         assert!(
             err.get("code").is_none(),

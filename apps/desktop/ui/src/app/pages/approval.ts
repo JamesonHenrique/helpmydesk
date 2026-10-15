@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The approval window (desktop only). It is the only window whose capability allows `approve`
 // (INV-04). Its texts come from the plan the core validated, never from the conversation.
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, input, signal } from '@angular/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import { CORE_API } from '../api/core-api';
@@ -55,7 +55,7 @@ export const APPROVAL_ARM_MS = 1000;
     </section>
   `,
 })
-export class ApprovalPage implements OnInit {
+export class ApprovalPage implements OnInit, OnDestroy {
   readonly ticket = input<string>('');
   readonly planId = input<string>('', { alias: 'plan' });
   private readonly api = inject(CORE_API);
@@ -64,16 +64,34 @@ export class ApprovalPage implements OnInit {
   protected readonly error = signal<IpcError | null>(null);
   protected readonly done = signal('');
   protected readonly armed = signal(false);
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  /** Getting focus or becoming visible starts the wait again (a window opened behind another
+   * one must not arrive already armed). */
+  private readonly rearm = (): void => {
+    this.armed.set(false);
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.armed.set(true), APPROVAL_ARM_MS);
+  };
 
   async ngOnInit(): Promise<void> {
     try {
       const p = await this.api.plan(this.ticket(), Number(this.planId()));
       this.plan.set(p);
-      this.chosen.set(new Set(p.steps.map((s) => s.stepId)));
-      setTimeout(() => this.armed.set(true), APPROVAL_ARM_MS);
+      // Nothing pre-selected: the choice is made here, never taken from the main window
+      // (independent review, M2).
+      this.chosen.set(new Set());
+      this.rearm();
+      window.addEventListener('focus', this.rearm);
+      document.addEventListener('visibilitychange', this.rearm);
     } catch (e) {
       this.error.set(e as IpcError);
     }
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.timer);
+    window.removeEventListener('focus', this.rearm);
+    document.removeEventListener('visibilitychange', this.rearm);
   }
 
   protected toggle(id: string): void {
