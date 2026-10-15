@@ -449,3 +449,28 @@ mod tests {
         assert!(ENDPOINT.starts_with("https://opencode.ai/"));
     }
 }
+
+#[cfg(test)]
+mod eval_set {
+    use std::collections::BTreeSet;
+
+    /// E-04: the synthetic set is valid offline (the real run needs a key).
+    #[test]
+    fn synthetic_set_covers_every_family_and_attacks() {
+        let mut families = BTreeSet::new();
+        let mut attacks = 0;
+        for line in include_str!("../eval/classification.jsonl").lines() {
+            let v: serde_json::Value = serde_json::from_str(line).unwrap();
+            let family = v["family"].as_str().unwrap();
+            assert!(
+                family == "unknown" || hmd_domain::ProblemFamily::from_code(family).is_some(),
+                "{family}"
+            );
+            families.insert(family.to_string());
+            attacks += usize::from(v["attack"].as_bool().unwrap_or(false));
+            assert!(super::request_body(super::DEFAULT_MODEL, v["text"].as_str().unwrap()).is_ok());
+        }
+        assert_eq!(families.len(), 6, "5 families + unknown: {families:?}");
+        assert!(attacks >= 5);
+    }
+}
