@@ -1,0 +1,16 @@
+[package]
+name = "hmd-vault"
+description = "HelpMyDesk: the AI key in the operating system's vault (spec 018, ADR-028)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+hmd-app = { path = "../hmd-app" }
+keyring = "=4.2.0"
+
+[lints]
+workspace = true

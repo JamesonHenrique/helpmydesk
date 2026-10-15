@@ -1742,7 +1742,7 @@ version = "0.1.0"
 dependencies = [
  "hmd-ipc",
  "hmd-probes",
- "keyring",
+ "hmd-vault",
  "serde",
  "serde_json",
  "tauri",
@@ -1891,6 +1891,14 @@ dependencies = [
  "hmd-policy",
  "hmd-probes",
  "rusqlite",
+]
+
+[[package]]
+name = "hmd-vault"
+version = "0.1.0"
+dependencies = [
+ "hmd-app",
+ "keyring",
 ]
 
 [[package]]
