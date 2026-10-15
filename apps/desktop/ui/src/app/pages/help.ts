@@ -12,9 +12,9 @@ import { RouterLink } from '@angular/router';
       <div class="card">
         <h2>O que o HelpMyDesk faz</h2>
         <p>
-          Verifica problemas comuns de internet, lentidão, espaço, som e programas; explica o que
-          encontrou; e só faz correções conhecidas, com a sua aprovação, conferindo depois se
-          resolveu.
+          Verifica problemas comuns de internet, lentidão, espaço, som, microfone, câmera e
+          programas; explica o que encontrou; e só faz correções conhecidas, com a sua aprovação,
+          conferindo depois se resolveu.
         </p>
       </div>
       <div class="card">
@@ -30,6 +30,15 @@ import { RouterLink } from '@angular/router';
             perguntar.
           </li>
         </ul>
+      </div>
+      <div class="card">
+        <h2>Ajuda inteligente (opcional)</h2>
+        <p>
+          Com ela ligada, você escreve o problema com as suas palavras e a IA só escolhe o tipo de
+          problema; as verificações e as correções continuam as mesmas. Usa a sua conta gratuita do
+          OpenCode, e o texto vai sem seu nome nem o do computador. Ligue ou desligue em
+          <a routerLink="/configuracoes">Configurações</a>.
+        </p>
       </div>
       <div class="card">
         <h2>Quando não resolver</h2>
