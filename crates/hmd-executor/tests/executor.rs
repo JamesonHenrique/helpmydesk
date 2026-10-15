@@ -3,9 +3,8 @@
 //! the domain transition rules.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use hmd_catalog::embedded;
 use hmd_core::ProbeOutcome;
@@ -57,17 +56,17 @@ impl Journal for MemJournal {
     }
 }
 
-type Shared = Rc<RefCell<MemJournal>>;
+type Shared = Arc<Mutex<MemJournal>>;
 
 /// Journal handle shared with the fake implementation (to observe write-ahead).
 struct SharedJournal(Shared);
 
 impl Journal for SharedJournal {
     fn key_used(&self, key: &str) -> Result<bool, JournalError> {
-        self.0.borrow().key_used(key)
+        self.0.lock().unwrap().key_used(key)
     }
     fn begin(&mut self, start: &ExecutionStart<'_>) -> Result<i64, JournalError> {
-        self.0.borrow_mut().begin(start)
+        self.0.lock().unwrap().begin(start)
     }
     fn advance(
         &mut self,
@@ -76,7 +75,7 @@ impl Journal for SharedJournal {
         note: Option<&str>,
         at: Timestamp,
     ) -> Result<(), JournalError> {
-        self.0.borrow_mut().advance(id, to, note, at)
+        self.0.lock().unwrap().advance(id, to, note, at)
     }
 }
 
@@ -85,7 +84,7 @@ struct Fake {
     rollback: FixOutcome,
     /// When set, `run` asserts the journal already says `started` (US2.1).
     watch: Option<Shared>,
-    runs: Rc<RefCell<u32>>,
+    runs: Arc<Mutex<u32>>,
 }
 
 impl Fake {
@@ -94,7 +93,7 @@ impl Fake {
             outcome,
             rollback: FixOutcome::Succeeded,
             watch: None,
-            runs: Rc::new(RefCell::new(0)),
+            runs: Arc::new(Mutex::new(0)),
         }
     }
 }
@@ -102,13 +101,13 @@ impl Fake {
 impl FixImpl for Fake {
     fn run(&self, _step: &ProposedStep) -> FixOutcome {
         if let Some(j) = &self.watch {
-            let j = j.borrow();
+            let j = j.lock().unwrap();
             assert!(
                 j.rows.values().any(|(_, s)| *s == ExecutionState::Started),
                 "started must be written before the implementation runs"
             );
         }
-        *self.runs.borrow_mut() += 1;
+        *self.runs.lock().unwrap() += 1;
         self.outcome
     }
     fn rollback(&self, _step: &ProposedStep) -> FixOutcome {
@@ -231,7 +230,7 @@ fn us1_2_other_plan_is_refused_and_nothing_runs() {
     let err = execute_step(&input(plan, &approval, "s1", NOW), &registry, &mut j).unwrap_err();
     assert_eq!(err, ExecError::PlanHashMismatch);
     assert!(j.rows.is_empty());
-    assert_eq!(*runs.borrow(), 0);
+    assert_eq!(*runs.lock().unwrap(), 0);
 }
 
 #[test]
@@ -303,11 +302,11 @@ fn us1_5_same_approval_runs_a_step_once() {
         .unwrap_err(),
         ExecError::DuplicateExecution
     );
-    assert_eq!(*runs.borrow(), 1);
+    assert_eq!(*runs.lock().unwrap(), 1);
     // A new approval (new nonce) is a new execution.
     let again = f.approve(8);
     execute_step(&input(f.plan(), &again, "s1", NOW + 2), &registry, &mut j).unwrap();
-    assert_eq!(*runs.borrow(), 2);
+    assert_eq!(*runs.lock().unwrap(), 2);
 }
 
 #[test]
@@ -334,7 +333,7 @@ fn production_registry_has_no_system_changing_fix() {
 fn us2_1_started_is_written_before_the_fix_runs() {
     let f = Fixture::new();
     let approval = f.approve(1);
-    let shared: Shared = Rc::new(RefCell::new(MemJournal::default()));
+    let shared: Shared = Arc::new(Mutex::new(MemJournal::default()));
     let mut fake = Fake::new(FixOutcome::Unknown);
     fake.watch = Some(shared.clone());
     let registry = Registry::default().with(FIX, Box::new(fake));
@@ -342,7 +341,7 @@ fn us2_1_started_is_written_before_the_fix_runs() {
     let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
     assert_eq!(run.state, ExecutionState::Unknown);
     assert_eq!(
-        shared.borrow().history,
+        shared.lock().unwrap().history,
         vec![(1, ExecutionState::Started), (1, ExecutionState::Unknown)]
     );
 }

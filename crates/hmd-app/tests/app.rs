@@ -2,9 +2,9 @@
 //! Spec 012 acceptance tests: the use cases end to end with fake probes and fake fixes.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use hmd_app::{App, AppError, ExecutionOutcome};
 use hmd_domain::{DAY, ProblemFamily, ReportTrigger, TicketState, Timestamp};
@@ -36,9 +36,9 @@ impl Drop for TempDir {
 }
 
 /// DNS fails until `fixed` is set; everything else is fine.
-fn dns_probe(fixed: &Cell<bool>) -> impl Fn(&str) -> Result<ProbeOutput, ProbeError> + '_ {
+fn dns_probe(fixed: &AtomicBool) -> impl Fn(&str) -> Result<ProbeOutput, ProbeError> + '_ {
     move |id: &str| {
-        let findings = if id == "net.dns.resolve" && !fixed.get() {
+        let findings = if id == "net.dns.resolve" && !fixed.load(SeqCst) {
             vec![Finding {
                 code: "net.dns.resolution_failing",
                 severity: Severity::Critical,
@@ -64,13 +64,13 @@ fn quiet(_: &str) -> Result<ProbeOutput, ProbeError> {
 
 struct Fake<'a> {
     outcome: FixOutcome,
-    fixes: Option<&'a Cell<bool>>,
+    fixes: Option<&'a AtomicBool>,
 }
 
 impl FixImpl for Fake<'static> {
     fn run(&self, _: &ProposedStep) -> FixOutcome {
         if let Some(f) = self.fixes {
-            f.set(true);
+            f.store(true, SeqCst);
         }
         self.outcome
     }
@@ -83,8 +83,8 @@ fn app() -> App {
         .with_platform(Platform::Linux)
 }
 
-fn leak(b: bool) -> &'static Cell<bool> {
-    Box::leak(Box::new(Cell::new(b)))
+fn leak(b: bool) -> &'static AtomicBool {
+    Box::leak(Box::new(AtomicBool::new(b)))
 }
 
 #[test]
@@ -107,7 +107,7 @@ fn us2_dns_problem_proposes_a_plan_and_waits_for_the_person() {
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
         .ticket;
-    let fixed = Cell::new(false);
+    let fixed = AtomicBool::new(false);
     let view = a.diagnose(&t.id, NOW, dns_probe(&fixed)).unwrap();
     assert_eq!(view.diagnosis.diagnosis_id, "net.dns");
     let plan = view.plan.expect("plan");
@@ -128,7 +128,7 @@ fn us3_nothing_runs_without_approval_and_production_has_no_fix_yet() {
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
         .ticket;
-    let fixed = Cell::new(false);
+    let fixed = AtomicBool::new(false);
     let plan = a
         .diagnose(&t.id, NOW, dns_probe(&fixed))
         .unwrap()
@@ -149,7 +149,7 @@ fn us3_nothing_runs_without_approval_and_production_has_no_fix_yet() {
             step_id: "s1".into()
         }
     );
-    assert!(!fixed.get());
+    assert!(!fixed.load(SeqCst));
     // Guidance + report remain.
     let (_, text) = a
         .make_report(&t.id, Some("sem internet"), None, NOW + 7, quiet)
@@ -213,7 +213,7 @@ fn us3_fix_that_does_not_help_is_rep03() {
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
         .ticket;
-    let still = Cell::new(false);
+    let still = AtomicBool::new(false);
     let plan = a
         .diagnose(&t.id, NOW, dns_probe(&still))
         .unwrap()
@@ -252,7 +252,7 @@ fn us3_unknown_outcome_is_rep04_and_blocks_the_fix_next_time() {
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
         .ticket;
-    let still = Cell::new(false);
+    let still = AtomicBool::new(false);
     let plan = a
         .diagnose(&t.id, NOW, dns_probe(&still))
         .unwrap()
@@ -303,7 +303,7 @@ fn decline_keeps_the_ticket_open_for_guidance() {
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
         .ticket;
-    let still = Cell::new(false);
+    let still = AtomicBool::new(false);
     let plan = a
         .diagnose(&t.id, NOW, dns_probe(&still))
         .unwrap()
@@ -367,7 +367,7 @@ fn observe_only_never_proposes_fixes() {
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
         .ticket;
-    let still = Cell::new(false);
+    let still = AtomicBool::new(false);
     let view = a.diagnose(&t.id, NOW, dns_probe(&still)).unwrap();
     assert!(view.plan.is_none(), "LEVEL_EXCEEDS_MODE → guidance only");
     assert_ne!(view.ticket.state, TicketState::AwaitingUser);
