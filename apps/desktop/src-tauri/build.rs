@@ -15,7 +15,6 @@ const COMMANDS: &[&str] = &[
     "confirm",
     "make_report",
     "edit_report",
-    "report_exported",
     "save_report",
     "history",
     "settings",

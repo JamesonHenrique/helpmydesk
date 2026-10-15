@@ -456,11 +456,6 @@ impl Backend {
         Ok(self.app()?.edit_report(report_id, text, now)?)
     }
 
-    pub fn report_exported(&mut self, report_id: i64) -> IpcResult<()> {
-        let now = (self.clock)();
-        Ok(self.app()?.report_exported(report_id, now)?)
-    }
-
     /// "Salvar arquivo": writes the report the person sees (with their edits) into `dir`
     /// (the shell passes the Downloads folder), never overwriting a file, and marks it exported.
     pub fn save_report(&mut self, report_id: i64, text: &str, dir: &Path) -> IpcResult<String> {
