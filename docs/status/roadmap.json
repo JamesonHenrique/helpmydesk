@@ -403,11 +403,11 @@
    "phase_name": "IA via OpenCode",
    "phase_order": 4,
    "title": "Tela \"o que vai para a IA\" e registro das chamadas",
-   "status": "todo",
+   "status": "done",
    "weight": 1,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": ""
+   "note": "Prévia ao vivo do texto que vai para a IA (já sem nomes) e lista das chamadas (data, modelo, resultado; nunca o texto) em Configurações"
   },
   {
    "id": "SPEC-004",

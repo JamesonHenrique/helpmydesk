@@ -29,6 +29,8 @@ const COMMANDS: &[&str] = &[
     "ai_classify",
     "open_ai_console",
     "ai_connect_from_clipboard",
+    "ai_preview",
+    "ai_log",
 ];
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

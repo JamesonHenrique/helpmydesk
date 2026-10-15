@@ -307,6 +307,8 @@ function aiStub(over: Record<string, unknown> = {}) {
       return { connected, consoleUrl: '' };
     },
     openAiConsole: async () => undefined,
+    aiPreview: async (t: string) => t.replace('james', '[usuário]'),
+    aiLog: async () => [{ at: 1_760_400_000, model: 'm', outcome: 'ok:storage' }],
     aiConnectFromClipboard: async () => {
       throw { code: 'CLIPBOARD_UNAVAILABLE', message: '' };
     },
@@ -377,6 +379,20 @@ describe('HomePage with the AI on (spec 018)', () => {
     await fixture.whenStable();
     await new Promise((r) => setTimeout(r, 0));
     expect(go).toEqual([['/diagnostico', 'storage']]);
+  });
+
+  it('shows exactly what goes to the AI, already redacted', async () => {
+    await setupWith(aiStub({ aiStatus: async () => ({ connected: true, consoleUrl: '' }) }));
+    const { fixture, el } = await render(HomePage);
+    const input = el.querySelector('#free') as HTMLInputElement;
+    input.value = 'o PC do james travou';
+    input.dispatchEvent(new Event('input'));
+    for (let i = 0; i < 3; i++) {
+      await fixture.whenStable();
+      await new Promise((r) => setTimeout(r, 0));
+      fixture.detectChanges();
+    }
+    expect(el.textContent).toContain('«o PC do [usuário] travou»');
   });
 
   it('a low-confidence answer asks instead of guessing', async () => {

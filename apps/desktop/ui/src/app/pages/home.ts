@@ -28,7 +28,7 @@ import { PrototypeState } from '../state/prototype';
           maxlength="1000"
           [disabled]="!connected() || busy()"
           [value]="text()"
-          (input)="text.set($any($event.target).value)"
+          (input)="typed($any($event.target).value)"
           [placeholder]="
             connected()
               ? 'Ex.: a internet caiu desde ontem'
@@ -41,6 +41,11 @@ import { PrototypeState } from '../state/prototype';
           </button>
         }
       </form>
+      @if (connected() && preview()) {
+        <p class="small muted">
+          Vai para a IA, sem seu nome nem o do computador: «{{ preview() }}»
+        </p>
+      }
       @if (busy()) {
         <p aria-live="polite">Entendendo o que você escreveu…</p>
       }
@@ -78,6 +83,8 @@ export class HomePage implements OnInit {
   protected readonly connected = signal(false);
   protected readonly busy = signal(false);
   protected readonly text = signal('');
+  /** F3-TRANSP: exactly what would be sent (computed locally by the core). */
+  protected readonly preview = signal('');
   protected readonly question = signal('');
   protected readonly error = signal('');
 
@@ -86,6 +93,15 @@ export class HomePage implements OnInit {
       this.connected.set((await this.api.aiStatus()).connected);
     } catch {
       this.connected.set(false);
+    }
+  }
+
+  protected async typed(value: string): Promise<void> {
+    this.text.set(value);
+    try {
+      this.preview.set(value.trim() ? await this.api.aiPreview(value) : '');
+    } catch {
+      this.preview.set('');
     }
   }
 

@@ -6,6 +6,7 @@ import { FAMILIES, confidencePhrase, family, fix, probe } from '../data/catalog'
 import { PrototypeState } from '../state/prototype';
 import {
   AiClassificationDto,
+  AiLogDto,
   AiStatusDto,
   ApprovalDto,
   CoreApi,
@@ -239,6 +240,16 @@ export class MockApi implements CoreApi {
   }
 
   async openAiConsole(): Promise<void> {}
+
+  async aiPreview(text: string): Promise<string> {
+    return text.trim();
+  }
+
+  async aiLog(): Promise<AiLogDto[]> {
+    return this.state.aiConnected()
+      ? [{ at: NOW, model: 'deepseek-v4.1-flash-free', outcome: 'ok:connection_test' }]
+      : [];
+  }
 
   async system(): Promise<SystemDto> {
     const linux = this.state.platform() === 'linux';

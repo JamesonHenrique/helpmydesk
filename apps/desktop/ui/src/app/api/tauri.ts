@@ -6,6 +6,7 @@ import { UnlistenFn, emit, listen } from '@tauri-apps/api/event';
 
 import {
   AiClassificationDto,
+  AiLogDto,
   AiStatusDto,
   ApprovalDto,
   CoreApi,
@@ -131,6 +132,12 @@ export class TauriApi implements CoreApi {
   }
   aiClassify(text: string): Promise<AiClassificationDto> {
     return invoke('ai_classify', { text });
+  }
+  aiPreview(text: string): Promise<string> {
+    return invoke('ai_preview', { text });
+  }
+  aiLog(): Promise<AiLogDto[]> {
+    return invoke('ai_log');
   }
   openAiConsole(): Promise<void> {
     return invoke('open_ai_console');

@@ -106,6 +106,12 @@ export interface AiClassificationDto {
   question: string | null;
 }
 
+export interface AiLogDto {
+  at: number;
+  model: string;
+  outcome: string;
+}
+
 export interface SettingsDto {
   autonomy: 'observe_only' | 'ask_always' | 'auto_simple';
   consents: string[];
@@ -143,6 +149,9 @@ export interface CoreApi {
   /** Desktop: reads the key from the clipboard in the core (it never reaches the screen). */
   aiConnectFromClipboard(): Promise<AiStatusDto>;
   aiClassify(text: string): Promise<AiClassificationDto>;
+  /** The text exactly as it would leave the computer (local; nothing is sent). */
+  aiPreview(text: string): Promise<string>;
+  aiLog(): Promise<AiLogDto[]>;
   /** Opens the OpenCode console (fixed URL, chosen by the core). */
   openAiConsole(): Promise<void>;
   setAutonomy(mode: SettingsDto['autonomy']): Promise<void>;

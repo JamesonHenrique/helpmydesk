@@ -5,8 +5,8 @@
 import { Component, OnInit, inject, output, signal } from '@angular/core';
 
 import { CORE_API } from '../api/core-api';
-import { IpcError } from '../api/types';
-import { CONSENTS } from '../data/catalog';
+import { AiLogDto, IpcError } from '../api/types';
+import { CONSENTS, family } from '../data/catalog';
 
 /** Plain words for what can go wrong. */
 const WHY: Record<string, string> = {
@@ -35,6 +35,17 @@ const WHY: Record<string, string> = {
   template: `
     @if (connected()) {
       <p class="ok"><strong>A ajuda inteligente está ligada.</strong></p>
+      <p class="small">
+        Só vai para a IA o que você escreve na tela inicial, sem seu nome nem o do computador. O
+        texto não fica guardado aqui; só a data e o resultado de cada uso:
+      </p>
+      @if (log().length) {
+        <ul class="small log">
+          @for (e of log(); track $index) {
+            <li>{{ when(e.at) }}: {{ what(e.outcome) }}</li>
+          }
+        </ul>
+      }
       <button type="button" class="btn" (click)="disconnect()">Desligar e apagar o código</button>
     } @else {
       <p class="small">{{ consent }}</p>
@@ -80,6 +91,7 @@ export class AiConnectComponent implements OnInit {
   protected readonly busy = signal(false);
   protected readonly manual = signal(false);
   protected readonly error = signal('');
+  protected readonly log = signal<AiLogDto[]>([]);
 
   async ngOnInit(): Promise<void> {
     try {
@@ -87,6 +99,32 @@ export class AiConnectComponent implements OnInit {
     } catch {
       this.connected.set(false);
     }
+    try {
+      this.log.set(await this.api.aiLog());
+    } catch {
+      this.log.set([]);
+    }
+  }
+
+  protected when(at: number): string {
+    return new Date(at * 1000).toLocaleString('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+  }
+
+  /** The recorded outcome in plain words. */
+  protected what(outcome: string): string {
+    if (outcome === 'ok:connection_test') {
+      return 'teste do código';
+    }
+    if (outcome.startsWith('ok:')) {
+      const code = outcome.slice(3);
+      return code === 'unknown'
+        ? 'não deu para saber o tipo de problema'
+        : `entendeu: ${family(code)?.title ?? code}`;
+    }
+    return `não funcionou (${outcome})`;
   }
 
   protected async open(): Promise<void> {

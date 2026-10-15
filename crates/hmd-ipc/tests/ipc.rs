@@ -371,3 +371,27 @@ fn erase_all_also_removes_the_ai_key() {
         "the key is gone from the vault"
     );
 }
+
+/// F3-TRANSP: the preview shows the redacted text; the log has codes only, newest first.
+#[test]
+fn ai_preview_and_log() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    b.set_transport(Box::new(NetAnswer));
+    let user = std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_default();
+    if user.chars().count() >= 3 {
+        assert!(
+            !b.ai_preview(&format!("o PC do {user} travou"))
+                .contains(&user)
+        );
+    }
+    b.ai_connect("k").unwrap();
+    b.ai_classify("o wifi caiu de novo").unwrap();
+    let log = serde_json::to_value(b.ai_log().unwrap()).unwrap();
+    assert_eq!(log[0]["outcome"], "ok:connectivity");
+    assert_eq!(log[1]["outcome"], "ok:connection_test");
+    assert_eq!(log[0]["model"], hmd_ai::DEFAULT_MODEL);
+    assert!(!log.to_string().contains("wifi"), "never the text");
+}
