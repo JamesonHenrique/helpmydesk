@@ -107,7 +107,7 @@ jobs:
         run: |
           sudo apt-get install -y --no-install-recommends xvfb
           set +e
-          timeout 20 xvfb-run -a ./target/debug/helpmydesk 2> app.log
+          timeout 20 xvfb-run -a ./target/debug/helpmydesk > app.log 2>&1
           code=$?
           set -e
           cat app.log
