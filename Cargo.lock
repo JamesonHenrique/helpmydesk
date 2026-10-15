@@ -182,6 +182,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "hmd-app"
+version = "0.1.0"
+dependencies = [
+ "hmd-catalog",
+ "hmd-core",
+ "hmd-domain",
+ "hmd-executor",
+ "hmd-policy",
+ "hmd-probes",
+ "hmd-store",
+]
+
+[[package]]
 name = "hmd-catalog"
 version = "0.1.0"
 dependencies = [

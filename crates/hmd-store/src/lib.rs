@@ -715,6 +715,40 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    // ----- settings -----
+
+    pub fn setting(&self, key: &str) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row("SELECT value FROM setting WHERE key = ?1", [key], |r| {
+                r.get(0)
+            })
+            .optional()?)
+    }
+
+    /// Stores a setting and audits the change (codes only).
+    pub fn set_setting(&mut self, key: &str, value: &str, now: Timestamp) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "INSERT INTO setting (key, value, updated_at) VALUES (?1, ?2, ?3)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+            params![key, value, now],
+        )?;
+        audit::append(
+            &tx,
+            &audit::AuditEntry {
+                actor: Actor::User,
+                action: "setting.changed",
+                subject_ref: format!("setting:{key}"),
+                outcome: value.to_string(),
+                reason_code: None,
+            },
+            now,
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
     // ----- reports -----
 
     pub fn save_report(

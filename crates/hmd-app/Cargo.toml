@@ -1,0 +1,22 @@
+[package]
+name = "hmd-app"
+description = "HelpMyDesk application service: the use cases the desktop UI calls (spec 012)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Leaf crate (depends on hmd-store, which bundles SQLite; see ADR-023).
+[dependencies]
+hmd-domain = { path = "../hmd-domain" }
+hmd-policy = { path = "../hmd-policy" }
+hmd-catalog = { path = "../hmd-catalog" }
+hmd-probes = { path = "../hmd-probes" }
+hmd-core = { path = "../hmd-core" }
+hmd-executor = { path = "../hmd-executor" }
+hmd-store = { path = "../hmd-store" }
+
+[lints]
+workspace = true

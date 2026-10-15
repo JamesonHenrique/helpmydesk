@@ -2,10 +2,10 @@
 //! SQL schema, one entry per `user_version` (spec 007 FR-003). Never edit a released entry:
 //! changes are new migrations.
 
-pub const MIGRATIONS: &[&str] = &[V1, V2, V3];
+pub const MIGRATIONS: &[&str] = &[V1, V2, V3, V4];
 
 /// Schema version this build writes.
-pub const SCHEMA_VERSION: i32 = 3;
+pub const SCHEMA_VERSION: i32 = 4;
 
 #[doc(hidden)]
 pub const V1: &str = r#"
@@ -133,7 +133,8 @@ CREATE INDEX action_execution_by_state ON action_execution(state);
 "#;
 
 /// Spec 009: local audit trail with a hash chain (references only, no personal content).
-const V3: &str = r#"
+#[doc(hidden)]
+pub const V3: &str = r#"
 CREATE TABLE audit_event (
     id          INTEGER PRIMARY KEY,
     occurred_at INTEGER NOT NULL,
@@ -147,4 +148,13 @@ CREATE TABLE audit_event (
 ) STRICT;
 CREATE TRIGGER audit_event_no_update BEFORE UPDATE ON audit_event
 BEGIN SELECT RAISE(ABORT, 'audit_event is append-only'); END;
+"#;
+
+/// Spec 012: the person's settings (e.g. autonomy mode). Values are codes, never free text.
+const V4: &str = r#"
+CREATE TABLE setting (
+    key        TEXT    PRIMARY KEY,
+    value      TEXT    NOT NULL,
+    updated_at INTEGER NOT NULL
+) STRICT;
 "#;

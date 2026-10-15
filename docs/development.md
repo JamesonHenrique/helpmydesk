@@ -37,6 +37,7 @@ Veja o plano v1, VIII.4. Crates atuais:
 | `crates/hmd-catalog` | 003 | Catálogo TOML (`catalog/`): carga estrita, validação, embutido no binário |
 | `crates/hmd-core` | 006, 007 | Playbooks, autorização das sondas, diagnóstico, avaliação das correções (sem executar) e relatório "não consegui" |
 | `crates/hmd-executor` | 008 | Hash do plano, checagem da aprovação, execução com diário write-ahead e verificação (sem correção real até o S-02) |
+| `crates/hmd-app` | 012 | Casos de uso que a interface chama: chamados sem duplicar, diagnóstico, plano, aprovação, execução com prova, relatório, privacidade |
 | `crates/hmd-store` | 007, 008 | Histórico local em SQLite: chamados, eventos, sessões, achados, mensagens, consentimentos, relatórios, retenção, planos, aprovações, diário de execução, auditoria encadeada, exportar e apagar tudo |
 | `crates/hmd-probes` | 004, 005, 010 | Sondas somente leitura: sistema, memória, CPU, processos, disco, DNS, adaptadores, gateway, HTTP/portal cativo, inicialização, som, microfone e câmera |
 
@@ -48,7 +49,8 @@ verificação lê: `cargo run -p hmd-core --example basic_mode -- --o-que-eu-olh
 Protótipo das telas (Angular, dados de exemplo): veja `apps/desktop/ui/README.md`.
 
 Rodar as sondas na sua máquina: `cargo run -p hmd-probes --example probe_all`.
-Guarda da constituição: `tools/check-no-process-spawn.sh`.
+Guarda da constituição: `tools/check-no-process-spawn.sh`. Tudo o que o CI roda, localmente:
+`tools/check-all.sh`.
 
 Checar o código Windows a partir do Linux: `rustup target add x86_64-pc-windows-gnu` e
 `cargo clippy --workspace --all-targets --target x86_64-pc-windows-gnu -- -D warnings`.

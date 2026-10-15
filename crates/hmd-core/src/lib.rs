@@ -112,6 +112,8 @@ pub struct DiagnosisReport {
     pub report: Option<ReportTrigger>,
     /// Policy decision on the proposed fixes, if the diagnosis proposes any (FR-005).
     pub fix_decision: Option<PolicyDecision>,
+    /// The proposal that `fix_decision` evaluated (spec 012: approval binds to both).
+    pub fix_proposal: Option<ActionPlanProposal>,
 }
 
 #[derive(Debug, Clone)]
@@ -119,6 +121,10 @@ pub struct DiagnoseOptions {
     pub platform: Platform,
     pub mode: AutonomyMode,
     pub consents: BTreeSet<String>,
+    /// Session reference written into the fix proposal (it feeds the idempotency key).
+    pub session_ref: String,
+    /// Capabilities with an execution in `unknown` (spec 008): the Policy Engine refuses them.
+    pub unknown_executions: BTreeSet<String>,
 }
 
 impl Default for DiagnoseOptions {
@@ -127,6 +133,8 @@ impl Default for DiagnoseOptions {
             platform: current_platform(),
             mode: AutonomyMode::default(),
             consents: BTreeSet::new(),
+            session_ref: "local".to_string(),
+            unknown_executions: BTreeSet::new(),
         }
     }
 }
@@ -152,8 +160,19 @@ impl fmt::Display for CoreError {
 impl std::error::Error for CoreError {}
 
 fn proposal(catalog: &LoadedCatalog, ids: &[String], prefix: &str) -> ActionPlanProposal {
+    proposal_in(catalog, "local", ids, prefix)
+}
+
+/// The proposal the orchestrator builds from catalog IDs (never from model output): one step per
+/// ID, in order, with the catalog version and no params.
+pub fn proposal_in(
+    catalog: &LoadedCatalog,
+    session_ref: &str,
+    ids: &[String],
+    prefix: &str,
+) -> ActionPlanProposal {
     ActionPlanProposal {
-        session_id: "local".to_string(),
+        session_id: session_ref.to_string(),
         steps: ids
             .iter()
             .enumerate()
@@ -258,20 +277,18 @@ pub fn diagnose_with(
         .ok_or_else(|| CoreError::MissingCopy(selection.rule.id.clone()))?;
 
     // FR-005: proposed fixes evaluated with the diagnosis confidence; nothing executes.
-    let fix_decision = if selection.rule.fixes.is_empty() {
-        None
+    let (fix_proposal, fix_decision) = if selection.rule.fixes.is_empty() {
+        (None, None)
     } else {
         let mut ctx = PolicyContext::new(opts.platform);
         ctx.mode = opts.mode;
         ctx.consents = opts.consents.clone();
         ctx.findings = findings.clone();
         ctx.confidence = selection.confidence;
-        evaluate(
-            &proposal(catalog, &selection.rule.fixes, "s"),
-            &catalog.catalog,
-            &ctx,
-        )
-        .ok()
+        ctx.counters.unknown_executions = opts.unknown_executions.clone();
+        let fix_proposal = proposal_in(catalog, &opts.session_ref, &selection.rule.fixes, "s");
+        let decision = evaluate(&fix_proposal, &catalog.catalog, &ctx).ok();
+        (decision.as_ref().map(|_| fix_proposal), decision)
     };
 
     Ok(DiagnosisReport {
@@ -285,6 +302,7 @@ pub fn diagnose_with(
         copy,
         report: selection.rule.report,
         fix_decision,
+        fix_proposal,
     })
 }
 
