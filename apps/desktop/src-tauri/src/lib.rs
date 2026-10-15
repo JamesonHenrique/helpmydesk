@@ -9,7 +9,22 @@ use hmd_ipc::{
     ApprovalDto, Backend, DiagnosisDto, IpcError, IpcResult, OutcomeDto, PlanDto, ReportDto,
     SettingsDto, StartDto, StartupDto, TicketDto, system_clock,
 };
-use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use serde::Serialize;
+use tauri::{
+    AppHandle, Builder, Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder,
+    WindowEvent,
+};
+
+/// Event the approval window's decision (or its closing) is announced with.
+const APPROVAL_EVENT: &str = "hmd://approval-decided";
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ApprovalDecision {
+    ticket_id: String,
+    plan_id: i64,
+    decision: &'static str,
+}
 
 struct Shared {
     backend: Mutex<Backend>,
@@ -48,7 +63,11 @@ async fn diagnose(state: State<'_, Shared>, ticket_id: String) -> IpcResult<Diag
 
 /// Opens the approval window (its own capability) for a pending plan.
 #[tauri::command]
-async fn open_approval(app: AppHandle, ticket_id: String, plan_id: i64) -> IpcResult<()> {
+async fn open_approval<R: Runtime>(
+    app: AppHandle<R>,
+    ticket_id: String,
+    plan_id: i64,
+) -> IpcResult<()> {
     if ticket_id.is_empty() || !ticket_id.chars().all(|c| c.is_ascii_digit()) {
         return Err(IpcError {
             code: "INVALID_TICKET".into(),
@@ -59,16 +78,30 @@ async fn open_approval(app: AppHandle, ticket_id: String, plan_id: i64) -> IpcRe
         let _ = old.close();
     }
     let url = WebviewUrl::App(format!("index.html#/aprovacao/{ticket_id}/{plan_id}").into());
-    WebviewWindowBuilder::new(&app, "approval", url)
+    let window = WebviewWindowBuilder::new(&app, "approval", url)
         .title("HelpMyDesk: aprovar correção")
         .inner_size(560.0, 680.0)
         .resizable(true)
         .build()
-        .map(|_| ())
         .map_err(|e| IpcError {
             code: "WINDOW_FAILED".into(),
             message: e.to_string(),
-        })
+        })?;
+    // Closing the window without deciding counts as "no" (the main window must not wait forever).
+    let handle = app.clone();
+    window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Destroyed) {
+            let _ = handle.emit(
+                APPROVAL_EVENT,
+                ApprovalDecision {
+                    ticket_id: ticket_id.clone(),
+                    plan_id,
+                    decision: "closed",
+                },
+            );
+        }
+    });
+    Ok(())
 }
 
 #[tauri::command]
@@ -154,9 +187,33 @@ async fn erase_all(state: State<'_, Shared>) -> IpcResult<usize> {
     with(&state, Backend::erase_all)
 }
 
+/// Registers every command (the app and the IPC tests use the same list).
+fn commands<R: Runtime>(builder: Builder<R>) -> Builder<R> {
+    builder.invoke_handler(tauri::generate_handler![
+        startup,
+        start_ticket,
+        diagnose,
+        open_approval,
+        plan,
+        approve,
+        decline,
+        execute,
+        confirm,
+        make_report,
+        edit_report,
+        report_exported,
+        history,
+        settings,
+        set_autonomy,
+        set_consent,
+        export_all,
+        erase_all,
+    ])
+}
+
 /// Builds and runs the app. The history lives in the per-user app data directory.
 pub fn run() {
-    let result = tauri::Builder::default()
+    let result = commands(tauri::Builder::default())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -172,29 +229,121 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            startup,
-            start_ticket,
-            diagnose,
-            open_approval,
-            plan,
-            approve,
-            decline,
-            execute,
-            confirm,
-            make_report,
-            edit_report,
-            report_exported,
-            history,
-            settings,
-            set_autonomy,
-            set_consent,
-            export_all,
-            erase_all,
-        ])
         .run(tauri::generate_context!());
     if let Err(e) = result {
         eprintln!("HelpMyDesk could not start: {e}");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    //! IPC with the real capability files (INV-04) on Tauri's mock runtime.
+    use std::collections::BTreeMap;
+
+    use hmd_ipc::Backend;
+    use hmd_probes::ProbeOutput;
+    use serde_json::{Value, json};
+    use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
+    use tauri::webview::InvokeRequest;
+    use tauri::{App, Manager, WebviewWindow, WebviewWindowBuilder};
+
+    use super::{Shared, commands};
+
+    fn app() -> App<MockRuntime> {
+        let app = commands(mock_builder())
+            .build(tauri::generate_context!())
+            .unwrap();
+        let backend = Backend::in_memory(
+            Box::new(|_: &str| {
+                Ok(ProbeOutput {
+                    probe_id: "fake",
+                    findings: vec![],
+                    evidence: BTreeMap::new(),
+                })
+            }),
+            Box::new(|| 1_760_400_000),
+        )
+        .unwrap();
+        app.manage(Shared {
+            backend: std::sync::Mutex::new(backend),
+            startup: hmd_ipc::StartupDto {
+                opened: "created".into(),
+                interrupted: 0,
+                housekept: 0,
+            },
+        });
+        app
+    }
+
+    fn window(app: &App<MockRuntime>, label: &str) -> WebviewWindow<MockRuntime> {
+        WebviewWindowBuilder::new(app, label, Default::default())
+            .build()
+            .unwrap()
+    }
+
+    fn call(w: &WebviewWindow<MockRuntime>, cmd: &str, args: Value) -> Result<Value, Value> {
+        get_ipc_response(
+            w,
+            InvokeRequest {
+                cmd: cmd.into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: "tauri://localhost".parse().unwrap(),
+                body: tauri::ipc::InvokeBody::Json(args),
+                headers: Default::default(),
+                invoke_key: INVOKE_KEY.to_string(),
+            },
+        )
+        .map(|b| b.deserialize::<Value>().unwrap())
+    }
+
+    #[test]
+    fn main_window_runs_use_cases_with_camel_case_arguments() {
+        let app = app();
+        let main = window(&app, "main");
+        let started = call(&main, "start_ticket", json!({"family": "storage"})).unwrap();
+        assert_eq!(started["ticket"]["familyTitle"], "Sem espaço");
+        let id = started["ticket"]["id"].as_str().unwrap().to_string();
+        let d = call(&main, "diagnose", json!({"ticketId": id})).unwrap();
+        assert_eq!(d["ticket"]["state"], "in_progress");
+        let history = call(&main, "history", json!({})).unwrap();
+        assert_eq!(history.as_array().unwrap().len(), 1);
+    }
+
+    /// INV-04: the main window is refused `approve`/`decline`/`plan` by the ACL itself.
+    #[test]
+    fn main_window_cannot_approve() {
+        let app = app();
+        let main = window(&app, "main");
+        for cmd in ["approve", "decline", "plan"] {
+            let err = call(
+                &main,
+                cmd,
+                json!({"ticketId": "1", "planId": 1, "stepIds": ["s1"]}),
+            )
+            .unwrap_err();
+            let text = err.to_string();
+            assert!(
+                !text.contains("NO_PENDING_PLAN") && !text.contains("NO_SUCH_TICKET"),
+                "{cmd} reached the command from the main window: {text}"
+            );
+        }
+    }
+
+    /// The approval window reaches `plan`/`approve` (the core then answers: nothing pending) but
+    /// not the other use cases.
+    #[test]
+    fn approval_window_only_approves() {
+        let app = app();
+        let approval = window(&app, "approval");
+        let err = call(&approval, "plan", json!({"ticketId": "1", "planId": 1})).unwrap_err();
+        assert_eq!(err["code"], "NO_PENDING_PLAN", "{err}");
+        let err = call(&approval, "start_ticket", json!({"family": "storage"})).unwrap_err();
+        assert!(
+            err.get("code").is_none(),
+            "start_ticket reached the command: {err}"
+        );
     }
 }

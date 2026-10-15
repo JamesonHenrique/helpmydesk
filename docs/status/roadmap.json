@@ -427,11 +427,11 @@
    "phase_name": "Correções seguras",
    "phase_order": 5,
    "title": "Janela de aprovação isolada (Tauri)",
-   "status": "done",
+   "status": "doing",
    "weight": 1,
-   "delivered_on": "2026-10-15",
+   "delivered_on": "",
    "ref": "",
-   "note": "Janela separada com permissão exclusiva de aprovar (ACL do Tauri)"
+   "note": "Janela separada com permissão exclusiva de aprovar (ACL testada no runtime de teste); falta abrir e usar na mão"
   },
   {
    "id": "SPEC-007",
