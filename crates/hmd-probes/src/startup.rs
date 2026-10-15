@@ -28,7 +28,7 @@ pub(crate) fn list() -> Result<ProbeOutput, ProbeError> {
         .map(|e| {
             format!(
                 "{} ({}, {})",
-                sanitize_untrusted(&e.name, MAX_NAME),
+                crate::redact_identity(&sanitize_untrusted(&e.name, MAX_NAME)),
                 if e.enabled { "ativo" } else { "desativado" },
                 if e.user_scope { "usuário" } else { "sistema" }
             )
