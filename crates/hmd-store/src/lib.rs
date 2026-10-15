@@ -5,7 +5,9 @@
 //! reads the clock (spec 001 NFR-001).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
-mod schema;
+mod journal;
+#[doc(hidden)]
+pub mod schema;
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -21,6 +23,7 @@ use hmd_policy::{Confidence, Platform};
 use hmd_probes::Severity;
 use rusqlite::{Connection, ErrorCode, OptionalExtension, Row, params};
 
+pub use journal::StoredExecution;
 pub use schema::SCHEMA_VERSION;
 
 #[derive(Debug)]

@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-14",
+ "updated": "2026-10-15",
  "rows": [
   {
    "id": "F0-01",
@@ -415,11 +415,11 @@
    "phase_name": "Correções seguras",
    "phase_order": 5,
    "title": "Spec 008: executor, aprovação por hash do plano, verificação e diário",
-   "status": "doing",
+   "status": "done",
    "weight": 3,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": "Desenho em andamento"
+   "note": "Mecanismo completo e testado com correções de teste; correções reais esperam o S-02"
   },
   {
    "id": "SPEC-005",

@@ -1,0 +1,22 @@
+[package]
+name = "hmd-executor"
+description = "HelpMyDesk executor: plan hash, approval checks, write-ahead journal and verification (spec 008)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+hmd-domain = { path = "../hmd-domain" }
+hmd-policy = { path = "../hmd-policy" }
+hmd-core = { path = "../hmd-core" }
+sha2 = "0.11.1"
+
+[dev-dependencies]
+hmd-catalog = { path = "../hmd-catalog" }
+hmd-probes = { path = "../hmd-probes" }
+
+[lints]
+workspace = true

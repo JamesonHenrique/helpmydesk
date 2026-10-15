@@ -27,3 +27,4 @@ Formato: MADR simplificado. Os ADRs ainda sem arquivo próprio estão resumidos 
 | [021](ADR-021-catalog-format-and-probe-deps.md) | Catálogo em TOML; `sysinfo` para sondas | Aceita |
 | [022](ADR-022-network-and-registry-deps.md) | `netdev` e `winreg` para sondas de rede e inicialização | Aceita |
 | [023](ADR-023-local-store-sqlite.md) | Histórico local em SQLite (`rusqlite` com `bundled`) | Aceita |
+| [024](ADR-024-plan-hash-sha2.md) | Hash do plano e chave de idempotência com `sha2` | Aceita |

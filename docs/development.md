@@ -32,11 +32,12 @@ Veja o plano v1, VIII.4. Crates atuais:
 
 | Crate | Spec | Conteúdo |
 |---|---|---|
-| `crates/hmd-domain` | 001, 007 | Ciclo de vida do chamado, fases da sessão, gatilhos de relatório, housekeeping, retenção |
+| `crates/hmd-domain` | 001, 007, 008 | Ciclo de vida do chamado, fases da sessão, gatilhos de relatório, housekeeping, retenção, estados da execução |
 | `crates/hmd-policy` | 002 | Policy Engine: validação determinística de planos, nível mínimo e validação do catálogo |
 | `crates/hmd-catalog` | 003 | Catálogo TOML (`catalog/`): carga estrita, validação, embutido no binário |
 | `crates/hmd-core` | 006, 007 | Playbooks, autorização das sondas, diagnóstico, avaliação das correções (sem executar) e relatório "não consegui" |
-| `crates/hmd-store` | 007 | Histórico local em SQLite: chamados, eventos, sessões, achados, mensagens, consentimentos, relatórios, retenção |
+| `crates/hmd-executor` | 008 | Hash do plano, checagem da aprovação, execução com diário write-ahead e verificação (sem correção real até o S-02) |
+| `crates/hmd-store` | 007, 008 | Histórico local em SQLite: chamados, eventos, sessões, achados, mensagens, consentimentos, relatórios, retenção, planos, aprovações e diário de execução |
 | `crates/hmd-probes` | 004, 005 | Sondas somente leitura: sistema, memória, CPU, processos, disco, DNS, adaptadores, gateway, HTTP/portal cativo, inicialização |
 
 Modo básico (texto, sem IA): `cargo run -p hmd-core --example basic_mode` (menu) e

@@ -171,6 +171,35 @@ fn proposal(catalog: &LoadedCatalog, ids: &[String], prefix: &str) -> ActionPlan
     }
 }
 
+/// Runs one probe only if the Policy Engine accepts it (spec 008 FR-006: verification probes go
+/// through the same checks as diagnosis probes).
+pub fn run_authorized_probe(
+    catalog: &LoadedCatalog,
+    opts: &DiagnoseOptions,
+    probe_id: &str,
+    run_probe: impl FnOnce(&str) -> Result<ProbeOutput, ProbeError>,
+) -> ProbeOutcome {
+    let mut ctx = PolicyContext::new(opts.platform);
+    ctx.mode = opts.mode;
+    ctx.consents = opts.consents.clone();
+    let decision = evaluate(
+        &proposal(catalog, &[probe_id.to_string()], "p"),
+        &catalog.catalog,
+        &ctx,
+    );
+    match decision.as_ref().map(|d| d.verdicts.first()) {
+        Ok(Some(StepVerdict::Accepted { .. })) => match run_probe(probe_id) {
+            Ok(out) => ProbeOutcome::Ran(out),
+            Err(e) => ProbeOutcome::Failed(e.reason_code()),
+        },
+        Ok(Some(StepVerdict::Rejected { reason, .. } | StepVerdict::Downgraded { reason, .. })) => {
+            ProbeOutcome::NotAuthorized(reason.reason_code())
+        }
+        Ok(None) => ProbeOutcome::NotAuthorized("EMPTY_PLAN"),
+        Err(e) => ProbeOutcome::NotAuthorized(e.reason_code()),
+    }
+}
+
 /// Runs a diagnosis with an injectable probe runner (tests use fakes; the app uses
 /// [`hmd_probes::run`]).
 pub fn diagnose_with(
