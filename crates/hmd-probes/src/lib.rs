@@ -160,6 +160,28 @@ fn is_word_gap(c: Option<char>) -> bool {
     })
 }
 
+/// Lowercase used for matching, char by char, so positions always refer to the original text.
+fn fold(text: &str) -> String {
+    text.chars().flat_map(char::to_lowercase).collect()
+}
+
+/// First match of `needle` (already folded) in `hay`, as a byte range of `hay` itself.
+fn find_folded(hay: &str, needle: &str) -> Option<(usize, usize)> {
+    for (start, _) in hay.char_indices() {
+        let mut acc = String::new();
+        for (offset, c) in hay[start..].char_indices() {
+            acc.extend(c.to_lowercase());
+            if acc.len() >= needle.len() {
+                if acc == needle {
+                    return Some((start, start + offset + c.len_utf8()));
+                }
+                break;
+            }
+        }
+    }
+    None
+}
+
 /// Pure part of [`redact_identity`], testable with fixed names.
 pub fn redact_names(text: &str, names: &[(&str, &str)]) -> String {
     let mut out = text.to_string();
@@ -168,15 +190,10 @@ pub fn redact_names(text: &str, names: &[(&str, &str)]) -> String {
         if name.is_empty() {
             continue;
         }
-        let lower_name = name.to_lowercase();
+        let needle = fold(name);
         let mut result = String::with_capacity(out.len());
         let mut rest = out.as_str();
-        while let Some(pos) = rest.to_lowercase().find(&lower_name) {
-            let end = pos + lower_name.len();
-            // `to_lowercase` can change byte lengths for some scripts; only cut on char boundaries.
-            if !rest.is_char_boundary(pos) || !rest.is_char_boundary(end) {
-                break;
-            }
+        while let Some((pos, end)) = find_folded(rest, &needle) {
             let whole_word = is_word_gap(rest[..pos].chars().next_back())
                 && is_word_gap(rest[end..].chars().next());
             result.push_str(&rest[..pos]);
