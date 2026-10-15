@@ -248,6 +248,12 @@ describe('ReportPage', () => {
     expect(box.value.startsWith('<!-- report@1 -->')).toBe(true);
     expect(box.value).toContain('O HelpMyDesk não alterou nada neste computador');
   });
+
+  it('a report the person asked for is not called a failure', async () => {
+    await setup();
+    const { el } = await render(ReportPage);
+    expect(el.querySelector('h1')?.textContent).toContain('Relatório para levar a alguém');
+  });
 });
 
 describe('SettingsPage', () => {

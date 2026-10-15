@@ -39,7 +39,9 @@ const STEPS = [
           <div class="card">
             <h2>Eu faço</h2>
             <ul class="steps">
-              <li>Verificações de leitura: internet, desempenho, espaço, som e câmera.</li>
+              <li>
+                Verificações de leitura: internet, desempenho, espaço, som, microfone e câmera.
+              </li>
               <li>Explico o que encontrei, com palavras simples.</li>
               <li>Proponho correções conhecidas e só faço com a sua aprovação.</li>
               <li>Confiro se resolveu. Se não resolver, preparo um relatório.</li>
@@ -103,7 +105,7 @@ const STEPS = [
         @default {
           <h1 id="t" tabindex="-1">Tudo pronto</h1>
           <p>Você pode mudar tudo isso depois em Configurações.</p>
-          <a class="btn primary" routerLink="/">Começar</a>
+          <p><a class="btn primary" routerLink="/">Começar</a></p>
         }
       }
       <div class="actions">
