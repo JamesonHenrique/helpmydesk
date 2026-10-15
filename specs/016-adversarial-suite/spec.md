@@ -69,3 +69,14 @@ Anotados como P2 (não corrigidos): purga da auditoria com relógio adiantado >1
 `clarify_unknown` sem chamador (capacidade em `unknown` fica bloqueada para sempre); validade da
 aprovação pelo relógio de parede. Corrigido depois: pânico dentro de uma correção vira `unknown`
 com motivo `PANICKED` (`catch_unwind`), sem deixar a linha `started` nem envenenar o mutex.
+
+## Rodada 5: P2 decididos pelo mantenedor (15/10)
+
+| Item | Decisão e correção |
+|---|---|
+| Capacidade presa em `unknown` | o próximo diagnóstico roda a sonda de verificação: problema sumiu → aplicada; continua → não aplicada (pode ser proposta de novo, com aprovação nova); sonda falhou → continua bloqueada |
+| `confirm` pela janela principal | risco aceito e documentado (`docs/security/review-guide.md`) |
+| Purga com relógio adiantado | pula a purga se o relógio passou mais que a retenção desde o último evento |
+| Exportação forjada | comando `report_exported` removido; `save_report` registra |
+| `erase_all` que falha | o comando seguinte reabre o histórico |
+| Validade da aprovação | também por relógio monotônico (`approval_too_old`) |
