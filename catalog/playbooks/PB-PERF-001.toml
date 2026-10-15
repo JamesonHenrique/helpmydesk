@@ -1,0 +1,65 @@
+id = "PB-PERF-001"
+version = "1.0.0"
+family = "performance"
+probes = ["perf.cpu.snapshot", "perf.memory.snapshot", "perf.top_processes", "storage.volumes", "startup.apps.list"]
+
+[copy.pt-BR]
+title = "Computador lento"
+
+[[diagnoses]]
+id = "perf.low_space"
+when_all = ["storage.low_space"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "O disco está quase cheio"
+explanation = "Com pouco espaço livre, o sistema fica lento para trabalhar e atualizar."
+steps = ["Escolha \"Sem espaço\" no menu para ver como liberar espaço com segurança."]
+
+[[diagnoses]]
+id = "perf.cpu"
+when_all = ["perf.cpu.high"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "O processador está sobrecarregado"
+explanation = "Algum programa está usando quase todo o processador agora. Veja nos detalhes quais programas mais estão pesando."
+steps = [
+  "Salve o que estiver fazendo e feche os programas que não está usando.",
+  "Se um programa travou, feche-o pelo Gerenciador de Tarefas (Windows) ou pelo Monitor do Sistema (Linux).",
+]
+
+[[diagnoses]]
+id = "perf.memory"
+when_all = ["perf.memory.high"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "A memória está quase toda em uso"
+explanation = "Há muitos programas ou abas abertas ao mesmo tempo para a memória deste computador."
+steps = [
+  "Feche abas do navegador que não está usando.",
+  "Feche programas abertos em segundo plano.",
+  "Reinicie o computador se ele estiver ligado há muitos dias.",
+]
+
+[[diagnoses]]
+id = "perf.startup"
+when_all = ["startup.many_apps"]
+confidence = "probable"
+[diagnoses.copy.pt-BR]
+title = "Muitos programas abrem junto com o computador"
+explanation = "Vários programas iniciam sozinhos quando o computador liga, e isso deixa a inicialização e o uso mais lentos."
+steps = [
+  "No Windows: Configurações > Aplicativos > Inicialização, e desligue o que você não usa todo dia.",
+  "No Linux: procure \"Aplicativos de sessão e inicialização\" (ou \"Inicialização\") nas configurações.",
+]
+
+[fallback]
+id = "perf.no_clear_cause"
+confidence = "unsure"
+report = "REP-02"
+[fallback.copy.pt-BR]
+title = "Não achei uma causa clara para a lentidão"
+explanation = "Processador, memória e disco parecem normais agora. A lentidão pode acontecer só em certos momentos ou em um programa específico."
+steps = [
+  "Reinicie o computador e veja se melhora.",
+  "Quando ficar lento de novo, abra o HelpMyDesk na hora: assim eu vejo o que está acontecendo.",
+]

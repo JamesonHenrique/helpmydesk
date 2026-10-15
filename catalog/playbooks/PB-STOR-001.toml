@@ -1,0 +1,28 @@
+id = "PB-STOR-001"
+version = "1.0.0"
+family = "storage"
+probes = ["storage.volumes"]
+
+[copy.pt-BR]
+title = "Sem espaço"
+
+[[diagnoses]]
+id = "storage.low_space"
+when_all = ["storage.low_space"]
+confidence = "almost_certain"
+[diagnoses.copy.pt-BR]
+title = "O disco do sistema está quase cheio"
+explanation = "Falta espaço no disco onde o sistema está instalado. Eu não apago seus arquivos: você escolhe o que pode sair."
+steps = [
+  "Esvazie a Lixeira.",
+  "Veja a pasta Downloads e apague o que não precisa mais.",
+  "Desinstale programas que você não usa.",
+  "No Windows, ative o Sensor de Armazenamento em Configurações > Sistema > Armazenamento.",
+]
+
+[fallback]
+id = "storage.ok"
+confidence = "probable"
+[fallback.copy.pt-BR]
+title = "Há espaço livre suficiente"
+explanation = "O disco do sistema tem espaço livre. Se aparece aviso de falta de espaço, ele pode ser de outro disco ou de um pendrive."

@@ -1,0 +1,21 @@
+id = "PB-AV-001"
+version = "1.0.0"
+family = "audio_video"
+probes = []
+
+[copy.pt-BR]
+title = "Som, microfone ou câmera"
+
+[fallback]
+id = "av.guided"
+confidence = "unsure"
+report = "REP-01"
+[fallback.copy.pt-BR]
+title = "Vamos verificar juntos"
+explanation = "Ainda não consigo examinar som, microfone e câmera automaticamente. Siga estes passos; se não resolver, eu preparo um relatório para você levar a quem for ajudar."
+steps = [
+  "Veja se o som não está no mudo (ícone de alto-falante perto do relógio).",
+  "Confira se o fone, a caixa de som ou o microfone certo está escolhido nas configurações de som.",
+  "Desconecte e conecte de novo o fone ou a câmera.",
+  "No Windows, em Configurações > Privacidade, confira se os aplicativos podem usar o microfone e a câmera.",
+]

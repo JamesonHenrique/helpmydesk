@@ -3,7 +3,10 @@
 //! `hmd_policy` types, validates everything and exposes the copy embedded at build time.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod playbook;
 mod raw;
+
+pub use playbook::{DiagnosisCopy, DiagnosisRule, Playbook, check_family_coverage};
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -44,9 +47,15 @@ pub struct LoadedCatalog {
     pub version: String,
     pub catalog: Catalog,
     pub meta: BTreeMap<String, EntryMeta>,
+    pub playbooks: BTreeMap<String, Playbook>,
 }
 
 impl LoadedCatalog {
+    /// The playbook of a problem family (one per family, spec 006).
+    pub fn playbook_for(&self, family: ProblemFamily) -> Option<&Playbook> {
+        self.playbooks.values().find(|p| p.family == family)
+    }
+
     /// Every finding code some probe declares in `produces`.
     pub fn known_findings(&self) -> BTreeSet<&str> {
         self.meta
@@ -72,7 +81,7 @@ impl fmt::Display for LoadError {
 
 impl std::error::Error for LoadError {}
 
-fn err(file: &str, code: &'static str, message: impl Into<String>) -> LoadError {
+pub(crate) fn err(file: &str, code: &'static str, message: impl Into<String>) -> LoadError {
     LoadError {
         file: file.to_string(),
         code,
@@ -80,7 +89,7 @@ fn err(file: &str, code: &'static str, message: impl Into<String>) -> LoadError 
     }
 }
 
-fn parse_error(file: &str, e: toml::de::Error) -> LoadError {
+pub(crate) fn parse_error(file: &str, e: toml::de::Error) -> LoadError {
     let message = e.to_string();
     let code = if message.contains("unknown field") {
         "UNKNOWN_FIELD"
@@ -95,6 +104,15 @@ fn parse_error(file: &str, e: toml::de::Error) -> LoadError {
 pub fn load_from_sources(
     manifest: &str,
     files: &[(&str, &str)],
+) -> Result<LoadedCatalog, Vec<LoadError>> {
+    load(manifest, files, &[])
+}
+
+/// Loads capabilities and playbooks (spec 006 FR-001) from in-memory sources.
+pub fn load(
+    manifest: &str,
+    files: &[(&str, &str)],
+    playbook_files: &[(&str, &str)],
 ) -> Result<LoadedCatalog, Vec<LoadError>> {
     let mut errors = Vec::new();
     let version = match toml::from_str::<RawManifest>(manifest) {
@@ -166,12 +184,18 @@ pub fn load_from_sources(
         cross_check(cap, &catalog, &known, &meta, &file, &mut errors);
     }
 
+    let mut loaded = LoadedCatalog {
+        version,
+        catalog,
+        meta,
+        playbooks: BTreeMap::new(),
+    };
+    let playbooks = playbook::parse(playbook_files, &mut errors);
+    playbook::validate(&playbooks, &loaded, &mut errors);
+    loaded.playbooks = playbooks;
+
     if errors.is_empty() {
-        Ok(LoadedCatalog {
-            version,
-            catalog,
-            meta,
-        })
+        Ok(loaded)
     } else {
         Err(errors)
     }
@@ -269,13 +293,7 @@ fn convert(raw: RawCapability) -> (Capability, EntryMeta) {
             RawKind::Fix => CapabilityKind::Fix,
             RawKind::Guide => CapabilityKind::Guide,
         },
-        family: raw.family.map(|f| match f {
-            RawFamily::Connectivity => ProblemFamily::Connectivity,
-            RawFamily::Performance => ProblemFamily::Performance,
-            RawFamily::Storage => ProblemFamily::Storage,
-            RawFamily::AudioVideo => ProblemFamily::AudioVideo,
-            RawFamily::AppError => ProblemFamily::AppError,
-        }),
+        family: raw.family.map(family),
         variants,
         exclusive_with: raw.exclusive_with,
     };
@@ -297,6 +315,16 @@ fn convert(raw: RawCapability) -> (Capability, EntryMeta) {
             .collect(),
     };
     (cap, meta)
+}
+
+pub(crate) fn family(f: RawFamily) -> ProblemFamily {
+    match f {
+        RawFamily::Connectivity => ProblemFamily::Connectivity,
+        RawFamily::Performance => ProblemFamily::Performance,
+        RawFamily::Storage => ProblemFamily::Storage,
+        RawFamily::AudioVideo => ProblemFamily::AudioVideo,
+        RawFamily::AppError => ProblemFamily::AppError,
+    }
 }
 
 fn platform(p: RawPlatform) -> Platform {
@@ -369,17 +397,59 @@ pub fn load_from_dir(dir: &Path) -> Result<LoadedCatalog, Vec<LoadError>> {
         }
     }
     owned.sort();
+    let playbooks = read_toml_dir(&dir.join("playbooks"))?;
     let files: Vec<(&str, &str)> = owned
         .iter()
         .map(|(n, c)| (n.as_str(), c.as_str()))
         .collect();
-    load_from_sources(&manifest, &files)
+    let pb: Vec<(&str, &str)> = playbooks
+        .iter()
+        .map(|(n, c)| (n.as_str(), c.as_str()))
+        .collect();
+    with_coverage(load(&manifest, &files, &pb))
+}
+
+fn read_toml_dir(dir: &Path) -> Result<Vec<(String, String)>, Vec<LoadError>> {
+    let io = |file: &str, e: std::io::Error| vec![err(file, "IO_ERROR", e.to_string())];
+    let mut owned = Vec::new();
+    for entry in std::fs::read_dir(dir).map_err(|e| io("playbooks", e))? {
+        let path = entry.map_err(|e| io("playbooks", e))?.path();
+        if path.extension().is_some_and(|x| x == "toml") {
+            let name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_default()
+                .to_string();
+            let content = std::fs::read_to_string(&path).map_err(|e| io(&name, e))?;
+            owned.push((name, content));
+        }
+    }
+    owned.sort();
+    Ok(owned)
+}
+
+fn with_coverage(
+    result: Result<LoadedCatalog, Vec<LoadError>>,
+) -> Result<LoadedCatalog, Vec<LoadError>> {
+    let loaded = result?;
+    let missing = check_family_coverage(&loaded);
+    if missing.is_empty() {
+        Ok(loaded)
+    } else {
+        Err(missing)
+    }
 }
 
 /// FR-005: the catalog compiled into this binary, validated once.
 pub fn embedded() -> Result<&'static LoadedCatalog, &'static [LoadError]> {
     static CELL: OnceLock<Result<LoadedCatalog, Vec<LoadError>>> = OnceLock::new();
-    match CELL.get_or_init(|| load_from_sources(embedded::MANIFEST, embedded::FILES)) {
+    match CELL.get_or_init(|| {
+        with_coverage(load(
+            embedded::MANIFEST,
+            embedded::FILES,
+            embedded::PLAYBOOK_FILES,
+        ))
+    }) {
         Ok(c) => Ok(c),
         Err(e) => Err(e.as_slice()),
     }

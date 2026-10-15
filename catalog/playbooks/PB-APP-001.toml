@@ -1,0 +1,21 @@
+id = "PB-APP-001"
+version = "1.0.0"
+family = "app_error"
+probes = []
+
+[copy.pt-BR]
+title = "Erro ou programa que não abre"
+
+[fallback]
+id = "app.guided"
+confidence = "unsure"
+report = "REP-01"
+[fallback.copy.pt-BR]
+title = "Vamos tentar os passos que mais resolvem"
+explanation = "Ainda não examino programas automaticamente. Estes passos resolvem boa parte dos casos; se não resolverem, eu preparo um relatório."
+steps = [
+  "Anote ou fotografe a mensagem de erro exatamente como aparece.",
+  "Feche o programa por completo e abra de novo.",
+  "Reinicie o computador.",
+  "Se o erro continuar, reinstale o programa a partir do site oficial dele.",
+]

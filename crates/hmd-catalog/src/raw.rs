@@ -153,3 +153,60 @@ pub(crate) struct RawCopy {
     #[serde(default)]
     pub undo: Option<String>,
 }
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum RawConfidence {
+    Unsure,
+    Probable,
+    AlmostCertain,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RawDiagnosisCopy {
+    pub title: String,
+    pub explanation: String,
+    #[serde(default)]
+    pub steps: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RawDiagnosis {
+    pub id: String,
+    #[serde(default)]
+    pub when_all: Vec<String>,
+    #[serde(default)]
+    pub when_any: Vec<String>,
+    #[serde(default)]
+    pub when_none: Vec<String>,
+    pub confidence: RawConfidence,
+    #[serde(default)]
+    pub fixes: Vec<String>,
+    #[serde(default)]
+    pub report: Option<String>,
+    #[serde(default)]
+    pub copy: BTreeMap<String, RawDiagnosisCopy>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RawPlaybookCopy {
+    pub title: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RawPlaybook {
+    pub id: String,
+    pub version: String,
+    pub family: RawFamily,
+    #[serde(default)]
+    pub probes: Vec<String>,
+    #[serde(default)]
+    pub diagnoses: Vec<RawDiagnosis>,
+    pub fallback: RawDiagnosis,
+    #[serde(default)]
+    pub copy: BTreeMap<String, RawPlaybookCopy>,
+}
