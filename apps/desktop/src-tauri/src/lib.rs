@@ -6,14 +6,17 @@
 use std::sync::Mutex;
 
 use hmd_ipc::{
-    ApprovalDto, Backend, DiagnosisDto, IpcError, IpcResult, OutcomeDto, PlanDto, ReportDto,
-    SettingsDto, StartDto, StartupDto, SystemDto, TicketDto, system_clock,
+    AiClassificationDto, AiStatusDto, ApprovalDto, Backend, DiagnosisDto, IpcError, IpcResult,
+    OutcomeDto, PlanDto, ReportDto, SettingsDto, StartDto, StartupDto, SystemDto, TicketDto,
+    system_clock,
 };
 use serde::Serialize;
 use tauri::{
     AppHandle, Builder, Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder,
     WindowEvent,
 };
+
+mod vault;
 
 /// Event the approval window's decision (or its closing) is announced with.
 const APPROVAL_EVENT: &str = "hmd://approval-decided";
@@ -218,6 +221,56 @@ async fn erase_all(state: State<'_, Shared>) -> IpcResult<usize> {
 }
 
 /// Registers every command (the app and the IPC tests use the same list).
+#[tauri::command]
+async fn ai_status(state: State<'_, Shared>) -> IpcResult<AiStatusDto> {
+    with(&state, Backend::ai_status)
+}
+
+#[tauri::command]
+async fn ai_connect(state: State<'_, Shared>, key: String) -> IpcResult<AiStatusDto> {
+    with(&state, |b| b.ai_connect(&key))
+}
+
+#[tauri::command]
+async fn ai_disconnect(state: State<'_, Shared>) -> IpcResult<AiStatusDto> {
+    with(&state, Backend::ai_disconnect)
+}
+
+#[tauri::command]
+async fn ai_classify(state: State<'_, Shared>, text: String) -> IpcResult<AiClassificationDto> {
+    with(&state, |b| b.ai_classify(&text))
+}
+
+/// "Colar o código e ligar": the key is read from the clipboard here, in Rust, so it never
+/// passes through the interface; after a key that works, the clipboard is cleared.
+#[tauri::command]
+async fn ai_connect_from_clipboard<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, Shared>,
+) -> IpcResult<AiStatusDto> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    let text = app.clipboard().read_text().map_err(|e| IpcError {
+        code: "CLIPBOARD_UNAVAILABLE".into(),
+        message: e.to_string(),
+    })?;
+    let status = with(&state, |b| b.ai_connect(&text))?;
+    let _ = app.clipboard().clear();
+    Ok(status)
+}
+
+/// Opens the OpenCode console in the person's browser. The URL is fixed in the core: the
+/// interface cannot choose what gets opened.
+#[tauri::command]
+async fn open_ai_console<R: Runtime>(app: AppHandle<R>) -> IpcResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(hmd_ipc::AI_CONSOLE_URL, None::<&str>)
+        .map_err(|e| IpcError {
+            code: "OPEN_FAILED".into(),
+            message: e.to_string(),
+        })
+}
+
 fn commands<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     builder.invoke_handler(tauri::generate_handler![
         startup,
@@ -239,12 +292,21 @@ fn commands<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         set_consent,
         export_all,
         erase_all,
+        ai_status,
+        ai_connect,
+        ai_disconnect,
+        ai_classify,
+        open_ai_console,
+        ai_connect_from_clipboard,
     ])
 }
 
 /// Builds and runs the app. The history lives in the per-user app data directory.
 pub fn run() {
     let result = commands(tauri::Builder::default())
+        // Only used through `open_ai_console`: no window gets the plugin's own permissions.
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -254,6 +316,15 @@ pub fn run() {
                 Box::new(system_clock),
             )
             .map_err(|e| format!("{}: {}", e.code, e.message))?;
+            let mut backend = backend;
+            match vault::SystemVault::new() {
+                Ok(v) => backend.set_vault(Box::new(v)),
+                // No system vault (e.g. no Secret Service): the key is kept only while the app
+                // runs, never written in plain text.
+                Err(e) => {
+                    eprintln!("helpmydesk: system vault unavailable ({e}); AI key kept in memory")
+                }
+            }
             app.manage(Shared {
                 backend: Mutex::new(backend),
                 startup,

@@ -34,6 +34,10 @@ confidence-threshold = 0.9
 exceptions = [
     # Mozilla's root certificates as data (ADR-027); permissive data license, only this crate.
     { crate = "webpki-roots", allow = ["CDLA-Permissive-2.0"] },
+    # Windows clipboard for tauri-plugin-clipboard-manager (ADR-028); Boost license,
+    # GPL-compatible per the FSF, only these crates.
+    { crate = "clipboard-win", allow = ["BSL-1.0"] },
+    { crate = "error-code", allow = ["BSL-1.0"] },
 ]
 
 [licenses.private]

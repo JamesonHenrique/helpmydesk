@@ -3,6 +3,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import { CORE_API } from '../api/core-api';
+import { AiConnectComponent } from '../components/ai-connect';
 import { IpcError } from '../api/types';
 import { CATALOG_VERSION } from '../data/catalog.generated';
 import { CONSENTS, probesFor } from '../data/catalog';
@@ -10,6 +11,7 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
 
 @Component({
   selector: 'app-settings',
+  imports: [AiConnectComponent],
   template: `
     <section class="page" aria-labelledby="t">
       <h1 id="t">Configurações</h1>
@@ -107,11 +109,7 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
 
       <h2 id="ia">Inteligência artificial</h2>
       <div class="card">
-        <p><strong>Desligada.</strong> O modo básico funciona sem IA.</p>
-        <p class="small">{{ ai.text }}</p>
-        <button type="button" class="btn" disabled>
-          Conectar minha conta do OpenCode (em breve)
-        </button>
+        <app-ai-connect />
       </div>
 
       <h2 id="sobre">Sobre</h2>
@@ -136,7 +134,6 @@ export class SettingsPage implements OnInit {
   protected readonly state = inject(PrototypeState);
   protected readonly disclosures = computed(() => probesFor(this.state.platform()));
   protected readonly optional = CONSENTS.filter((c) => c.id !== 'ai_opencode');
-  protected readonly ai = CONSENTS.find((c) => c.id === 'ai_opencode') ?? { text: '' };
   protected readonly catalogVersion = CATALOG_VERSION;
   protected readonly confirming = signal(false);
   protected readonly message = signal('');
