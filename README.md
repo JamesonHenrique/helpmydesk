@@ -38,6 +38,14 @@ cargo run -p hmd-core --example basic_mode -- 1       # verifica a internet
 cargo run -p hmd-core --example basic_mode -- --o-que-eu-olho
 ```
 
+App desktop no Linux (mesma sequência do CI; precisa do WebKitGTK, instalado uma vez com
+`sudo apt install libwebkit2gtk-4.1-dev`):
+
+```sh
+(cd apps/desktop/ui && npm ci --ignore-scripts && npx ng build)
+(cd apps/desktop/src-tauri && cargo run --locked)
+```
+
 ## Princípios
 
 - **A IA propõe, o código decide.** A IA nunca executa nada: só escolhe entre opções de um
