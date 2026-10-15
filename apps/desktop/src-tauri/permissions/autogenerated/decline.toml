@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-decline"
+description = "Enables the decline command without any pre-configured scope."
+commands.allow = ["decline"]
+
+[[permission]]
+identifier = "deny-decline"
+description = "Denies the decline command without any pre-configured scope."
+commands.deny = ["decline"]

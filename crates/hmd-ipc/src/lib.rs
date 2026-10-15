@@ -370,6 +370,10 @@ impl Backend {
         Ok(diagnosis_dto(&view))
     }
 
+    pub fn plan(&mut self, ticket_id: &str, plan_id: i64) -> IpcResult<PlanDto> {
+        Ok(plan_dto(&self.app()?.pending_plan(ticket_id, plan_id)?))
+    }
+
     pub fn approve(
         &mut self,
         ticket_id: &str,

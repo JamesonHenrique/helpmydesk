@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-erase-all"
+description = "Enables the erase_all command without any pre-configured scope."
+commands.allow = ["erase_all"]
+
+[[permission]]
+identifier = "deny-erase-all"
+description = "Denies the erase_all command without any pre-configured scope."
+commands.deny = ["erase_all"]

@@ -167,6 +167,8 @@ pub enum ExecutionOutcome {
 }
 
 struct Pending {
+    ticket_id: String,
+    view: PlanView,
     proposal: ActionPlanProposal,
     decision: PolicyDecision,
     approval: Option<ActionApproval>,
@@ -435,14 +437,17 @@ impl App {
                 catalog_version: &self.catalog.version,
             };
             let plan_id = self.store.save_plan(&ticket.id, &evaluated, now)?;
-            plan = Some(PlanView {
+            let view = PlanView {
                 plan_id,
                 plan_hash: evaluated.hash(),
                 steps: accepted,
-            });
+            };
+            plan = Some(view.clone());
             self.pending.insert(
                 plan_id,
                 Pending {
+                    ticket_id: ticket.id.clone(),
+                    view,
                     proposal,
                     decision,
                     approval: None,
@@ -463,6 +468,15 @@ impl App {
         })
     }
 
+    /// The plan waiting for approval, as the approval window shows it.
+    pub fn pending_plan(&self, ticket_id: &str, plan_id: i64) -> Result<PlanView> {
+        self.pending
+            .get(&plan_id)
+            .filter(|p| p.ticket_id == ticket_id && p.approval.is_none())
+            .map(|p| p.view.clone())
+            .ok_or(AppError::NoPendingPlan)
+    }
+
     /// The person approved `step_ids` of the plan on the approval screen (INV-04).
     pub fn approve(
         &mut self,
@@ -476,6 +490,7 @@ impl App {
         let pending = self
             .pending
             .get_mut(&plan_id)
+            .filter(|p| p.ticket_id == ticket.id)
             .ok_or(AppError::NoPendingPlan)?;
         let plan = EvaluatedPlan {
             proposal: &pending.proposal,

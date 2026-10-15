@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-edit-report"
+description = "Enables the edit_report command without any pre-configured scope."
+commands.allow = ["edit_report"]
+
+[[permission]]
+identifier = "deny-edit-report"
+description = "Denies the edit_report command without any pre-configured scope."
+commands.deny = ["edit_report"]

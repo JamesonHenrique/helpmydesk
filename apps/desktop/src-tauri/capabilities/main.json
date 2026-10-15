@@ -1,0 +1,24 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Main window: everything except approving a plan (INV-04).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-startup",
+    "allow-start-ticket",
+    "allow-diagnose",
+    "allow-open-approval",
+    "allow-execute",
+    "allow-confirm",
+    "allow-make-report",
+    "allow-edit-report",
+    "allow-report-exported",
+    "allow-history",
+    "allow-settings",
+    "allow-set-autonomy",
+    "allow-set-consent",
+    "allow-export-all",
+    "allow-erase-all"
+  ]
+}

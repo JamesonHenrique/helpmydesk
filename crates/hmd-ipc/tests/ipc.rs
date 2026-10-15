@@ -102,10 +102,19 @@ fn full_flow_as_json() {
     );
 
     let plan = d.plan.unwrap();
+    assert_eq!(b.plan(&start.ticket.id, plan.plan_id).unwrap(), plan);
+    assert_eq!(
+        b.plan("999", plan.plan_id).unwrap_err().code,
+        "NO_PENDING_PLAN"
+    );
     let approval = b
         .approve(&start.ticket.id, plan.plan_id, &["s1".to_string()])
         .unwrap();
     assert_eq!(approval.plan_hash, plan.plan_hash);
+    assert!(
+        b.plan(&start.ticket.id, plan.plan_id).is_err(),
+        "an approved plan is no longer offered"
+    );
     let outcome = b.execute(&start.ticket.id, plan.plan_id).unwrap();
     assert_eq!(outcome.kind, "verified");
     let t = b.confirm(&start.ticket.id, true).unwrap();
