@@ -3,6 +3,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { AiConnectComponent } from '../components/ai-connect';
+
 import { CORE_API } from '../api/core-api';
 import { CONSENTS } from '../data/catalog';
 import { Autonomy, PrototypeState } from '../state/prototype';
@@ -18,7 +20,7 @@ const STEPS = [
 
 @Component({
   selector: 'app-onboarding',
-  imports: [RouterLink],
+  imports: [RouterLink, AiConnectComponent],
   template: `
     <section class="page" aria-labelledby="t">
       <p class="small muted" aria-live="polite">
@@ -95,10 +97,8 @@ const STEPS = [
         }
         @case (4) {
           <h1 id="t" tabindex="-1">Inteligência artificial (opcional)</h1>
-          <p>{{ ai.text }}</p>
-          <p class="notice small">
-            No protótipo a IA ainda não pode ser conectada. O modo básico funciona sem ela.
-          </p>
+          <p>Com a ajuda inteligente você pode escrever o problema com as suas palavras.</p>
+          <app-ai-connect />
         }
         @default {
           <h1 id="t" tabindex="-1">Tudo pronto</h1>
@@ -123,7 +123,6 @@ export class OnboardingPage {
   protected readonly step = signal(0);
   protected readonly last = computed(() => this.step() === STEPS.length - 1);
   protected readonly optional = CONSENTS.filter((c) => c.id !== 'ai_opencode');
-  protected readonly ai = CONSENTS.find((c) => c.id === 'ai_opencode') ?? { text: '' };
   protected readonly autonomyOptions: { value: Autonomy; title: string; text: string }[] = [
     { value: 'observe_only', title: 'Só olhar', text: 'Eu verifico e explico, mas não mudo nada.' },
     {

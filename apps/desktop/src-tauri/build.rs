@@ -23,6 +23,12 @@ const COMMANDS: &[&str] = &[
     "set_consent",
     "export_all",
     "erase_all",
+    "ai_status",
+    "ai_connect",
+    "ai_disconnect",
+    "ai_classify",
+    "open_ai_console",
+    "ai_connect_from_clipboard",
 ];
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

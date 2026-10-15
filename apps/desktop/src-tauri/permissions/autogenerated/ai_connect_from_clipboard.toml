@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ai-connect-from-clipboard"
+description = "Enables the ai_connect_from_clipboard command without any pre-configured scope."
+commands.allow = ["ai_connect_from_clipboard"]
+
+[[permission]]
+identifier = "deny-ai-connect-from-clipboard"
+description = "Denies the ai_connect_from_clipboard command without any pre-configured scope."
+commands.deny = ["ai_connect_from_clipboard"]
