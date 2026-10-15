@@ -1,0 +1,40 @@
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<header class="bar">
+  <div class="inner">
+    <a class="brand" routerLink="/">HelpMyDesk</a>
+    <nav aria-label="Principal">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+        >Início</a
+      >
+      <a routerLink="/historico" routerLinkActive="active">Histórico</a>
+      <a routerLink="/configuracoes" routerLinkActive="active">Configurações</a>
+      <a routerLink="/ajuda" routerLinkActive="active">Ajuda</a>
+    </nav>
+    <div class="size" role="group" aria-label="Tamanho do texto">
+      <button
+        type="button"
+        class="btn"
+        (click)="resize(-1)"
+        [disabled]="size() === 0"
+        aria-label="Diminuir o texto"
+      >
+        A−
+      </button>
+      <button
+        type="button"
+        class="btn"
+        (click)="resize(1)"
+        [disabled]="size() === 3"
+        aria-label="Aumentar o texto"
+      >
+        A+
+      </button>
+    </div>
+  </div>
+</header>
+<p class="proto" role="note">
+  Protótipo: as telas usam dados de exemplo. Nada é verificado nem alterado no seu computador.
+</p>
+<main id="conteudo" class="inner" tabindex="-1">
+  <router-outlet />
+</main>

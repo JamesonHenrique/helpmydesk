@@ -15,6 +15,7 @@ Diretórios `NNN-nome` criados pelo Spec Kit. A numeração do Spec Kit é o ID 
 | [008-executor-approval-journal](008-executor-approval-journal/spec.md) | SPEC-006 + parte da SPEC-005 | Implementada (hash do plano, aprovação, diário, verificação; sem correção real até o S-02) |
 | [009-privacy-consent-audit](009-privacy-consent-audit/spec.md) | SPEC-011 | Implementada ("o que eu olho", consentimento versionado, auditoria encadeada, exportar/apagar tudo) |
 | [010-av-probes](010-av-probes/spec.md) | SPEC-001 (sondas, 3º lote) | Implementada (som, microfone e câmera; leitura do registro do Windows a confirmar no S-01) |
+| [011-ui-prototype](011-ui-prototype/spec.md) | F1 (protótipo de telas) | Implementada (Angular, dados de exemplo, textos gerados do catálogo) |
 
 Próximas, na ordem do plano: janela de aprovação (SPEC-005, no app),
 governança de contribuição ao catálogo (SPEC-016).

@@ -199,11 +199,11 @@
    "phase_name": "Fundação open source + protótipo",
    "phase_order": 2,
    "title": "Protótipo Angular de todas as telas",
-   "status": "todo",
+   "status": "done",
    "weight": 3,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": ""
+   "note": "Telas com dados de exemplo e textos gerados do catálogo; falta teste com leigos e revisão visual"
   },
   {
    "id": "F1-07",

@@ -45,6 +45,8 @@ Modo básico (texto, sem IA): `cargo run -p hmd-core --example basic_mode` (menu
 `cargo run -p hmd-core --example basic_mode -- 1 --relatorio "o que aconteceu"`. O que cada
 verificação lê: `cargo run -p hmd-core --example basic_mode -- --o-que-eu-olho`.
 
+Protótipo das telas (Angular, dados de exemplo): veja `apps/desktop/ui/README.md`.
+
 Rodar as sondas na sua máquina: `cargo run -p hmd-probes --example probe_all`.
 Guarda da constituição: `tools/check-no-process-spawn.sh`.
 
