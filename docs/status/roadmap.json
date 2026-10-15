@@ -319,11 +319,11 @@
    "phase_name": "Núcleo somente leitura + modo básico",
    "phase_order": 3,
    "title": "App desktop (Tauri) com o modo básico na interface",
-   "status": "todo",
+   "status": "doing",
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "Precisa de WebKitGTK instalado (sudo)"
+   "note": "Camada de serviço pronta (spec 012); falta o Tauri, que precisa do WebKitGTK instalado"
   },
   {
    "id": "F2-UNINST",
