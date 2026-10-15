@@ -41,6 +41,9 @@ pub(crate) struct RawCapability {
     pub exclusive_with: Vec<String>,
     #[serde(default)]
     pub produces: Vec<String>,
+    /// Fixes only: running it twice is harmless (spec 016, way out of `unknown`).
+    #[serde(default)]
+    pub idempotent: bool,
     #[serde(default)]
     pub variants: BTreeMap<RawPlatform, RawVariant>,
     #[serde(default)]

@@ -443,3 +443,14 @@ fn approval_validity_also_uses_monotonic_time() {
     assert!(!hmd_app::approval_too_old(Duration::from_secs(600)));
     assert!(hmd_app::approval_too_old(Duration::from_secs(601)));
 }
+
+/// Spec 016 (P2): a non-idempotent fix is never proposed again after an `unknown` run whose
+/// problem is still there; only its "problem gone" outcome clears it.
+#[test]
+fn unknown_resolution_never_risks_a_non_idempotent_fix_twice() {
+    use hmd_app::unknown_resolution;
+    assert_eq!(unknown_resolution(true, false), Some(true));
+    assert_eq!(unknown_resolution(true, true), Some(true));
+    assert_eq!(unknown_resolution(false, true), Some(false));
+    assert_eq!(unknown_resolution(false, false), None);
+}
