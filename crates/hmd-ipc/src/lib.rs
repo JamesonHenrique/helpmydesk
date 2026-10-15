@@ -6,8 +6,10 @@
 
 use std::path::{Path, PathBuf};
 
+pub use hmd_ai::CONSOLE_URL as AI_CONSOLE_URL;
 use hmd_ai::{Transport, UreqTransport};
-use hmd_app::ai::{KeyVault, MemoryVault};
+pub use hmd_app::ai::KeyVault;
+use hmd_app::ai::MemoryVault;
 use hmd_app::{App, AppError, DiagnosisView, ExecutionOutcome, PlanView, Startup, StepView};
 use hmd_core::{LOCALE, ProbeOutcome, confidence_phrase};
 use hmd_domain::{ProblemFamily, Ticket, Timestamp};

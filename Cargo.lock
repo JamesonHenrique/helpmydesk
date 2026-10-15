@@ -262,6 +262,7 @@ name = "hmd-app"
 version = "0.1.0"
 dependencies = [
  "ed25519-dalek",
+ "hmd-ai",
  "hmd-catalog",
  "hmd-core",
  "hmd-domain",
@@ -270,6 +271,7 @@ dependencies = [
  "hmd-policy",
  "hmd-probes",
  "hmd-store",
+ "serde_json",
 ]
 
 [[package]]
@@ -313,6 +315,7 @@ dependencies = [
 name = "hmd-ipc"
 version = "0.1.0"
 dependencies = [
+ "hmd-ai",
  "hmd-app",
  "hmd-catalog",
  "hmd-core",
