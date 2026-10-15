@@ -453,7 +453,13 @@ impl Backend {
         Ok(ticket_dto(&self.app()?.confirm(ticket_id, fixed, now)?))
     }
 
-    pub fn make_report(&mut self, ticket_id: &str, symptom: Option<&str>) -> IpcResult<ReportDto> {
+    /// `utc_offset_minutes`: the computer's offset, from the interface (local dates in the report).
+    pub fn make_report(
+        &mut self,
+        ticket_id: &str,
+        symptom: Option<&str>,
+        utc_offset_minutes: Option<i32>,
+    ) -> IpcResult<ReportDto> {
         let now = (self.clock)();
         self.reopen_if_closed();
         let app = self
@@ -461,6 +467,7 @@ impl Backend {
             .as_mut()
             .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
         let runner = &self.runner;
+        app.set_utc_offset(utc_offset_minutes);
         let (id, text) = app.make_report(ticket_id, symptom, None, now, |p| runner(p))?;
         Ok(ReportDto { id, text })
     }
@@ -472,11 +479,17 @@ impl Backend {
 
     /// "Salvar arquivo": writes the report the person sees (with their edits) into `dir`
     /// (the shell passes the Downloads folder), never overwriting a file, and marks it exported.
-    pub fn save_report(&mut self, report_id: i64, text: &str, dir: &Path) -> IpcResult<String> {
+    pub fn save_report(
+        &mut self,
+        report_id: i64,
+        text: &str,
+        dir: &Path,
+        utc_offset_minutes: Option<i32>,
+    ) -> IpcResult<String> {
         let now = (self.clock)();
         let app = self.app()?;
         app.edit_report(report_id, text, now)?;
-        let date = hmd_core::report::utc_date(now);
+        let date = hmd_core::report::local_date(now, utc_offset_minutes);
         let path = (0..100)
             .map(|n| {
                 let suffix = if n == 0 {

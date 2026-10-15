@@ -143,8 +143,11 @@ async fn make_report(
     state: State<'_, Shared>,
     ticket_id: String,
     symptom: Option<String>,
+    utc_offset_minutes: Option<i32>,
 ) -> IpcResult<ReportDto> {
-    with(&state, |b| b.make_report(&ticket_id, symptom.as_deref()))
+    with(&state, |b| {
+        b.make_report(&ticket_id, symptom.as_deref(), utc_offset_minutes)
+    })
 }
 
 #[tauri::command]
@@ -160,6 +163,7 @@ async fn save_report<R: Runtime>(
     state: State<'_, Shared>,
     report_id: i64,
     text: String,
+    utc_offset_minutes: Option<i32>,
 ) -> IpcResult<String> {
     let paths = app.path();
     let dir = paths
@@ -170,7 +174,9 @@ async fn save_report<R: Runtime>(
             code: "NO_FOLDER".into(),
             message: e.to_string(),
         })?;
-    with(&state, |b| b.save_report(report_id, &text, &dir))
+    with(&state, |b| {
+        b.save_report(report_id, &text, &dir, utc_offset_minutes)
+    })
 }
 
 #[tauri::command]

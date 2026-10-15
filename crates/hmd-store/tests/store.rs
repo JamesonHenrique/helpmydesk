@@ -157,6 +157,7 @@ fn us1_3_and_sc002_real_diagnosis_session_and_report() {
             system: system.as_ref(),
             created_at: NOW,
             fixes_attempted: 0,
+            utc_offset_minutes: None,
         });
         let report = s.save_report(&t.id, trigger, &text, NOW).unwrap();
         s.apply(&t.id, TicketEvent::CannotResolve(trigger), NOW + 6)

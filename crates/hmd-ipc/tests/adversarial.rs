@@ -233,11 +233,11 @@ const ATTACKS: &[(&str, Attack)] = &[
     }),
     ("save a huge report into Downloads", |l| {
         let (id, _) = l.dns_plan();
-        let report = l.b.make_report(&id, None).unwrap();
+        let report = l.b.make_report(&id, None, None).unwrap();
         let dir = std::env::temp_dir().join(format!("hmd-adv-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let huge = "x".repeat(hmd_app::MAX_REPORT_BYTES + 1);
-        let result = err(l.b.save_report(report.id, &huge, &dir));
+        let result = err(l.b.save_report(report.id, &huge, &dir, None));
         let written = std::fs::read_dir(&dir).unwrap().count();
         let _ = std::fs::remove_dir_all(&dir);
         assert_eq!(written, 0, "nothing reaches the disk");

@@ -18,6 +18,11 @@ import {
   TicketDto,
 } from './types';
 
+/** Minutes east of UTC on this computer, so reports show local dates (validated in the core). */
+function utcOffsetMinutes(): number {
+  return -new Date().getTimezoneOffset();
+}
+
 /** Event the approval window emits when the person decides. */
 export const APPROVAL_EVENT = 'hmd://approval-decided';
 
@@ -93,13 +98,13 @@ export class TauriApi implements CoreApi {
     return invoke('confirm', { ticketId, fixed });
   }
   makeReport(ticketId: string, symptom: string | null): Promise<ReportDto> {
-    return invoke('make_report', { ticketId, symptom });
+    return invoke('make_report', { ticketId, symptom, utcOffsetMinutes: utcOffsetMinutes() });
   }
   editReport(reportId: number, text: string): Promise<void> {
     return invoke('edit_report', { reportId, text });
   }
   saveReport(reportId: number, text: string): Promise<string> {
-    return invoke('save_report', { reportId, text });
+    return invoke('save_report', { reportId, text, utcOffsetMinutes: utcOffsetMinutes() });
   }
   history(): Promise<TicketDto[]> {
     return invoke('history');
