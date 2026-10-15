@@ -313,6 +313,17 @@ impl Store {
         Ok(out)
     }
 
+    /// Executions in `unknown`: (id, `capability@version`).
+    pub fn unknown_executions(&self) -> Result<Vec<(i64, String)>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, capability FROM action_execution WHERE state = ?1 ORDER BY id")?;
+        let rows = stmt.query_map([ExecutionState::Unknown.code()], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+        })?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
     /// Plan v1 V.10: the capability's state probe said whether the effect happened. This is the
     /// only way out of `unknown`; it never re-runs anything.
     pub fn clarify_unknown(
