@@ -140,7 +140,15 @@ const ATTACKS: &[(&str, Attack)] = &[
     }),
     ("forged ticket ids", |l| {
         let (_, plan) = l.dns_plan();
-        for id in ["", "0", "-1", "1 OR 1=1", "1; DROP TABLE ticket", "../1", "１"] {
+        for id in [
+            "",
+            "0",
+            "-1",
+            "1 OR 1=1",
+            "1; DROP TABLE ticket",
+            "../1",
+            "１",
+        ] {
             if l.b.approve(id, plan, &Lab::s1()).is_ok() || l.b.execute(id, plan).is_ok() {
                 return Ok(());
             }
@@ -185,13 +193,16 @@ const ATTACKS: &[(&str, Attack)] = &[
         err(l.b.approve(&id, old, &Lab::s1()))?;
         err(l.b.execute(&id, old))
     }),
-    ("approved old plan after a new diagnosis found nothing", |l| {
-        let (id, old) = l.dns_plan();
-        l.b.approve(&id, old, &Lab::s1()).unwrap();
-        l.healthy.store(true, SeqCst);
-        l.b.diagnose(&id).map_err(|e| e.code)?;
-        err(l.b.execute(&id, old))
-    }),
+    (
+        "approved old plan after a new diagnosis found nothing",
+        |l| {
+            let (id, old) = l.dns_plan();
+            l.b.approve(&id, old, &Lab::s1()).unwrap();
+            l.healthy.store(true, SeqCst);
+            l.b.diagnose(&id).map_err(|e| e.code)?;
+            err(l.b.execute(&id, old))
+        },
+    ),
     ("approved plan after a new diagnosis", |l| {
         let (id, old) = l.dns_plan();
         l.b.approve(&id, old, &Lab::s1()).unwrap();
@@ -224,7 +235,11 @@ fn every_attack_is_blocked_and_the_fix_never_runs() {
         ATTACKS.len(),
         escaped.join("\n")
     );
-    assert_eq!(ATTACKS.len(), 16, "update the count in docs when adding cases");
+    assert_eq!(
+        ATTACKS.len(),
+        16,
+        "update the count in docs when adding cases"
+    );
 }
 
 #[test]
@@ -234,6 +249,9 @@ fn control_the_lab_really_runs_the_fix_once() {
     lab.b.approve(&id, plan, &Lab::s1()).unwrap();
     assert_eq!(lab.b.execute(&id, plan).unwrap().kind, "verified");
     assert_eq!(lab.runs.load(SeqCst), 1);
-    assert!(lab.b.execute(&id, plan).is_err(), "an approval is used once");
+    assert!(
+        lab.b.execute(&id, plan).is_err(),
+        "an approval is used once"
+    );
     assert_eq!(lab.runs.load(SeqCst), 1);
 }

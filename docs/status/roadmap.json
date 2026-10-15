@@ -523,11 +523,11 @@
    "phase_name": "Endurecimento e release público",
    "phase_order": 6,
    "title": "Revisão de segurança e suíte adversarial com 100% de bloqueio",
-   "status": "todo",
+   "status": "doing",
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "Suíte adversarial local (spec 016): 16 ataques pela interface, todos barrados; achou e corrigiu 4 brechas. Falta revisão independente e suíte da IA"
   },
   {
    "id": "F5-DOCS",
