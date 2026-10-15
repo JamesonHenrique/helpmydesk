@@ -208,3 +208,17 @@ fn save_report_writes_a_new_file_and_marks_it_exported() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn system_view_has_only_os_facts() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    let json = serde_json::to_value(b.system().unwrap()).unwrap();
+    assert!(
+        json["catalogVersion"]
+            .as_str()
+            .unwrap()
+            .starts_with("2026.")
+    );
+    assert!(!json.to_string().contains("secret-host-name"));
+}

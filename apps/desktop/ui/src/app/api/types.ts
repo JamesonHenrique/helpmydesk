@@ -86,6 +86,14 @@ export interface StartupDto {
   housekept: number;
 }
 
+export interface SystemDto {
+  osName: string | null;
+  osVersion: string | null;
+  kernelVersion: string | null;
+  arch: string | null;
+  catalogVersion: string;
+}
+
 export interface SettingsDto {
   autonomy: 'observe_only' | 'ask_always' | 'auto_simple';
   consents: string[];
@@ -116,6 +124,7 @@ export interface CoreApi {
   saveReport(reportId: number, text: string): Promise<string>;
   history(): Promise<TicketDto[]>;
   settings(): Promise<SettingsDto>;
+  system(): Promise<SystemDto>;
   setAutonomy(mode: SettingsDto['autonomy']): Promise<void>;
   setConsent(scope: string, granted: boolean): Promise<void>;
   exportAll(): Promise<string>;

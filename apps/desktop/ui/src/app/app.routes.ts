@@ -2,6 +2,7 @@
 import { Routes } from '@angular/router';
 
 import { ApprovalPage } from './pages/approval';
+import { ComputerPage } from './pages/computer';
 import { DiagnosisPage } from './pages/diagnosis';
 import { HelpPage } from './pages/help';
 import { HistoryPage } from './pages/history';
@@ -25,6 +26,7 @@ export const routes: Routes = [
   },
   { path: 'relatorio', component: ReportPage, title: 'Relatório · HelpMyDesk' },
   { path: 'historico', component: HistoryPage, title: 'Histórico · HelpMyDesk' },
+  { path: 'meu-computador', component: ComputerPage, title: 'Meu computador · HelpMyDesk' },
   { path: 'configuracoes', component: SettingsPage, title: 'Configurações · HelpMyDesk' },
   { path: 'ajuda', component: HelpPage, title: 'Ajuda · HelpMyDesk' },
   { path: '**', redirectTo: '' },

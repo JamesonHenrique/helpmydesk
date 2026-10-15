@@ -7,7 +7,7 @@ use std::sync::Mutex;
 
 use hmd_ipc::{
     ApprovalDto, Backend, DiagnosisDto, IpcError, IpcResult, OutcomeDto, PlanDto, ReportDto,
-    SettingsDto, StartDto, StartupDto, TicketDto, system_clock,
+    SettingsDto, StartDto, StartupDto, SystemDto, TicketDto, system_clock,
 };
 use serde::Serialize;
 use tauri::{
@@ -189,6 +189,11 @@ async fn settings(state: State<'_, Shared>) -> IpcResult<SettingsDto> {
 }
 
 #[tauri::command]
+async fn system(state: State<'_, Shared>) -> IpcResult<SystemDto> {
+    with(&state, Backend::system)
+}
+
+#[tauri::command]
 async fn set_autonomy(state: State<'_, Shared>, mode: String) -> IpcResult<()> {
     with(&state, |b| b.set_autonomy(&mode))
 }
@@ -226,6 +231,7 @@ fn commands<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         save_report,
         history,
         settings,
+        system,
         set_autonomy,
         set_consent,
         export_all,

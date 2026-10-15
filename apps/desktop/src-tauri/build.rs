@@ -19,6 +19,7 @@ const COMMANDS: &[&str] = &[
     "save_report",
     "history",
     "settings",
+    "system",
     "set_autonomy",
     "set_consent",
     "export_all",

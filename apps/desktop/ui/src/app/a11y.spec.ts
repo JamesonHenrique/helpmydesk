@@ -10,6 +10,7 @@ import { App } from './app';
 import { routes } from './app.routes';
 import { CORE_API } from './api/core-api';
 import { FAMILIES } from './data/catalog';
+import { ComputerPage } from './pages/computer';
 import { DiagnosisPage } from './pages/diagnosis';
 import { HelpPage } from './pages/help';
 import { HistoryPage } from './pages/history';
@@ -86,5 +87,6 @@ describe('accessibility (axe-core)', () => {
   it('report', async () => expect(await violations(ReportPage)).toEqual([]));
   it('history', async () => expect(await violations(HistoryPage)).toEqual([]));
   it('settings', async () => expect(await violations(SettingsPage)).toEqual([]));
+  it('computer', async () => expect(await violations(ComputerPage)).toEqual([]));
   it('help', async () => expect(await violations(HelpPage)).toEqual([]));
 });
