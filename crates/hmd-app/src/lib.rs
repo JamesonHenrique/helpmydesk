@@ -64,6 +64,12 @@ pub enum AppError {
     /// The ticket's state does not allow this use case.
     InvalidState(&'static str),
     KillSwitch(hmd_killswitch::KillSwitchError),
+    /// The AI is not connected (no consent or no key in the vault).
+    AiNotConnected,
+    /// The AI call failed or its answer was refused.
+    Ai(hmd_ai::AiError),
+    /// The system vault could not store or read the key; nothing is kept in plain text.
+    Vault(String),
     /// The approval names no step, or a step the plan does not offer.
     StepNotInPlan,
     /// "Só observar" is on: nothing that changes the system runs, even if approved before.
@@ -88,6 +94,9 @@ impl AppError {
             AppError::NoDiagnosis => "NO_DIAGNOSIS",
             AppError::InvalidState(_) => "INVALID_STATE",
             AppError::KillSwitch(e) => e.reason_code(),
+            AppError::AiNotConnected => "AI_NOT_CONNECTED",
+            AppError::Ai(e) => e.reason_code(),
+            AppError::Vault(_) => "AI_KEY_STORE_FAILED",
             AppError::StepNotInPlan => "STEP_NOT_IN_PLAN",
             AppError::ObserveOnly => "OBSERVE_ONLY",
             AppError::CapabilityDisabled => "CAPABILITY_DISABLED",
@@ -240,6 +249,8 @@ pub struct App {
     trusted_keys: Vec<[u8; 32]>,
     /// Capabilities turned off by the last accepted kill switch.
     disabled: BTreeSet<String>,
+    /// AI models turned off by the last accepted kill switch.
+    disabled_models: BTreeSet<String>,
     last_kill_switch: Option<i64>,
     catalog: &'static LoadedCatalog,
     platform: Platform,
@@ -270,6 +281,7 @@ impl App {
             store,
             trusted_keys: hmd_killswitch::TRUSTED_KEYS.to_vec(),
             disabled: BTreeSet::new(),
+            disabled_models: BTreeSet::new(),
             last_kill_switch: None,
             catalog: catalog()?,
             platform: current_platform(),
@@ -315,11 +327,13 @@ impl App {
     /// is ignored.
     fn load_kill_switch(&mut self) -> Result<()> {
         self.disabled.clear();
+        self.disabled_models.clear();
         self.last_kill_switch = None;
         if let Some((payload, signature)) = self.store.kill_switch()?
             && let Ok(ks) = hmd_killswitch::verify(&payload, &signature, &self.trusted_keys)
         {
             self.disabled = ks.disabled_capabilities;
+            self.disabled_models = ks.disabled_models;
             self.last_kill_switch = Some(ks.issued_at);
         }
         Ok(())
@@ -340,6 +354,7 @@ impl App {
             .set_kill_switch(ks.issued_at, file, signature_hex, now)?;
         self.last_kill_switch = Some(ks.issued_at);
         self.disabled = ks.disabled_capabilities;
+        self.disabled_models = ks.disabled_models;
         let disabled = &self.disabled;
         self.pending.retain(|_, p| {
             !p.proposal
@@ -986,3 +1001,5 @@ impl App {
         Ok(self.store.verify_audit_chain()?.broken_at.is_none())
     }
 }
+
+pub mod ai;
