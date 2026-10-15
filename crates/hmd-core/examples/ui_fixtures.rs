@@ -256,6 +256,7 @@ fn main() {
             symptom: Some("A internet parou de abrir os sites desde ontem à noite."),
             system: Some(&system),
             created_at: 1_760_400_000,
+            fixes_attempted: 0,
         });
         let _ = writeln!(
             s,

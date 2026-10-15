@@ -156,6 +156,7 @@ fn us1_3_and_sc002_real_diagnosis_session_and_report() {
             symptom: Some(&redact_free_text("não funciona")),
             system: system.as_ref(),
             created_at: NOW,
+            fixes_attempted: 0,
         });
         let report = s.save_report(&t.id, trigger, &text, NOW).unwrap();
         s.apply(&t.id, TicketEvent::CannotResolve(trigger), NOW + 6)

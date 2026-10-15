@@ -166,6 +166,7 @@ fn main() {
             symptom: symptom.as_deref(),
             system: system.as_ref(),
             created_at: now,
+            fixes_attempted: 0,
         });
         println!("\n----- relatório (você pode editar antes de entregar) -----\n{text}");
     } else if let Some(trigger) = report.report {

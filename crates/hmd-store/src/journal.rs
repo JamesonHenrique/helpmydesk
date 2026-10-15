@@ -201,6 +201,19 @@ impl Store {
         .transpose()
     }
 
+    /// Fixes started for this ticket, whatever their outcome (the report must not say that
+    /// nothing was changed).
+    pub fn fix_attempts(&self, ticket: &str) -> Result<usize> {
+        let row_id = ticket_id(ticket)?;
+        let n: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM action_execution e JOIN action_plan p ON e.plan_id = p.id
+             WHERE p.ticket_id = ?1",
+            [row_id],
+            |r| r.get(0),
+        )?;
+        Ok(usize::try_from(n).unwrap_or(0))
+    }
+
     pub fn executions(&self, plan_id: i64) -> Result<Vec<StoredExecution>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, approval_id, step_id, capability, platform, state, started_at, finished_at,
@@ -278,12 +291,19 @@ impl Store {
     }
 
     /// US2.3: capability IDs (without version) with an execution in `unknown`, for
-    /// `SessionCounters::unknown_executions`.
+    /// `SessionCounters::unknown_executions`. A row still `started` counts too (spec 016): it
+    /// means the journal could not record the result of a fix that may have run.
     pub fn unknown_capabilities(&self) -> Result<BTreeSet<String>> {
         let mut stmt = self
             .conn
-            .prepare("SELECT DISTINCT capability FROM action_execution WHERE state = ?1")?;
-        let rows = stmt.query_map([ExecutionState::Unknown.code()], |r| r.get::<_, String>(0))?;
+            .prepare("SELECT DISTINCT capability FROM action_execution WHERE state IN (?1, ?2)")?;
+        let rows = stmt.query_map(
+            [
+                ExecutionState::Unknown.code(),
+                ExecutionState::Started.code(),
+            ],
+            |r| r.get::<_, String>(0),
+        )?;
         let mut out = BTreeSet::new();
         for cap in rows {
             let cap = cap?;

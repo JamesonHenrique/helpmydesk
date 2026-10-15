@@ -127,6 +127,38 @@ fn us1_verification_must_be_probe() {
     assert_eq!(with_fix(&fix), vec!["INVALID_VERIFICATION"]);
 }
 
+/// Spec 016: a verification that cannot see the problem would "prove" any fix.
+#[test]
+fn verification_must_be_able_to_see_the_problem() {
+    let empty = FIX.replace("all_of = [\"net.dns.resolution_failing\"]", "all_of = []");
+    assert_eq!(with_fix(&empty), vec!["VACUOUS_VERIFICATION"]);
+    let other_probe = FIX.replace(
+        "all_of = [\"net.dns.resolution_failing\"]",
+        "all_of = [\"x.other\"]",
+    );
+    let other = r#"
+id = "x.other.probe"
+version = "1.0.0"
+kind = "probe"
+produces = ["x.other"]
+[variants.linux]
+risk_level = "N1-B"
+[copy.pt-BR]
+title = "Outra"
+looks_at = "Algo"
+never = "Nada"
+"#;
+    let c = codes(load_from_sources(
+        MANIFEST,
+        &[
+            ("net.dns.resolve.toml", PROBE),
+            ("x.other.probe.toml", other),
+            ("net.dns.flush_cache.toml", &other_probe),
+        ],
+    ));
+    assert_eq!(c, vec!["VACUOUS_VERIFICATION"]);
+}
+
 #[test]
 fn us1_unknown_exclusive_reference() {
     let fix = FIX.replace(

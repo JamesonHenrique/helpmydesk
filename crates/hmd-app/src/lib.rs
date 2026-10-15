@@ -750,6 +750,7 @@ impl App {
             symptom: symptom.as_deref(),
             system: system.as_ref(),
             created_at: now,
+            fixes_attempted: self.store.fix_attempts(&ticket.id)?,
         });
         let id = self.store.save_report(&ticket.id, trigger, &text, now)?;
         if ticket.state == TicketState::InProgress {

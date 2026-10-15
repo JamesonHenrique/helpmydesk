@@ -54,3 +54,18 @@ ataques ao processo nativo e ao sistema operacional. F5-SEC continua aberto.
 | Redação do nome da pessoa/computador | caracteres cuja minúscula muda de tamanho em bytes (`İ`, `K` Kelvin) desalinhavam a busca e o nome **ficava no texto** | busca caractere a caractere no texto original (`find_folded`); teste com 5 000 combinações |
 | `/proc/asound/pcm` com contagens absurdas | `sum` de `u64` podia estourar (pânico em debug) | `any(n > 0)` |
 | Caracteres invisíveis em nomes de programas e no sintoma | tags Unicode (U+E0000–E007F), U+061C, hífen suave e seletores de variação passavam | `is_invisible` cobre esses blocos (tags escondem instruções para IA) |
+
+## Rodada 4: revisão de leitura (subagente) — confirmados e corrigidos
+
+| Achado | Correção |
+|---|---|
+| Execução que ficou `started` (diário não gravou o resultado) não bloqueava a capacidade até reiniciar | `unknown_capabilities` conta `started` também |
+| Correção com verificação incapaz de ver o problema (`all_of` vazio ou achado de outra sonda) seria sempre "verificada" | catálogo recusa com `VACUOUS_VERIFICATION` |
+| Relatório dizia "não alterou nada" mesmo depois de uma correção | frase vem do diário (`fix_attempts`) |
+| Nome/versão do sistema entravam crus no relatório e na tela | `sanitize_untrusted` + `redact_identity` |
+
+Anotados como P2 (não corrigidos): purga da auditoria com relógio adiantado >180 dias; `confirm` e
+`report_exported` chamáveis pela janela principal; `erase_all` deixa o backend `NOT_OPEN` se falhar;
+`clarify_unknown` sem chamador (capacidade em `unknown` fica bloqueada para sempre); pânico dentro
+de uma correção envenena o mutex (`catch_unwind` antes da primeira correção real); validade da
+aprovação pelo relógio de parede.
