@@ -7,7 +7,7 @@ import { App } from './app';
 import { routes } from './app.routes';
 import { CORE_API } from './api/core-api';
 import { FAMILIES, PROBES, probesFor } from './data/catalog';
-import { ApprovalPage } from './pages/approval';
+import { APPROVAL_ARM_MS, ApprovalPage } from './pages/approval';
 import { DiagnosisPage } from './pages/diagnosis';
 import { HomePage } from './pages/home';
 import { PlanPage } from './pages/plan';
@@ -154,6 +154,51 @@ describe('ApprovalPage', () => {
     await setup();
     const { el } = await render(ApprovalPage, { ticket: '1', plan: '1' });
     expect(el.textContent).toContain('Este plano não está mais disponível');
+  });
+
+  it('"Sim" only works a moment after the plan is shown (no click-through)', async () => {
+    const approved: string[][] = [];
+    const plan = {
+      planId: 1,
+      planHash: 'sha256:0000000000000000000000',
+      steps: [
+        {
+          stepId: 's1',
+          capability: 'net.dns.flush_cache',
+          title: 'Limpar a memória de endereços da internet',
+          risk: 'baixo',
+          undo: 'não precisa',
+          requiresElevation: true,
+          perActionApproval: true,
+        },
+      ],
+    };
+    await TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes, withComponentInputBinding()),
+        {
+          provide: CORE_API,
+          useValue: {
+            real: false,
+            plan: async () => plan,
+            approve: async (_t: string, _p: number, steps: string[]) => {
+              approved.push(steps);
+            },
+          },
+        },
+      ],
+    }).compileComponents();
+    const { fixture, el } = await render(ApprovalPage, { ticket: '1', plan: '1' });
+    const yes = el.querySelector('button.primary') as HTMLButtonElement;
+    expect(yes.disabled).toBe(true);
+    yes.click();
+    expect(approved.length).toBe(0);
+    await new Promise((resolve) => setTimeout(resolve, APPROVAL_ARM_MS + 50));
+    fixture.detectChanges();
+    expect(yes.disabled).toBe(false);
+    yes.click();
+    await fixture.whenStable();
+    expect(approved).toEqual([['s1']]);
   });
 });
 

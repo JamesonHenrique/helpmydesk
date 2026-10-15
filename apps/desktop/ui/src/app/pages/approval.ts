@@ -7,6 +7,10 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { CORE_API } from '../api/core-api';
 import { IpcError, PlanDto } from '../api/types';
 
+/** "Sim" stays off this long after the plan appears, so a click aimed at another window (the main
+ * window may reopen this one at any moment) cannot land on it (spec 016, S-04). */
+export const APPROVAL_ARM_MS = 1000;
+
 @Component({
   selector: 'app-approval',
   template: `
@@ -39,7 +43,7 @@ import { IpcError, PlanDto } from '../api/types';
           <button
             type="button"
             class="btn primary"
-            [disabled]="chosen().size === 0"
+            [disabled]="!armed() || chosen().size === 0"
             (click)="approve()"
           >
             Sim, pode fazer
@@ -59,12 +63,14 @@ export class ApprovalPage implements OnInit {
   protected readonly chosen = signal<ReadonlySet<string>>(new Set());
   protected readonly error = signal<IpcError | null>(null);
   protected readonly done = signal('');
+  protected readonly armed = signal(false);
 
   async ngOnInit(): Promise<void> {
     try {
       const p = await this.api.plan(this.ticket(), Number(this.planId()));
       this.plan.set(p);
       this.chosen.set(new Set(p.steps.map((s) => s.stepId)));
+      setTimeout(() => this.armed.set(true), APPROVAL_ARM_MS);
     } catch (e) {
       this.error.set(e as IpcError);
     }
@@ -81,6 +87,9 @@ export class ApprovalPage implements OnInit {
   }
 
   protected async approve(): Promise<void> {
+    if (!this.armed()) {
+      return;
+    }
     try {
       await this.api.approve(this.ticket(), Number(this.planId()), [...this.chosen()]);
       this.finish('Aprovado. Pode voltar para a janela principal.');
