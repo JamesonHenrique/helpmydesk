@@ -63,12 +63,18 @@ fn open(path: &Path, now: i64) -> App {
 }
 
 #[test]
-fn production_build_trusts_no_key_yet() {
+fn production_build_trusts_only_the_project_key() {
     let (mut app, _) = App::open_in_memory(NOW).unwrap();
     let (file, sig) = signed(NOW, &["net.dns.flush_cache"]);
     let err = app.apply_kill_switch(&file, &sig, NOW).unwrap_err();
     assert!(matches!(err, AppError::KillSwitch(_)));
-    assert_eq!(err.reason_code(), "KILLSWITCH_NO_TRUSTED_KEY");
+    assert_eq!(err.reason_code(), "KILLSWITCH_BAD_SIGNATURE");
+
+    // A file really signed with the project key (fixture made with docs/ops/kill-switch.md).
+    let file = include_bytes!("fixtures/killswitch-empty.json");
+    let sig = include_str!("fixtures/killswitch-empty.json.sig");
+    let disabled = app.apply_kill_switch(file, sig, NOW).unwrap();
+    assert!(disabled.is_empty());
 }
 
 #[test]

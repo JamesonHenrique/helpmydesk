@@ -29,9 +29,12 @@ pub const MAX_BYTES: usize = 64 * 1024;
 /// How far in the future `issued_at` may be (clock differences).
 pub const MAX_CLOCK_SKEW: i64 = 24 * 60 * 60;
 
-/// Ed25519 public keys of the release key, compiled into the app. **Empty until the maintainer
-/// generates the release key** (see `docs/ops/kill-switch.md`); with no key every file is refused.
-pub const TRUSTED_KEYS: &[[u8; 32]] = &[];
+/// Ed25519 public keys of the release key, compiled into the app (see `docs/ops/kill-switch.md`).
+/// Project key generated on 2026-10-15; hex `0e495f7a74cee62c7bdf1a72bb4b962ee45757238da6d0edb9161c4f3f097b47`.
+pub const TRUSTED_KEYS: &[[u8; 32]] = &[[
+    0x0e, 0x49, 0x5f, 0x7a, 0x74, 0xce, 0xe6, 0x2c, 0x7b, 0xdf, 0x1a, 0x72, 0xbb, 0x4b, 0x96, 0x2e,
+    0xe4, 0x57, 0x57, 0x23, 0x8d, 0xa6, 0xd0, 0xed, 0xb9, 0x16, 0x1c, 0x4f, 0x3f, 0x09, 0x7b, 0x47,
+]];
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -219,8 +222,18 @@ mod tests {
     fn no_key_means_nothing_is_trusted() {
         let bytes = file(NOW, NOW + 1);
         assert_eq!(
-            verify(&bytes, &sign(&key(7), &bytes), TRUSTED_KEYS),
+            verify(&bytes, &sign(&key(7), &bytes), &[]),
             Err(KillSwitchError::NoTrustedKey)
+        );
+    }
+
+    #[test]
+    fn the_project_key_is_compiled_in_and_refuses_other_signers() {
+        assert_eq!(TRUSTED_KEYS.len(), 1);
+        let bytes = file(NOW, NOW + 1);
+        assert_eq!(
+            verify(&bytes, &sign(&key(7), &bytes), TRUSTED_KEYS),
+            Err(KillSwitchError::BadSignature)
         );
     }
 
