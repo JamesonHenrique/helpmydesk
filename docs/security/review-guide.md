@@ -34,14 +34,15 @@ Rodar tudo: `tools/check-all.sh` (o mesmo que o CI).
 
 ## Pontos abertos que pedem atenção
 
-- `confirm` e `report_exported` podem ser chamados pela janela principal: uma interface
-  comprometida marca "resolvido" (só depois de uma correção verificada) ou registra uma exportação
-  falsa na auditoria.
-- A limpeza da auditoria usa o relógio do sistema: um salto de mais de 180 dias para a frente apaga
-  os eventos, e a cadeia continua válida como prefixo cortado.
-- A validade da aprovação também usa o relógio de parede.
-- `clarify_unknown` não tem chamador: uma capacidade em `unknown` fica bloqueada para sempre.
-- `erase_all`: se apagar ou reabrir falhar, o backend fica `NOT_OPEN` até o app reiniciar.
+- **Risco aceito pelo mantenedor (15/10):** `confirm` pode ser chamado pela janela principal.
+  Uma interface comprometida marca "resolvido", mas só depois de uma correção verificada; não
+  executa nada.
+- Resolvidos em 15/10: exportação forjada (comando `report_exported` removido), purga com salto
+  de relógio (espera uma sessão normal), validade da aprovação também por relógio monotônico,
+  saída de `unknown` pela sonda de verificação, `erase_all` que falha reabre no comando seguinte.
+- A saída de `unknown` marca "não aplicada" quando o problema continua; isso permite propor a
+  mesma correção de novo (com aprovação nova). Para correções não idempotentes, revise antes de
+  liberar.
 - O registro de correções de produção está vazio (`Registry::production()`). Revise de novo quando
   a primeira correção real entrar (depende do spike S-02 e da elevação, SPEC-007).
 - Ainda não foram revisados: o helper de elevação (não existe), o updater, a assinatura dos
