@@ -46,6 +46,7 @@ settings (privacy, autonomy, AI, about) and help.
 
 - **SC-001**: Each acceptance scenario has a component test (Vitest).
 - **SC-002**: CI builds and tests the prototype.
+- **SC-003**: axe-core finds no violation on any screen (color contrast excluded in jsdom; added 2026-10-15).
 
 ## Assumptions
 
