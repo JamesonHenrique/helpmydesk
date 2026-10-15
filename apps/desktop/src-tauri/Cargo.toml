@@ -24,6 +24,12 @@ hmd-probes = { path = "../../../crates/hmd-probes" }
 serde = { version = "1.0.229", features = ["derive"] }
 tauri = { version = "=2.12.1", features = [] }
 
+[dev-dependencies]
+# Mock runtime and IPC helpers for the ACL tests; serde_json is already in Tauri's tree.
+tauri = { version = "=2.12.1", features = ["test"] }
+serde_json = "1"
+hmd-probes = { path = "../../../crates/hmd-probes" }
+
 [lints.rust]
 unsafe_code = "forbid"
 

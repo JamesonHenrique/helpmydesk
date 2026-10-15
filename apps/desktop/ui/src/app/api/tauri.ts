@@ -2,7 +2,7 @@
 // The real core, through Tauri commands (apps/desktop/src-tauri). Approval happens only in the
 // separate approval window, which reports back with an event (INV-04).
 import { invoke } from '@tauri-apps/api/core';
-import { emit, listen } from '@tauri-apps/api/event';
+import { UnlistenFn, emit, listen } from '@tauri-apps/api/event';
 
 import {
   ApprovalDto,
@@ -23,7 +23,8 @@ export const APPROVAL_EVENT = 'hmd://approval-decided';
 export interface ApprovalDecision {
   ticketId: string;
   planId: number;
-  decision: 'approved' | 'declined';
+  /** `closed`: the window was closed without a decision (counts as declined). */
+  decision: 'approved' | 'declined' | 'closed';
 }
 
 export function isTauri(): boolean {
@@ -43,14 +44,25 @@ export class TauriApi implements CoreApi {
     return invoke('diagnose', { ticketId });
   }
   async requestApproval(ticketId: string, plan: PlanDto): Promise<'approved' | 'declined'> {
-    const decided = new Promise<'approved' | 'declined'>((resolve) => {
-      void listen<ApprovalDecision>(APPROVAL_EVENT, (event) => {
-        if (event.payload.ticketId === ticketId && event.payload.planId === plan.planId) {
-          resolve(event.payload.decision);
-        }
-      });
+    let resolveDecision: (d: 'approved' | 'declined') => void = () => undefined;
+    const decided = new Promise<'approved' | 'declined'>((resolve) => (resolveDecision = resolve));
+    // Listen before opening the window, and only for this plan; stop at the first answer.
+    let unlisten: UnlistenFn | undefined;
+    let answered = false;
+    unlisten = await listen<ApprovalDecision>(APPROVAL_EVENT, (event) => {
+      if (answered || event.payload.ticketId !== ticketId || event.payload.planId !== plan.planId) {
+        return;
+      }
+      answered = true;
+      unlisten?.();
+      resolveDecision(event.payload.decision === 'approved' ? 'approved' : 'declined');
     });
-    await invoke('open_approval', { ticketId, planId: plan.planId });
+    try {
+      await invoke('open_approval', { ticketId, planId: plan.planId });
+    } catch (e) {
+      unlisten();
+      throw e;
+    }
     return decided;
   }
   plan(ticketId: string, planId: number): Promise<PlanDto> {
