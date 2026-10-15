@@ -367,11 +367,11 @@
    "phase_name": "IA via OpenCode",
    "phase_order": 4,
    "title": "Cliente de IA OpenCode e allowlist de modelos",
-   "status": "todo",
+   "status": "doing",
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "Spec 017: crate hmd-ai (endpoint oficial do Zen, 4 modelos de retenção zero, esquema fechado, respostas hostis recusadas). Falta guardar a chave no cofre e a chamada real (S-09)"
   },
   {
    "id": "SPEC-010",
