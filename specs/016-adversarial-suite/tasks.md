@@ -11,3 +11,4 @@
 - [x] T009 Rodada 4: 4 achados da revisão de leitura corrigidos; 6 anotados como P2
 - [x] T010 Pânico dentro de uma correção vira unknown (catch_unwind)
 - [x] T011 Rodada 5: P2 decididos pelo mantenedor
+- [x] T012 Rodada 6: idempotente, data local no relatório, CI Windows fixado
