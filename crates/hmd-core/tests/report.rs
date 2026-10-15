@@ -52,6 +52,7 @@ fn report_for(d: &DiagnosisReport, trigger: ReportTrigger, symptom: Option<&str>
             arch: Some("x86_64".into()),
         }),
         created_at: NOW,
+        fixes_attempted: 0,
     })
 }
 
@@ -194,6 +195,7 @@ fn sc002_real_report_has_no_identity() {
             symptom: Some(&symptom),
             system: system.as_ref(),
             created_at: NOW,
+            fixes_attempted: 0,
         })
         .to_lowercase();
         for name in [&user, &host] {
@@ -208,4 +210,24 @@ fn sc002_real_report_has_no_identity() {
             assert!(!leaked, "{family:?}: report leaks identity");
         }
     }
+}
+
+/// Spec 016: OS strings are untrusted (control, bidi and tag characters, length).
+#[test]
+fn system_strings_are_cleaned() {
+    let mut evidence = BTreeMap::new();
+    evidence.insert(
+        "os_name",
+        Evidence::Text(format!("Ubu\u{202E}ntu\u{7}\u{E0041}{}", "x".repeat(200))),
+    );
+    evidence.insert("os_version", Evidence::Text("\u{200B}\u{7}".into()));
+    let s = SystemSummary::from_probe(&ProbeOutput {
+        probe_id: "sys.info.basic",
+        findings: vec![],
+        evidence,
+    });
+    let name = s.os_name.unwrap();
+    assert!(name.starts_with("Ubuntuxxx"), "{name}");
+    assert_eq!(name.chars().count(), 80);
+    assert_eq!(s.os_version, None, "nothing visible left");
 }

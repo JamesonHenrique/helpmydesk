@@ -316,6 +316,26 @@ fn cross_check(
                     format!("{platform:?}: `{probe}` is not a probe available on this platform"),
                 ));
             }
+            // Spec 016: "verified" means the verification probe no longer reports the problem,
+            // so it must be able to report it at all.
+            let seen = meta.get(probe.as_str()).map(|m| &m.produces);
+            let all_of = &v.preconditions.all_of;
+            let checkable = ok && all_of.iter().all(|f| known.contains(f.as_str()));
+            if checkable
+                && (all_of.is_empty()
+                    || !all_of
+                        .iter()
+                        .all(|f| seen.is_some_and(|p| p.iter().any(|x| x == f))))
+            {
+                errors.push(err(
+                    file,
+                    "VACUOUS_VERIFICATION",
+                    format!(
+                        "{platform:?}: `{probe}` cannot report every `all_of` finding, so it would \
+                         prove any fix"
+                    ),
+                ));
+            }
         }
     }
     if cap.kind == CapabilityKind::Probe {

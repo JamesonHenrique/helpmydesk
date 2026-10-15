@@ -189,6 +189,9 @@ fn us2_interrupted_execution_becomes_unknown_and_blocks_the_capability() {
         })
         .unwrap();
     assert!(s.key_used(&key).unwrap());
+    // Spec 016: still `started` in this run (the journal update after the fix failed): the
+    // capability is already blocked, before any restart.
+    assert!(s.unknown_capabilities().unwrap().contains(FIX));
 
     assert_eq!(s.recover_interrupted(NOW + 60).unwrap(), 1);
     let rows = s.executions(plan_id).unwrap();

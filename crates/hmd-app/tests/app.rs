@@ -237,6 +237,15 @@ fn us3_fix_that_does_not_help_is_rep03() {
         .unwrap();
     assert_eq!(t2.state, TicketState::Unresolved);
     assert_eq!(t2.last_trigger, Some(ReportTrigger::VerificationFailed));
+    // Spec 016: the report must not claim that nothing was changed.
+    let (_, text) = a
+        .make_report(&t.id, None, None, NOW + 7, dns_probe(&still))
+        .unwrap();
+    assert!(!text.contains("não alterou nada"), "{text}");
+    assert!(
+        text.contains("aplicou 1 correção aprovada pela pessoa"),
+        "{text}"
+    );
 }
 
 #[test]

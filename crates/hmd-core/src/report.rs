@@ -31,8 +31,13 @@ pub struct SystemSummary {
 
 impl SystemSummary {
     pub fn from_probe(out: &ProbeOutput) -> SystemSummary {
+        // Spec 016: these strings come from the system (a distro or OEM can put anything in
+        // them), so they are cleaned like any other untrusted text.
         let text = |key: &str| match out.evidence.get(key) {
-            Some(Evidence::Text(t)) => Some(t.clone()),
+            Some(Evidence::Text(t)) => Some(hmd_probes::redact_identity(
+                &hmd_probes::sanitize_untrusted(t, 80),
+            ))
+            .filter(|t| !t.is_empty()),
             _ => None,
         };
         SystemSummary {
@@ -108,6 +113,8 @@ pub struct ReportInput<'a> {
     pub symptom: Option<&'a str>,
     pub system: Option<&'a SystemSummary>,
     pub created_at: Timestamp,
+    /// Fixes started for this ticket (from the journal); 0 = only read-only checks ran.
+    pub fixes_attempted: usize,
 }
 
 /// `YYYY-MM-DD` (UTC) from Unix seconds, without a date library (civil-from-days algorithm).
@@ -215,10 +222,26 @@ pub fn render(input: &ReportInput<'_>) -> String {
     let _ = writeln!(s, "{}\n", d.copy.explanation);
 
     let _ = writeln!(s, "## O que já foi tentado\n");
-    let _ = writeln!(
-        s,
-        "- O HelpMyDesk não alterou nada neste computador: só fez verificações de leitura."
-    );
+    match input.fixes_attempted {
+        0 => {
+            let _ = writeln!(
+                s,
+                "- O HelpMyDesk não alterou nada neste computador: só fez verificações de leitura."
+            );
+        }
+        n => {
+            let what = if n == 1 {
+                "1 correção aprovada".to_string()
+            } else {
+                format!("{n} correções aprovadas")
+            };
+            let _ = writeln!(
+                s,
+                "- O HelpMyDesk aplicou {what} pela pessoa; fora isso, só fez verificações de \
+                 leitura."
+            );
+        }
+    }
     if !d.copy.steps.is_empty() {
         let _ = writeln!(s, "- Orientações que eu dei à pessoa:");
         for (i, step) in d.copy.steps.iter().enumerate() {
