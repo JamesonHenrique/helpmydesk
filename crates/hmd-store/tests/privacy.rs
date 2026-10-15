@@ -167,8 +167,8 @@ fn us2_consent_records_the_notice_version() {
         })
     ));
     let export = s.export_markdown(NOW).unwrap();
-    assert!(export.contains("`ai_opencode` concedida (aviso versão 1)"));
-    assert!(export.contains("`ai_opencode` retirada (aviso versão 1)"));
+    assert!(export.contains("`ai_opencode` concedida (aviso versão 2)"));
+    assert!(export.contains("`ai_opencode` retirada (aviso versão 2)"));
 }
 
 #[test]
