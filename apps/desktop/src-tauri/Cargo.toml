@@ -1,0 +1,35 @@
+[package]
+name = "helpmydesk"
+description = "HelpMyDesk desktop shell (Tauri): one command per hmd-ipc use case (spec 013)"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/JamesonHenrique/helpmydesk"
+rust-version = "1.99"
+publish = false
+
+# Separate workspace: it needs WebKitGTK on Linux, so it stays out of the main workspace (local
+# checks keep working without it). CI builds it on Linux and Windows. ADR-025.
+[workspace]
+
+[lib]
+name = "helpmydesk_lib"
+
+[build-dependencies]
+tauri-build = { version = "=2.7.1", features = [] }
+
+[dependencies]
+hmd-ipc = { path = "../../../crates/hmd-ipc" }
+hmd-probes = { path = "../../../crates/hmd-probes" }
+serde = { version = "1.0.229", features = ["derive"] }
+tauri = { version = "=2.12.1", features = [] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"

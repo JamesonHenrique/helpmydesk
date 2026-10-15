@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-autonomy"
+description = "Enables the set_autonomy command without any pre-configured scope."
+commands.allow = ["set_autonomy"]
+
+[[permission]]
+identifier = "deny-set-autonomy"
+description = "Denies the set_autonomy command without any pre-configured scope."
+commands.deny = ["set_autonomy"]

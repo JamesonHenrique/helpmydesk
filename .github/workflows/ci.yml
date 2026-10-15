@@ -59,6 +59,42 @@ jobs:
       - name: Build
         run: npx ng build
 
+  desktop:
+    name: Desktop shell (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/ui/package-lock.json
+      - name: Build the UI the shell embeds
+        working-directory: apps/desktop/ui
+        run: |
+          npm ci --ignore-scripts
+          npx ng build
+      - name: WebKitGTK (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev
+      - name: Format
+        working-directory: apps/desktop/src-tauri
+        run: cargo fmt -- --check
+      - name: Lint
+        working-directory: apps/desktop/src-tauri
+        run: cargo clippy --locked -- -D warnings
+      - name: Build
+        working-directory: apps/desktop/src-tauri
+        run: cargo build --locked
+
   guards:
     name: Constitution guards
     runs-on: ubuntu-latest
