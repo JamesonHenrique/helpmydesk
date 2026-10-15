@@ -152,11 +152,6 @@ async fn edit_report(state: State<'_, Shared>, report_id: i64, text: String) -> 
     with(&state, |b| b.edit_report(report_id, &text))
 }
 
-#[tauri::command]
-async fn report_exported(state: State<'_, Shared>, report_id: i64) -> IpcResult<()> {
-    with(&state, |b| b.report_exported(report_id))
-}
-
 /// Saves the report into the person's Downloads folder (or Documents, or home) and returns the
 /// path, so the screen can say where it is.
 #[tauri::command]
@@ -227,7 +222,6 @@ fn commands<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         confirm,
         make_report,
         edit_report,
-        report_exported,
         save_report,
         history,
         settings,
