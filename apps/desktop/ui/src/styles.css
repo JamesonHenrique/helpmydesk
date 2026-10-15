@@ -180,6 +180,10 @@ a {
   display: grid;
   gap: 0.5rem;
 }
+/* A list of checks inside a card keeps the card's breathing room. */
+.checks.card {
+  padding: 0.9rem 1.1rem;
+}
 .checks li {
   display: flex;
   gap: 0.6rem;
