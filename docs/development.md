@@ -38,6 +38,7 @@ Veja o plano v1, VIII.4. Crates atuais:
 | `crates/hmd-core` | 006, 007 | Playbooks, autorização das sondas, diagnóstico, avaliação das correções (sem executar) e relatório "não consegui" |
 | `crates/hmd-executor` | 008 | Hash do plano, checagem da aprovação, execução com diário write-ahead e verificação (sem correção real até o S-02) |
 | `crates/hmd-app` | 012 | Casos de uso que a interface chama: chamados sem duplicar, diagnóstico, plano, aprovação, execução com prova, relatório, privacidade |
+| `crates/hmd-ipc` | 013 | Ponte da interface: visões serializáveis e erros por código sobre o `hmd-app` |
 | `crates/hmd-store` | 007, 008 | Histórico local em SQLite: chamados, eventos, sessões, achados, mensagens, consentimentos, relatórios, retenção, planos, aprovações, diário de execução, auditoria encadeada, exportar e apagar tudo |
 | `crates/hmd-probes` | 004, 005, 010 | Sondas somente leitura: sistema, memória, CPU, processos, disco, DNS, adaptadores, gateway, HTTP/portal cativo, inicialização, som, microfone e câmera |
 
@@ -47,6 +48,11 @@ Modo básico (texto, sem IA): `cargo run -p hmd-core --example basic_mode` (menu
 verificação lê: `cargo run -p hmd-core --example basic_mode -- --o-que-eu-olho`.
 
 Protótipo das telas (Angular, dados de exemplo): veja `apps/desktop/ui/README.md`.
+
+App desktop (Tauri, `apps/desktop/src-tauri`, workspace próprio): no Linux precisa de
+`sudo apt install libwebkit2gtk-4.1-dev`. Depois: `cd apps/desktop/ui && npx ng build`, e
+`cd ../src-tauri && cargo run`. Sem o WebKitGTK, o check cruzado para Windows funciona
+(`tools/check-all.sh`).
 
 Rodar as sondas na sua máquina: `cargo run -p hmd-probes --example probe_all`.
 Guarda da constituição: `tools/check-no-process-spawn.sh`. Tudo o que o CI roda, localmente:

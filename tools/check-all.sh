@@ -9,10 +9,17 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked -q
 
+if command -v npx >/dev/null && [ ! -d apps/desktop/ui/dist/ui/browser ]; then
+  (cd apps/desktop/ui && { [ -d node_modules ] || npm ci --ignore-scripts; } && npx ng build >/dev/null)
+fi
+
 if rustup target list --installed 2>/dev/null | grep -q x86_64-pc-windows-gnu \
   && command -v x86_64-w64-mingw32-gcc >/dev/null; then
   echo "== Rust: lint for Windows (cross)"
   cargo clippy --workspace --all-targets --locked --target x86_64-pc-windows-gnu -- -D warnings
+  echo "== Desktop shell: lint for Windows (cross; Linux needs WebKitGTK)"
+  (cd apps/desktop/src-tauri && cargo fmt -- --check \
+    && cargo clippy --locked --target x86_64-pc-windows-gnu -- -D warnings)
 else
   echo "== Rust: Windows cross-lint skipped (needs the target and MinGW)"
 fi

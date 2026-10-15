@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Stages C (investigation) and D (explanation). The prototype walks through the family's checks
-// with a timer and then shows one of the catalog diagnoses as an example.
-import { Component, OnDestroy, OnInit, computed, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+// Stages C (investigation) and D (explanation): opens or continues the ticket, runs the
+// family's checks in the core and explains the result.
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 
-import { confidencePhrase, family, probe } from '../data/catalog';
+import { CORE_API } from '../api/core-api';
+import { IpcError, ProbeRunDto } from '../api/types';
+import { family, probe } from '../data/catalog';
+import { Session } from '../state/session';
 import { PrototypeState } from '../state/prototype';
-
-type CheckState = 'waiting' | 'running' | 'done' | 'skipped';
 
 @Component({
   selector: 'app-diagnosis',
@@ -15,47 +16,38 @@ type CheckState = 'waiting' | 'running' | 'done' | 'skipped';
   template: `
     @if (fam(); as f) {
       <section class="page" aria-labelledby="t">
-        @if (!finished()) {
+        @if (running()) {
           <h1 id="t">Verificando: {{ f.title }}…</h1>
-        } @else {
-          <h1 id="t">O que eu encontrei</h1>
-        }
-        <ul class="checks card" aria-label="Verificações">
-          @for (c of checks(); track c.id) {
-            <li>
-              @switch (c.state) {
-                @case ('done') {
-                  <span class="mark ok" aria-hidden="true">✓</span>
-                }
-                @case ('running') {
-                  <span class="mark muted" aria-hidden="true">⟳</span>
-                }
-                @case ('skipped') {
-                  <span class="mark muted" aria-hidden="true">–</span>
-                }
-                @default {
-                  <span class="mark muted" aria-hidden="true">○</span>
-                }
-              }
-              <span
-                >{{ c.title }}
-                <span class="small muted">({{ label(c.state) }})</span>
-              </span>
-            </li>
-          }
-        </ul>
-        @if (!finished()) {
+          <ul class="checks card" aria-label="Verificações">
+            @for (id of f.probes; track id) {
+              <li>
+                <span class="mark muted" aria-hidden="true">⟳</span><span>{{ title(id) }}</span>
+              </li>
+            }
+          </ul>
           <div class="row">
             <span class="muted" aria-live="polite">Nada está sendo alterado agora.</span>
             <button type="button" class="btn" (click)="stop()">Parar</button>
           </div>
-        } @else if (stopped()) {
-          <p class="notice">Parei as verificações. Nada foi alterado.</p>
+        } @else if (error(); as e) {
+          <h1 id="t">Não consegui fazer as verificações</h1>
+          <p class="notice">Algo deu errado do meu lado ({{ e.code }}). Nada foi alterado.</p>
           <div class="actions"><a class="btn" routerLink="/">Voltar ao início</a></div>
-        } @else if (diag(); as d) {
+        } @else if (session.diagnosis(); as d) {
+          <h1 id="t">O que eu encontrei</h1>
+          <ul class="checks card" aria-label="Verificações">
+            @for (p of d.probes; track p.probeId) {
+              <li>
+                <span class="mark {{ tone(p) }}" aria-hidden="true">{{ mark(p) }}</span>
+                <span
+                  >{{ p.title }} <span class="small muted">({{ label(p) }})</span></span
+                >
+              </li>
+            }
+          </ul>
           <div class="card" aria-live="polite">
             <p>
-              <strong>{{ phrase(d.confidence) }}:</strong> {{ d.title }}
+              <strong>{{ d.confidencePhrase }}:</strong> {{ d.title }}
             </p>
             <p>{{ d.explanation }}</p>
             @if (d.steps.length) {
@@ -68,32 +60,32 @@ type CheckState = 'waiting' | 'running' | 'done' | 'skipped';
             }
           </div>
           <div class="actions">
-            @if (d.fixes.length) {
+            @if (d.plan) {
               <a class="btn primary" [routerLink]="['/plano', f.code]">Ver o que eu posso fazer</a>
             }
-            @if (d.report) {
-              <a class="btn" routerLink="/relatorio">Preparar relatório para levar a alguém</a>
-            }
+            <a class="btn" routerLink="/relatorio">Preparar relatório para levar a alguém</a>
             <a class="btn" routerLink="/">Voltar ao início</a>
           </div>
-          <details class="small">
-            <summary>Protótipo: ver outro resultado de exemplo</summary>
-            <label for="sc">Resultado</label>
-            <select id="sc" [value]="state.scenario()" (change)="pick($any($event.target).value)">
-              @for (x of f.diagnoses; track x.id) {
-                <option [value]="$index">{{ x.title }}</option>
-              }
-            </select>
-            <label for="pf">Sistema</label>
-            <select
-              id="pf"
-              [value]="state.platform()"
-              (change)="setPlatform($any($event.target).value)"
-            >
-              <option value="windows">Windows</option>
-              <option value="linux">Linux</option>
-            </select>
-          </details>
+          @if (!api.real) {
+            <details class="small">
+              <summary>Protótipo: ver outro resultado de exemplo</summary>
+              <label for="sc">Resultado</label>
+              <select id="sc" [value]="state.scenario()" (change)="pick($any($event.target).value)">
+                @for (x of f.diagnoses; track x.id) {
+                  <option [value]="$index">{{ x.title }}</option>
+                }
+              </select>
+              <label for="pf">Sistema</label>
+              <select
+                id="pf"
+                [value]="state.platform()"
+                (change)="setPlatform($any($event.target).value)"
+              >
+                <option value="windows">Windows</option>
+                <option value="linux">Linux</option>
+              </select>
+            </details>
+          }
         }
       </section>
     } @else {
@@ -102,84 +94,79 @@ type CheckState = 'waiting' | 'running' | 'done' | 'skipped';
     }
   `,
 })
-export class DiagnosisPage implements OnInit, OnDestroy {
+export class DiagnosisPage implements OnInit {
   readonly code = input<string>('', { alias: 'family' });
+  protected readonly api = inject(CORE_API);
+  protected readonly session = inject(Session);
   protected readonly state = inject(PrototypeState);
+  private readonly router = inject(Router);
   protected readonly fam = computed(() => family(this.code()));
-  protected readonly diag = computed(() => this.fam()?.diagnoses[this.state.scenario()]);
-  private readonly progress = signal(0);
-  protected readonly stopped = signal(false);
-  private timer: ReturnType<typeof setInterval> | undefined;
-
-  protected readonly checks = computed(() => {
-    const f = this.fam();
-    if (!f) {
-      return [];
-    }
-    return f.probes.map((id, i) => {
-      const p = probe(id);
-      const available = p
-        ? (p.platforms as readonly string[]).includes(this.state.platform())
-        : false;
-      let state: CheckState = 'waiting';
-      if (!available) {
-        state = 'skipped';
-      } else if (i < this.progress()) {
-        state = 'done';
-      } else if (i === this.progress() && !this.stopped()) {
-        state = 'running';
-      }
-      return { id, title: p?.title ?? id, state };
-    });
-  });
-  protected readonly finished = computed(
-    () => this.stopped() || this.progress() >= (this.fam()?.probes.length ?? 0),
-  );
+  protected readonly running = signal(true);
+  protected readonly error = signal<IpcError | null>(null);
+  private stopped = false;
 
   ngOnInit(): void {
-    this.timer = setInterval(() => {
-      if (this.finished()) {
-        this.clear();
-      } else {
-        this.progress.update((p) => p + 1);
-      }
-    }, 600);
+    void this.run();
   }
 
-  ngOnDestroy(): void {
-    this.clear();
+  private async run(): Promise<void> {
+    const f = this.fam();
+    if (!f) {
+      return;
+    }
+    this.session.reset();
+    this.running.set(true);
+    this.error.set(null);
+    try {
+      const started = await this.api.startTicket(f.code);
+      const d = await this.api.diagnose(started.ticket.id);
+      if (!this.stopped) {
+        this.session.diagnosis.set(d);
+      }
+    } catch (e) {
+      this.error.set(e as IpcError);
+    } finally {
+      this.running.set(false);
+    }
   }
 
   protected stop(): void {
-    this.stopped.set(true);
-    this.clear();
+    // The checks only read; the result is ignored and nothing was changed.
+    this.stopped = true;
+    void this.router.navigate(['/']);
   }
 
-  protected phrase(code: string): string {
-    return confidencePhrase(code);
+  protected title(id: string): string {
+    return probe(id)?.title ?? id;
   }
 
-  protected label(state: CheckState): string {
+  protected mark(p: ProbeRunDto): string {
+    return { ok: '✓', found: '✗', failed: '?', skipped: '–' }[p.status];
+  }
+
+  protected tone(p: ProbeRunDto): string {
+    return { ok: 'ok', found: 'bad', failed: 'warn', skipped: 'muted' }[p.status];
+  }
+
+  protected label(p: ProbeRunDto): string {
     return {
-      waiting: 'aguardando',
-      running: 'verificando',
-      done: 'feito',
-      skipped: 'não existe neste sistema',
-    }[state];
+      ok: 'nada de errado',
+      found: 'encontrei algo',
+      failed: 'não consegui verificar',
+      skipped:
+        p.reason === 'PLATFORM_UNSUPPORTED'
+          ? 'não existe neste sistema'
+          : 'não verifiquei sem sua permissão',
+    }[p.status];
   }
 
   protected pick(index: string): void {
     this.state.scenario.set(Number(index));
+    void this.run();
   }
 
   protected setPlatform(value: string): void {
     this.state.platform.set(value === 'linux' ? 'linux' : 'windows');
-  }
-
-  private clear(): void {
-    if (this.timer !== undefined) {
-      clearInterval(this.timer);
-      this.timer = undefined;
-    }
+    void this.run();
   }
 }

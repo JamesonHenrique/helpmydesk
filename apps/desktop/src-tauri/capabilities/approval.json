@@ -3,5 +3,5 @@
   "identifier": "approval",
   "description": "Approval window: shows the plan from the catalog and is the only place that can approve it (INV-04).",
   "windows": ["approval"],
-  "permissions": ["core:default", "allow-plan", "allow-approve", "allow-decline"]
+  "permissions": ["core:default", "core:window:allow-close", "allow-plan", "allow-approve", "allow-decline"]
 }
