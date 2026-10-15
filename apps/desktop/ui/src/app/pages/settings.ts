@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Settings: privacy ("o que eu olho", consents, export, erase), autonomy, AI, about.
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 
+import { CORE_API } from '../api/core-api';
+import { IpcError } from '../api/types';
 import { CATALOG_VERSION } from '../data/catalog.generated';
 import { CONSENTS, probesFor } from '../data/catalog';
 import { Autonomy, Platform, PrototypeState } from '../state/prototype';
@@ -48,8 +50,8 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
           <label class="option">
             <input
               type="checkbox"
-              [checked]="state.consents().has(c.id)"
-              (change)="state.setConsent(c.id, $any($event.target).checked)"
+              [checked]="consents().has(c.id)"
+              (change)="setConsent(c.id, $any($event.target).checked)"
             />
             <span
               ><strong>{{ c.title }}</strong>
@@ -65,12 +67,8 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
           Tudo fica neste computador. Você pode ver tudo o que guardo ou apagar tudo.
         </p>
         <div class="row">
-          <button
-            type="button"
-            class="btn"
-            (click)="message.set('No app, isto salva um arquivo com tudo o que está guardado.')"
-          >
-            Exportar meus dados
+          <button type="button" class="btn" (click)="exportAll()">
+            Ver tudo o que está guardado
           </button>
           @if (!confirming()) {
             <button type="button" class="btn danger" (click)="confirming.set(true)">
@@ -85,6 +83,10 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
           }
         </div>
         <p class="small muted" aria-live="polite">{{ message() }}</p>
+        @if (exported()) {
+          <label for="exp" class="small">Seus dados (você pode copiar)</label>
+          <textarea id="exp" readonly [value]="exported()"></textarea>
+        }
       </div>
 
       <h2 id="auto">Autonomia</h2>
@@ -95,8 +97,8 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
             <input
               type="radio"
               name="autonomy"
-              [checked]="state.autonomy() === o.value"
-              (change)="state.autonomy.set(o.value)"
+              [checked]="autonomy() === o.value"
+              (change)="setAutonomy(o.value)"
             />
             <span>{{ o.title }}</span>
           </label>
@@ -126,7 +128,11 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
     </section>
   `,
 })
-export class SettingsPage {
+export class SettingsPage implements OnInit {
+  private readonly api = inject(CORE_API);
+  protected readonly autonomy = signal<Autonomy>('ask_always');
+  protected readonly consents = signal<ReadonlySet<string>>(new Set());
+  protected readonly exported = signal('');
   protected readonly state = inject(PrototypeState);
   protected readonly disclosures = computed(() => probesFor(this.state.platform()));
   protected readonly optional = CONSENTS.filter((c) => c.id !== 'ai_opencode');
@@ -144,11 +150,45 @@ export class SettingsPage {
     this.state.platform.set((value === 'linux' ? 'linux' : 'windows') as Platform);
   }
 
-  protected erase(): void {
+  async ngOnInit(): Promise<void> {
+    await this.load();
+  }
+
+  private async load(): Promise<void> {
+    const s = await this.api.settings();
+    this.autonomy.set(s.autonomy);
+    this.consents.set(new Set(s.consents));
+  }
+
+  protected async setAutonomy(value: Autonomy): Promise<void> {
+    await this.safely(() => this.api.setAutonomy(value));
+  }
+
+  protected async setConsent(id: string, granted: boolean): Promise<void> {
+    await this.safely(() => this.api.setConsent(id, granted));
+  }
+
+  protected async exportAll(): Promise<void> {
+    await this.safely(async () => this.exported.set(await this.api.exportAll()));
+  }
+
+  protected async erase(): Promise<void> {
     this.confirming.set(false);
-    this.state.consents.set(new Set());
-    this.message.set(
-      'Pronto: no app, isto apaga o histórico, os relatórios e as permissões deste computador.',
-    );
+    await this.safely(async () => {
+      await this.api.eraseAll();
+      this.exported.set('');
+      this.message.set(
+        'Pronto: apaguei o histórico, os relatórios e as permissões deste computador.',
+      );
+    });
+  }
+
+  private async safely(action: () => Promise<unknown>): Promise<void> {
+    try {
+      await action();
+    } catch (e) {
+      this.message.set(`Não consegui fazer isso (${(e as IpcError).code}).`);
+    }
+    await this.load();
   }
 }

@@ -3,6 +3,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { CORE_API } from '../api/core-api';
 import { CONSENTS } from '../data/catalog';
 import { Autonomy, PrototypeState } from '../state/prototype';
 
@@ -59,7 +60,7 @@ const STEPS = [
               <input
                 type="checkbox"
                 [checked]="state.consents().has(c.id)"
-                (change)="state.setConsent(c.id, $any($event.target).checked)"
+                (change)="setConsent(c.id, $any($event.target).checked)"
               />
               <span
                 ><strong>{{ c.title }}</strong
@@ -142,7 +143,15 @@ export class OnboardingPage {
     queueMicrotask(() => document.getElementById('t')?.focus());
   }
 
+  private readonly api = inject(CORE_API);
+
   protected setAutonomy(value: Autonomy): void {
     this.state.autonomy.set(value);
+    void this.api.setAutonomy(value).catch(() => undefined);
+  }
+
+  protected setConsent(id: string, granted: boolean): void {
+    this.state.setConsent(id, granted);
+    void this.api.setConsent(id, granted).catch(() => undefined);
   }
 }

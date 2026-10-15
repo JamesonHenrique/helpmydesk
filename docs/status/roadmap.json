@@ -323,7 +323,7 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "Camada de serviço pronta (spec 012); falta o Tauri, que precisa do WebKitGTK instalado"
+   "note": "App Tauri ligado ao núcleo e compilando no CI (Linux e Windows); falta abrir e testar na mão (precisa do WebKitGTK local)"
   },
   {
    "id": "F2-UNINST",
@@ -427,11 +427,11 @@
    "phase_name": "Correções seguras",
    "phase_order": 5,
    "title": "Janela de aprovação isolada (Tauri)",
-   "status": "todo",
+   "status": "done",
    "weight": 1,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": ""
+   "note": "Janela separada com permissão exclusiva de aprovar (ACL do Tauri)"
   },
   {
    "id": "SPEC-007",

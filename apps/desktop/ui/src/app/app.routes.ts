@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { Routes } from '@angular/router';
 
+import { ApprovalPage } from './pages/approval';
 import { DiagnosisPage } from './pages/diagnosis';
 import { HelpPage } from './pages/help';
 import { HistoryPage } from './pages/history';
@@ -17,6 +18,11 @@ export const routes: Routes = [
   { path: 'diagnostico/:family', component: DiagnosisPage, title: 'Diagnóstico · HelpMyDesk' },
   { path: 'plano/:family', component: PlanPage, title: 'O que eu proponho · HelpMyDesk' },
   { path: 'resultado/:family', component: ResultPage, title: 'Resultado · HelpMyDesk' },
+  {
+    path: 'aprovacao/:ticket/:plan',
+    component: ApprovalPage,
+    title: 'Aprovar correção · HelpMyDesk',
+  },
   { path: 'relatorio', component: ReportPage, title: 'Relatório · HelpMyDesk' },
   { path: 'historico', component: HistoryPage, title: 'Histórico · HelpMyDesk' },
   { path: 'configuracoes', component: SettingsPage, title: 'Configurações · HelpMyDesk' },

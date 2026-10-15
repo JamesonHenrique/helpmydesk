@@ -1,9 +1,8 @@
 # HelpMyDesk — protótipo da interface
 
-Protótipo Angular das telas do plano v1 (III.13): boas-vindas, início, diagnóstico, plano e
-aprovação, resultado, relatório "não consegui", histórico, configurações e ajuda. Usa dados de
-exemplo e **não verifica nem altera nada** no computador. O app de verdade (Tauri) vai chamar o
-núcleo em Rust no lugar dos exemplos.
+Interface Angular das telas do plano v1 (III.13). Dentro do app desktop (Tauri) ela fala com o
+núcleo em Rust por `CoreApi` → `TauriApi`; aberta num navegador, usa dados de exemplo
+(`MockApi`) e **não verifica nem altera nada** no computador.
 
 Os textos vêm do catálogo revisado, gerados por:
 

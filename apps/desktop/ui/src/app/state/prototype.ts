@@ -14,6 +14,8 @@ export class PrototypeState {
   readonly aiConnected = signal(false);
   /** Which diagnosis of the family the prototype shows (index in the generated list). */
   readonly scenario = signal(0);
+  /** What the prototype's "execute" answers (the real core decides by itself). */
+  readonly mockOutcome = signal<'verified' | 'not_available' | 'not_resolved'>('verified');
 
   setConsent(id: string, granted: boolean): void {
     const next = new Set(this.consents());

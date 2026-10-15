@@ -1,35 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Stages F (execution), G (verification) and H (closing). The four verification outcomes have
-// distinct texts (Plan v1 III.13).
-import { Component, OnDestroy, OnInit, computed, input, signal } from '@angular/core';
+// Stages F–H: runs the approved plan in the core and says honestly what happened.
+import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { family } from '../data/catalog';
-
-type Outcome = 'verified' | 'partial' | 'unknown' | 'worse';
-
-const OUTCOMES: Record<Outcome, { title: string; text: string; tone: string }> = {
-  verified: {
-    title: 'Verificado',
-    text: 'Conferi de novo e o problema não aparece mais.',
-    tone: 'ok',
-  },
-  partial: {
-    title: 'Melhorou em parte',
-    text: 'Uma parte do problema sumiu, mas ainda encontro outra.',
-    tone: 'warn',
-  },
-  unknown: {
-    title: 'Não consegui confirmar',
-    text: 'A correção terminou, mas não consegui conferir o resultado. Não vou repetir sozinho.',
-    tone: 'warn',
-  },
-  worse: {
-    title: 'Piorou: desfazendo',
-    text: 'O resultado ficou pior que antes. Estou desfazendo o que fiz.',
-    tone: 'bad',
-  },
-};
+import { CORE_API } from '../api/core-api';
+import { IpcError, OutcomeDto } from '../api/types';
+import { Session } from '../state/session';
 
 @Component({
   selector: 'app-result',
@@ -38,16 +14,21 @@ const OUTCOMES: Record<Outcome, { title: string; text: string; tone: string }> =
     <section class="page" aria-labelledby="t">
       @if (running()) {
         <h1 id="t">Fazendo a correção…</h1>
-        <progress [value]="progress()" max="100" aria-label="Andamento"></progress>
         <p class="muted" aria-live="polite">
-          Só o que você aprovou. Você pode parar o que ainda não começou.
+          Só o que você aprovou. Depois eu confiro se resolveu.
         </p>
+      } @else if (error(); as e) {
+        <h1 id="t">Não consegui fazer a correção</h1>
+        <p class="notice">Algo deu errado do meu lado ({{ e.code }}).</p>
+        <div class="actions">
+          <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
+        </div>
       } @else if (answer() === 'yes') {
         <h1 id="t">Resolvido</h1>
         <div class="card">
           <dl class="facts">
             <dt>O problema</dt>
-            <dd>{{ fam()?.title }}</dd>
+            <dd>{{ session.diagnosis()?.title }}</dd>
             <dt>O que fiz</dt>
             <dd>A correção que você aprovou, e conferi o resultado.</dd>
             <dt>Se acontecer de novo</dt>
@@ -55,80 +36,108 @@ const OUTCOMES: Record<Outcome, { title: string; text: string; tone: string }> =
           </dl>
         </div>
         <div class="actions"><a class="btn primary" routerLink="/">Voltar ao início</a></div>
-      } @else {
-        <h1 id="t">Conferindo se resolveu…</h1>
-        <div class="card" aria-live="polite">
-          <p class="{{ current().tone }}">
-            <strong>{{ current().title }}</strong>
-          </p>
-          <p>{{ current().text }}</p>
-        </div>
-        @if (outcome() === 'verified') {
-          <p>Para você também voltou a funcionar?</p>
-          <div class="actions">
-            <button type="button" class="btn" (click)="answer.set('no')">Ainda não</button>
-            <button type="button" class="btn primary" (click)="answer.set('yes')">
-              Sim, voltou
-            </button>
-          </div>
-        }
-        @if (answer() === 'no' || outcome() !== 'verified') {
-          <p>
-            Isso eu não consigo resolver com segurança. Posso preparar um relatório para você levar
-            a alguém.
-          </p>
-          <div class="actions">
-            <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
-          </div>
-        }
-        <details class="small">
-          <summary>Protótipo: ver outro resultado</summary>
-          @for (o of outcomeKeys; track o) {
-            <label class="option"
-              ><input
-                type="radio"
-                name="o"
-                [checked]="outcome() === o"
-                (change)="setOutcome(o)"
-              />{{ titles[o] }}</label
-            >
+      } @else if (outcome(); as o) {
+        @switch (o.kind) {
+          @case ('verified') {
+            <h1 id="t">Conferi e parece resolvido</h1>
+            <p class="ok">
+              <strong>Verificado:</strong> a verificação não encontra mais o problema.
+            </p>
+            @if (answer() === 'no') {
+              <p>
+                Entendi. Isso eu não consigo resolver com segurança; posso preparar um relatório.
+              </p>
+              <div class="actions">
+                <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
+              </div>
+            } @else {
+              <p>Para você também voltou a funcionar?</p>
+              <div class="actions">
+                <button type="button" class="btn" (click)="confirm(false)">Ainda não</button>
+                <button type="button" class="btn primary" (click)="confirm(true)">
+                  Sim, voltou
+                </button>
+              </div>
+            }
           }
-        </details>
+          @case ('not_available') {
+            <h1 id="t">Essa correção ainda não está disponível</h1>
+            <p>
+              Esta versão do HelpMyDesk ainda não faz essa correção sozinha.
+              <strong>Nada foi alterado.</strong> Siga as orientações abaixo ou leve o relatório a
+              alguém.
+            </p>
+            <ol class="steps">
+              @for (s of session.diagnosis()?.steps ?? []; track $index) {
+                <li>{{ s }}</li>
+              }
+            </ol>
+            <div class="actions">
+              <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
+            </div>
+          }
+          @default {
+            <h1 id="t">
+              {{
+                o.trigger === 'REP-04'
+                  ? 'Não consegui confirmar o resultado'
+                  : 'A correção não resolveu'
+              }}
+            </h1>
+            <p>
+              @if (o.trigger === 'REP-04') {
+                Não sei se a correção chegou ao fim. Por segurança, não vou repetir sozinho.
+              } @else {
+                Conferi de novo e o problema continua.
+              }
+              Isso eu não consigo resolver com segurança.
+            </p>
+            <div class="actions">
+              <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
+            </div>
+          }
+        }
       }
     </section>
   `,
 })
-export class ResultPage implements OnInit, OnDestroy {
+export class ResultPage implements OnInit {
   readonly code = input<string>('', { alias: 'family' });
-  protected readonly fam = computed(() => family(this.code()));
-  protected readonly progress = signal(0);
-  protected readonly running = computed(() => this.progress() < 100);
-  protected readonly outcome = signal<Outcome>('verified');
+  private readonly api = inject(CORE_API);
+  protected readonly session = inject(Session);
+  protected readonly running = signal(true);
+  protected readonly outcome = signal<OutcomeDto | null>(null);
+  protected readonly error = signal<IpcError | null>(null);
   protected readonly answer = signal<'yes' | 'no' | null>(null);
-  protected readonly current = computed(() => OUTCOMES[this.outcome()]);
-  protected readonly outcomeKeys = Object.keys(OUTCOMES) as Outcome[];
-  protected readonly titles = Object.fromEntries(
-    this.outcomeKeys.map((k) => [k, OUTCOMES[k].title]),
-  );
-  private timer: ReturnType<typeof setInterval> | undefined;
 
-  ngOnInit(): void {
-    this.timer = setInterval(() => {
-      this.progress.update((p) => Math.min(100, p + 25));
-      if (this.progress() >= 100 && this.timer !== undefined) {
-        clearInterval(this.timer);
-      }
-    }, 400);
-  }
-
-  ngOnDestroy(): void {
-    if (this.timer !== undefined) {
-      clearInterval(this.timer);
+  async ngOnInit(): Promise<void> {
+    const d = this.session.diagnosis();
+    if (!d?.plan) {
+      this.error.set({ code: 'NO_PENDING_PLAN', message: '' });
+      this.running.set(false);
+      return;
+    }
+    try {
+      const o = await this.api.execute(d.ticket.id, d.plan.planId);
+      this.outcome.set(o);
+      this.session.outcome.set(o);
+    } catch (e) {
+      this.error.set(e as IpcError);
+    } finally {
+      this.running.set(false);
     }
   }
 
-  protected setOutcome(o: Outcome): void {
-    this.outcome.set(o);
-    this.answer.set(null);
+  protected async confirm(fixed: boolean): Promise<void> {
+    const d = this.session.diagnosis();
+    if (!d) {
+      return;
+    }
+    try {
+      await this.api.confirm(d.ticket.id, fixed);
+      this.answer.set(fixed ? 'yes' : 'no');
+    } catch (e) {
+      this.error.set(e as IpcError);
+    }
   }
 }
