@@ -50,6 +50,10 @@ pub enum AppError {
     /// The ticket's state does not allow this use case.
     InvalidState(&'static str),
     KillSwitch(hmd_killswitch::KillSwitchError),
+    /// The approval names no step, or a step the plan does not offer.
+    StepNotInPlan,
+    /// "Só observar" is on: nothing that changes the system runs, even if approved before.
+    ObserveOnly,
 }
 
 impl AppError {
@@ -64,6 +68,8 @@ impl AppError {
             AppError::NoDiagnosis => "NO_DIAGNOSIS",
             AppError::InvalidState(_) => "INVALID_STATE",
             AppError::KillSwitch(e) => e.reason_code(),
+            AppError::StepNotInPlan => "STEP_NOT_IN_PLAN",
+            AppError::ObserveOnly => "OBSERVE_ONLY",
         }
     }
 }
@@ -452,6 +458,9 @@ impl App {
         run_probe: impl Fn(&str) -> std::result::Result<ProbeOutput, ProbeError>,
     ) -> Result<DiagnosisView> {
         let ticket = self.ticket(ticket_id)?;
+        // A new diagnosis replaces every plan proposed before for this ticket: an old plan may no
+        // longer match the system (spec 016).
+        self.pending.retain(|_, p| p.ticket_id != ticket.id);
         let ticket = self.begin_session(&ticket, now)?;
         let opts = self.options(format!("ticket:{}@{now}", ticket.id))?;
         let diagnosis = diagnose_with(self.catalog, ticket.family, &opts, run_probe)?;
@@ -548,6 +557,10 @@ impl App {
             .get_mut(&plan_id)
             .filter(|p| p.ticket_id == ticket.id)
             .ok_or(AppError::NoPendingPlan)?;
+        let offered = |id: &&str| pending.view.steps.iter().any(|s| s.step_id == *id);
+        if step_ids.is_empty() || !step_ids.iter().all(offered) {
+            return Err(AppError::StepNotInPlan);
+        }
         let plan = EvaluatedPlan {
             proposal: &pending.proposal,
             decision: &pending.decision,
@@ -562,12 +575,22 @@ impl App {
         Ok(approval)
     }
 
+    /// Removes the plan only when it belongs to `ticket_id`.
+    fn take_pending(&mut self, ticket_id: &str, plan_id: i64) -> Result<Pending> {
+        if self
+            .pending
+            .get(&plan_id)
+            .is_none_or(|p| p.ticket_id != ticket_id)
+        {
+            return Err(AppError::NoPendingPlan);
+        }
+        self.pending.remove(&plan_id).ok_or(AppError::NoPendingPlan)
+    }
+
     /// "Não, obrigado": the plan is dropped; the person keeps the guidance and the report option.
     pub fn decline(&mut self, ticket_id: &str, plan_id: i64, now: Timestamp) -> Result<()> {
         let ticket = self.ticket(ticket_id)?;
-        self.pending
-            .remove(&plan_id)
-            .ok_or(AppError::NoPendingPlan)?;
+        self.take_pending(&ticket.id, plan_id)?;
         if ticket.state == TicketState::AwaitingUser {
             self.store
                 .apply(&ticket.id, TicketEvent::UserResponded, now)?;
@@ -588,10 +611,10 @@ impl App {
         if ticket.state != TicketState::InProgress {
             return Err(AppError::InvalidState(ticket.state.code()));
         }
-        let pending = self
-            .pending
-            .remove(&plan_id)
-            .ok_or(AppError::NoPendingPlan)?;
+        if self.autonomy()? == AutonomyMode::ObserveOnly {
+            return Err(AppError::ObserveOnly);
+        }
+        let pending = self.take_pending(&ticket.id, plan_id)?;
         let approval = pending.approval.as_ref().ok_or(AppError::NoPendingPlan)?;
         let plan = EvaluatedPlan {
             proposal: &pending.proposal,
