@@ -268,6 +268,7 @@ export class MockApi implements CoreApi {
     this.tickets = [];
     this.state.consents.set(new Set());
     this.state.autonomy.set('ask_always');
+    this.state.aiConnected.set(false);
     return n;
   }
 }

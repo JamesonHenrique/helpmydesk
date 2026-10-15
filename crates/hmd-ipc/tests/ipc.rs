@@ -354,3 +354,20 @@ fn ai_call_in_three_steps_never_prints_the_key() {
     let dto = b.ai_finish(call.model, result).unwrap();
     assert_eq!(dto.family.as_deref(), Some("connectivity"));
 }
+
+/// "Apagar tudo" also removes the AI key from the vault (it is personal data too).
+#[test]
+fn erase_all_also_removes_the_ai_key() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    b.set_transport(Box::new(NetAnswer));
+    assert!(b.ai_connect("sk-secret").unwrap().connected);
+    b.erase_all().unwrap();
+    assert!(!b.ai_status().unwrap().connected);
+    // Even granting the consent again does not bring the old key back.
+    b.set_consent("ai_opencode", true).unwrap();
+    assert!(
+        !b.ai_status().unwrap().connected,
+        "the key is gone from the vault"
+    );
+}
