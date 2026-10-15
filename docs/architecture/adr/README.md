@@ -26,3 +26,4 @@ Formato: MADR simplificado. Os ADRs ainda sem arquivo próprio estão resumidos 
 | [020](ADR-020-p1-analysis.md) | Análise das pendências P1 e autorização para iniciar | Aceita |
 | [021](ADR-021-catalog-format-and-probe-deps.md) | Catálogo em TOML; `sysinfo` para sondas | Aceita |
 | [022](ADR-022-network-and-registry-deps.md) | `netdev` e `winreg` para sondas de rede e inicialização | Aceita |
+| [023](ADR-023-local-store-sqlite.md) | Histórico local em SQLite (`rusqlite` com `bundled`) | Aceita |

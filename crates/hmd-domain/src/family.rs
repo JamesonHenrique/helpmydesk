@@ -11,6 +11,11 @@ pub enum ProblemFamily {
 }
 
 impl ProblemFamily {
+    /// Parses a stored [`ProblemFamily::code`]; unknown codes return `None` (never a panic).
+    pub fn from_code(code: &str) -> Option<ProblemFamily> {
+        ProblemFamily::ALL.into_iter().find(|v| v.code() == code)
+    }
+
     pub const ALL: [ProblemFamily; 5] = [
         ProblemFamily::Connectivity,
         ProblemFamily::Performance,

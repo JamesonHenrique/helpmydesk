@@ -4,22 +4,16 @@
 //! `cargo run -p hmd-core --example basic_mode`                 → menu
 //! `cargo run -p hmd-core --example basic_mode -- 1`            → diagnose family 1
 //! `... -- 2 --consent-startup-apps`                              → allow the N1-S probe
+//! `... -- 1 --relatorio "a internet caiu"`                       → also print the report (spec 007)
 //!
 //! Nothing is changed on the computer: fixes are only shown with the Policy Engine decision.
 
 use std::collections::BTreeSet;
 
-use hmd_core::{DiagnoseOptions, LOCALE, ProbeOutcome, diagnose};
-use hmd_domain::ProblemFamily;
-use hmd_policy::{ApprovalRequirement, Confidence, StepVerdict};
-
-fn confidence_phrase(c: Confidence) -> &'static str {
-    match c {
-        Confidence::AlmostCertain => "Tenho quase certeza",
-        Confidence::Probable => "Acho provável",
-        Confidence::Unsure => "Não tenho certeza",
-    }
-}
+use hmd_core::report::{ReportInput, redact_free_text, render, system_summary_with};
+use hmd_core::{DiagnoseOptions, LOCALE, ProbeOutcome, confidence_phrase, diagnose};
+use hmd_domain::{ProblemFamily, ReportTrigger};
+use hmd_policy::{ApprovalRequirement, StepVerdict};
 
 fn main() {
     let catalog = match hmd_catalog::embedded() {
@@ -33,7 +27,16 @@ fn main() {
         }
     };
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let choice = args.iter().find_map(|a| a.parse::<usize>().ok());
+    let report_at = args.iter().position(|a| a == "--relatorio");
+    let symptom = report_at
+        .and_then(|i| args.get(i + 1))
+        .filter(|a| !a.starts_with("--"))
+        .map(|a| redact_free_text(a));
+    let choice = args
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| report_at.is_none_or(|r| *i != r + 1))
+        .find_map(|(_, a)| a.parse::<usize>().ok());
     let Some(family) = choice.and_then(|n| ProblemFamily::ALL.get(n.wrapping_sub(1)).copied())
     else {
         println!("O que está acontecendo? (HelpMyDesk — modo básico)\n");
@@ -126,9 +129,25 @@ fn main() {
             }
         }
     }
-    if let Some(trigger) = report.report {
+    if report_at.is_some() {
+        let system = system_summary_with(catalog, &opts, hmd_probes::run);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(0));
+        let text = render(&ReportInput {
+            catalog,
+            diagnosis: &report,
+            // REP-06: the person asked, even when the diagnosis has no trigger of its own.
+            trigger: report.report.unwrap_or(ReportTrigger::PersonRequested),
+            symptom: symptom.as_deref(),
+            system: system.as_ref(),
+            created_at: now,
+        });
+        println!("\n----- relatório (você pode editar antes de entregar) -----\n{text}");
+    } else if let Some(trigger) = report.report {
         println!(
-            "\nSe não resolver, posso preparar um relatório para você levar a alguém ({}).",
+            "\nSe não resolver, posso preparar um relatório para você levar a alguém ({}). \
+             Use --relatorio \"o que aconteceu\".",
             trigger.code()
         );
     }

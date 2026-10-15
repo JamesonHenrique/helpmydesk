@@ -119,7 +119,8 @@ pub fn sanitize_untrusted(text: &str, max_chars: usize) -> String {
 
 /// Replaces the user name and the host name inside untrusted text (process and app names can
 /// contain them) with neutral placeholders. Case-insensitive; names shorter than 3 characters are
-/// ignored to avoid mangling unrelated words. The real names are read only to be removed.
+/// replaced only as whole words (e.g. a two-letter host name in "o PC ab"), so they do not mangle
+/// unrelated words. The real names are read only to be removed.
 pub fn redact_identity(text: &str) -> String {
     let user = std::env::var("USER")
         .or_else(|_| std::env::var("USERNAME"))
@@ -134,24 +135,43 @@ pub fn redact_identity(text: &str) -> String {
     )
 }
 
+/// Separators around a short name for it to count as a whole word.
+fn is_word_gap(c: Option<char>) -> bool {
+    c.is_none_or(|c| {
+        c.is_whitespace()
+            || matches!(
+                c,
+                '.' | ',' | ';' | ':' | '!' | '?' | '(' | ')' | '"' | '\''
+            )
+    })
+}
+
 /// Pure part of [`redact_identity`], testable with fixed names.
 pub fn redact_names(text: &str, names: &[(&str, &str)]) -> String {
     let mut out = text.to_string();
     for (name, placeholder) in names {
-        if name.chars().count() < 3 {
+        let short = name.chars().count() < 3;
+        if name.is_empty() {
             continue;
         }
         let lower_name = name.to_lowercase();
         let mut result = String::with_capacity(out.len());
         let mut rest = out.as_str();
         while let Some(pos) = rest.to_lowercase().find(&lower_name) {
+            let end = pos + lower_name.len();
             // `to_lowercase` can change byte lengths for some scripts; only cut on char boundaries.
-            if !rest.is_char_boundary(pos) || !rest.is_char_boundary(pos + lower_name.len()) {
+            if !rest.is_char_boundary(pos) || !rest.is_char_boundary(end) {
                 break;
             }
+            let whole_word = is_word_gap(rest[..pos].chars().next_back())
+                && is_word_gap(rest[end..].chars().next());
             result.push_str(&rest[..pos]);
-            result.push_str(placeholder);
-            rest = &rest[pos + lower_name.len()..];
+            if short && !whole_word {
+                result.push_str(&rest[pos..end]);
+            } else {
+                result.push_str(placeholder);
+            }
+            rest = &rest[end..];
         }
         result.push_str(rest);
         out = result;
@@ -191,7 +211,13 @@ mod tests {
         assert_eq!(
             redact_names("ab-tool", &[("ab", "[x]")]),
             "ab-tool",
-            "short names ignored"
+            "short names only as whole words"
         );
+        assert_eq!(
+            redact_names("o PC ab (casa) e o abacate, AB. ab-1", &[("ab", "[c]")]),
+            "o PC [c] (casa) e o abacate, [c]. ab-1"
+        );
+        assert_eq!(redact_names("ab", &[("ab", "[c]")]), "[c]");
+        assert_eq!(redact_names("abc", &[("", "[c]")]), "abc");
     }
 }

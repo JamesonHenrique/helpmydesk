@@ -14,3 +14,6 @@ max_per_session = 5
 risk_level = "N1-S"
 consent_category = "startup_apps"
 max_per_session = 5
+
+[copy.pt-BR]
+title = "Programas que abrem com o computador"

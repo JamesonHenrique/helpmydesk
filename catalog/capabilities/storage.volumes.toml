@@ -12,3 +12,6 @@ max_per_session = 5
 [variants.linux]
 risk_level = "N1-A"
 max_per_session = 5
+
+[copy.pt-BR]
+title = "Espaço no disco"

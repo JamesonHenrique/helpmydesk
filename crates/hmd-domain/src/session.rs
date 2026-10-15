@@ -17,6 +17,11 @@ pub enum SessionPhase {
 }
 
 impl SessionPhase {
+    /// Parses a stored [`SessionPhase::code`]; unknown codes return `None` (never a panic).
+    pub fn from_code(code: &str) -> Option<SessionPhase> {
+        SessionPhase::ALL.into_iter().find(|v| v.code() == code)
+    }
+
     pub const ALL: [SessionPhase; 9] = [
         SessionPhase::Triage,
         SessionPhase::Probing,
