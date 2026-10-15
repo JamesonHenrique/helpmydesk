@@ -36,3 +36,15 @@
 ## Revisar se
 
 O Tauri 3 sair do alfa, ou se o spike S-01 mostrar problema do WebKitGTK nas distros-alvo.
+
+## Adendo (15/10/2026): primeiro uso real
+
+- O binário só embute a interface com a feature `custom-protocol` do Tauri (sem ela roda em modo
+  dev e carrega `devUrl`). Ela é padrão no `Cargo.toml` do shell; para recarga ao vivo use
+  `ng serve` + `cargo run --no-default-features`.
+- O Tauri acrescenta nonces ao CSP; com nonce o navegador ignora `'unsafe-inline'`, e os estilos
+  que o Angular injeta por componente eram bloqueados. `dangerousDisableAssetCspModification`
+  desliga a modificação **só de `style-src`**; `script-src` continua controlado pelo Tauri
+  (`'self'` + nonces). Risco aceito: CSS injetado não executa código.
+- O teste de fumaça do CI agora exige a linha `helpmydesk: interface ready`, escrita quando a
+  interface chama `startup` (antes só conferia que o processo ficava de pé).
