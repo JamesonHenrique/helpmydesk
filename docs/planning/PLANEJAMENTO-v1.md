@@ -475,7 +475,7 @@ Acessibilidade (requisito, não extra): contraste WCAG 2.2 AA, navegação por t
 | IA | **HTTP direto ao OpenCode Zen** (`/inference/v1/chat/completions` para modelos de formato OpenAI) | Decisão do dono; termos | Nenhuma dependência de SDK de terceiros |
 | Contratos | JSON Schema 2020-12 (catálogo, plano, tarefas de IA) | Validação em Rust | — |
 | Testes | `cargo test`, `proptest`, Vitest, WebdriverIO + `@wdio/tauri-service` (`tauri-driver` cobre Windows e Linux), laboratório em VMs | VIII.6 | — |
-| CI/CD | GitHub Actions: `windows-latest` + `ubuntu-latest` | Gratuito para repositório público (a confirmar os limites vigentes) | — |
+| CI/CD | GitHub Actions: `windows-latest` + `ubuntu-24.04` (fixado em 15/10; Ubuntu 26 entra como item próprio) | Gratuito para repositório público (a confirmar os limites vigentes) | — |
 | Distribuição Windows | Instalador **NSIS por máquina**, assinado | Protege o helper (pasta só-admin) | Microsoft Store (Q-02) |
 | Distribuição Linux | **AppImage** (atualização pelo updater do Tauri) + **.deb** (repositório apt assinado, sem updater próprio) | Flatpak/Snap confinam o app e atrapalham um diagnóstico de sistema; a sandbox do Flatpak exigiria escapar dela (a confirmar com a política do Flathub) | `.rpm` depois |
 | Releases | GitHub Releases + attestations (Sigstore público para repositório público) | Sem servidor | — |
@@ -1397,7 +1397,7 @@ Classificação de decisões em todo documento: **[DECISÃO]** (vale até ADR re
 | Unitário | Policy, transições, validação, redação, classificação de risco, parsing de sondas (com saídas gravadas) | `cargo test`, `proptest`; Vitest | Sim |
 | Propriedade | Hash do plano, idempotência, máquina de estados (sequências aleatórias de eventos nunca levam a estado inválido) | `proptest`, fast-check | Sim |
 | Contrato | Catálogo/schemas ↔ núcleo ↔ UI; helper; kill switch; formato da API do OpenCode (gravações de resposta) | Testes de compatibilidade de schema | Sim |
-| Integração Windows e Linux | Sondas e correções reais | GitHub Actions `windows-latest` e `ubuntu-latest` + VMs locais | Sim (sondas); correções no laboratório |
+| Integração Windows e Linux | Sondas e correções reais | GitHub Actions `windows-latest` e `ubuntu-24.04` + VMs locais | Sim (sondas); correções no laboratório |
 | **Laboratório de falhas** | VM Windows 10/11 ou Ubuntu/Mint/Debian limpa → script quebra algo conhecido (DNS inválido, adaptador desativado, app de inicialização pesado, serviço de áudio parado, disco quase cheio) → app diagnostica, corrige, verifica | Hyper-V/VirtualBox + `lab/*.ps1` + snapshots | Gate G-SEC/G-AUTO (noturno/semanal) |
 | E2E | Abrir chamado → diagnóstico → aprovação → execução → verificação → encerramento/relatório | WebdriverIO + `@wdio/tauri-service` (ou Playwright via WebView2)  | Sim (subconjunto); completo noturno |
 | UI/acessibilidade | Estados, mensagens, contraste, teclado, leitor de tela | axe-core, testes manuais com NVDA/Narrador | Automático sim; manual por release |
