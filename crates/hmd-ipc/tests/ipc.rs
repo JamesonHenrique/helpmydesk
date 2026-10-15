@@ -331,3 +331,26 @@ fn ai_connect_and_classify_as_json() {
     assert_eq!(c["question"], "Acontece no Wi-Fi e no cabo?");
     assert!(!b.ai_disconnect().unwrap().connected);
 }
+
+/// The shell's path: prepare under the lock, call outside it, finish under the lock.
+#[test]
+fn ai_call_in_three_steps_never_prints_the_key() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    assert_eq!(b.ai_prepare("x").unwrap_err().code, "AI_NOT_CONNECTED");
+    let test = Backend::ai_test_key(&NetAnswer, " sk-secret-123 ");
+    assert!(
+        b.ai_connect_finish("sk-secret-123", test)
+            .unwrap()
+            .connected
+    );
+    let call = b.ai_prepare("o wifi caiu").unwrap();
+    assert!(
+        !format!("{call:?}").contains("sk-secret-123"),
+        "Debug hides the key"
+    );
+    // The fake transport (the backend's own is the real network; tests never use it).
+    let result = call.run(&NetAnswer);
+    let dto = b.ai_finish(call.model, result).unwrap();
+    assert_eq!(dto.family.as_deref(), Some("connectivity"));
+}

@@ -226,9 +226,28 @@ async fn ai_status(state: State<'_, Shared>) -> IpcResult<AiStatusDto> {
     with(&state, Backend::ai_status)
 }
 
+fn join_error(e: impl std::fmt::Display) -> IpcError {
+    IpcError {
+        code: "AI_NETWORK".into(),
+        message: e.to_string(),
+    }
+}
+
+/// Tests the key with one call made **outside** the backend lock (the network can take
+/// seconds; the other screens keep working), then keeps it if it works.
+async fn connect_with_key(state: &State<'_, Shared>, key: String) -> IpcResult<AiStatusDto> {
+    let transport = with(state, |b| Ok(b.ai_transport()))?;
+    let test_key = key.clone();
+    let result =
+        tauri::async_runtime::spawn_blocking(move || Backend::ai_test_key(&*transport, &test_key))
+            .await
+            .map_err(join_error)?;
+    with(state, |b| b.ai_connect_finish(&key, result))
+}
+
 #[tauri::command]
 async fn ai_connect(state: State<'_, Shared>, key: String) -> IpcResult<AiStatusDto> {
-    with(&state, |b| b.ai_connect(&key))
+    connect_with_key(&state, key).await
 }
 
 #[tauri::command]
@@ -238,7 +257,12 @@ async fn ai_disconnect(state: State<'_, Shared>) -> IpcResult<AiStatusDto> {
 
 #[tauri::command]
 async fn ai_classify(state: State<'_, Shared>, text: String) -> IpcResult<AiClassificationDto> {
-    with(&state, |b| b.ai_classify(&text))
+    let (call, transport) = with(&state, |b| Ok((b.ai_prepare(&text)?, b.ai_transport())))?;
+    let model = call.model;
+    let result = tauri::async_runtime::spawn_blocking(move || call.run(&*transport))
+        .await
+        .map_err(join_error)?;
+    with(&state, |b| b.ai_finish(model, result))
 }
 
 /// "Colar o código e ligar": the key is read from the clipboard here, in Rust, so it never
@@ -253,7 +277,7 @@ async fn ai_connect_from_clipboard<R: Runtime>(
         code: "CLIPBOARD_UNAVAILABLE".into(),
         message: e.to_string(),
     })?;
-    let status = with(&state, |b| b.ai_connect(&text))?;
+    let status = connect_with_key(&state, text).await?;
     let _ = app.clipboard().clear();
     Ok(status)
 }

@@ -5,9 +5,11 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 pub use hmd_ai::CONSOLE_URL as AI_CONSOLE_URL;
 use hmd_ai::{Transport, UreqTransport};
+pub use hmd_app::ai::AiCall;
 pub use hmd_app::ai::KeyVault;
 use hmd_app::ai::MemoryVault;
 use hmd_app::{App, AppError, DiagnosisView, ExecutionOutcome, PlanView, Startup, StepView};
@@ -311,7 +313,7 @@ pub struct Backend {
     clock: Clock,
     /// Where the AI key lives (the shell plugs in the system vault).
     vault: Box<dyn KeyVault>,
-    transport: Box<dyn Transport + Send + Sync>,
+    transport: Arc<dyn Transport + Send + Sync>,
 }
 
 /// AI connection state for the screens (spec 018).
@@ -333,6 +335,19 @@ pub struct AiClassificationDto {
 }
 
 /// The system clock as Unix seconds (0 if it is before 1970).
+fn classification_dto(c: hmd_ai::Classification) -> AiClassificationDto {
+    AiClassificationDto {
+        family: c.family.map(|f| f.code().to_string()),
+        confidence: match c.confidence {
+            hmd_ai::AiConfidence::Low => "low",
+            hmd_ai::AiConfidence::Medium => "medium",
+            hmd_ai::AiConfidence::High => "high",
+        }
+        .to_string(),
+        question: c.question,
+    }
+}
+
 pub fn system_clock() -> Timestamp {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -354,7 +369,7 @@ impl Backend {
                 runner,
                 clock,
                 vault: Box::new(MemoryVault::default()),
-                transport: Box::new(UreqTransport::default()),
+                transport: Arc::new(UreqTransport::default()),
             },
             startup_dto(&startup),
         ))
@@ -369,7 +384,7 @@ impl Backend {
             runner,
             clock,
             vault: Box::new(MemoryVault::default()),
-            transport: Box::new(UreqTransport::default()),
+            transport: Arc::new(UreqTransport::default()),
         })
     }
 
@@ -380,7 +395,61 @@ impl Backend {
 
     /// Tests replace the network.
     pub fn set_transport(&mut self, transport: Box<dyn Transport + Send + Sync>) {
-        self.transport = transport;
+        self.transport = Arc::from(transport);
+    }
+
+    /// The transport, for a call made outside the backend lock (the shell).
+    pub fn ai_transport(&self) -> Arc<dyn Transport + Send + Sync> {
+        Arc::clone(&self.transport)
+    }
+
+    /// Checks and prepares an AI call; the shell runs it without holding the backend.
+    pub fn ai_prepare(&mut self, text: &str) -> IpcResult<AiCall> {
+        self.reopen_if_closed();
+        let app = self
+            .app
+            .as_ref()
+            .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
+        Ok(app.ai_prepare(&*self.vault, text)?)
+    }
+
+    pub fn ai_finish(
+        &mut self,
+        model: &str,
+        result: Result<hmd_ai::Classification, hmd_ai::AiError>,
+    ) -> IpcResult<AiClassificationDto> {
+        let now = (self.clock)();
+        let c = self.app()?.ai_finish(model, result, now)?;
+        Ok(classification_dto(c))
+    }
+
+    /// The key test call of [`Backend::ai_connect`], runnable without the backend.
+    pub fn ai_test_key(
+        transport: &dyn Transport,
+        key: &str,
+    ) -> Result<hmd_ai::Classification, hmd_ai::AiError> {
+        hmd_ai::classify(
+            transport,
+            key.trim(),
+            hmd_ai::DEFAULT_MODEL,
+            App::ai_connection_test(),
+        )
+    }
+
+    /// Second half of [`Backend::ai_connect`] after a test call made outside the lock.
+    pub fn ai_connect_finish(
+        &mut self,
+        key: &str,
+        result: Result<hmd_ai::Classification, hmd_ai::AiError>,
+    ) -> IpcResult<AiStatusDto> {
+        let now = (self.clock)();
+        self.reopen_if_closed();
+        let app = self
+            .app
+            .as_mut()
+            .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
+        app.ai_connect_finish(&*self.vault, key, result, now)?;
+        self.ai_status()
     }
 
     pub fn ai_status(&mut self) -> IpcResult<AiStatusDto> {
@@ -426,16 +495,7 @@ impl Backend {
             .as_mut()
             .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
         let c = app.ai_classify(&*self.vault, &*self.transport, text, now)?;
-        Ok(AiClassificationDto {
-            family: c.family.map(|f| f.code().to_string()),
-            confidence: match c.confidence {
-                hmd_ai::AiConfidence::Low => "low",
-                hmd_ai::AiConfidence::Medium => "medium",
-                hmd_ai::AiConfidence::High => "high",
-            }
-            .to_string(),
-            question: c.question,
-        })
+        Ok(classification_dto(c))
     }
 
     /// Tests inject fake fixes and platforms; the shell never calls this.
