@@ -12,6 +12,8 @@ publish = false
 [dependencies]
 hmd-app = { path = "../hmd-app" }
 hmd-ai = { path = "../hmd-ai" }
+# Kill switch download (ADR-030); same version and features as hmd-ai (ADR-027).
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls"] }
 hmd-catalog = { path = "../hmd-catalog" }
 hmd-core = { path = "../hmd-core" }
 hmd-domain = { path = "../hmd-domain" }
