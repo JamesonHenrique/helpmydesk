@@ -111,3 +111,37 @@ fn disabled_fix_is_not_offered_and_survives_restart_offline() {
     assert!(app.disabled_capabilities().contains("net.dns.flush_cache"));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+struct CountingFix(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+
+impl hmd_executor::FixImpl for CountingFix {
+    fn run(&self, _: &hmd_policy::ProposedStep) -> hmd_executor::FixOutcome {
+        self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        hmd_executor::FixOutcome::Succeeded
+    }
+}
+
+/// Spec 016: a kill switch that arrives between approval and execution wins.
+#[test]
+fn kill_switch_after_approval_blocks_the_approved_fix() {
+    let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (app, _) = App::open_in_memory(NOW).unwrap();
+    let mut app = app
+        .with_platform(Platform::Linux)
+        .with_trusted_keys(vec![key().verifying_key().to_bytes()])
+        .unwrap()
+        .with_registry(
+            hmd_executor::Registry::default()
+                .with("net.dns.flush_cache", Box::new(CountingFix(runs.clone()))),
+        );
+    let t = app
+        .start_ticket(ProblemFamily::Connectivity, NOW)
+        .unwrap()
+        .ticket;
+    let plan = app.diagnose(&t.id, NOW, dns_failing).unwrap().plan.unwrap();
+    app.approve(&t.id, plan.plan_id, &["s1"], NOW).unwrap();
+    let (file, sig) = signed(NOW, &["net.dns.flush_cache"]);
+    app.apply_kill_switch(&file, &sig, NOW).unwrap();
+    assert!(app.execute(&t.id, plan.plan_id, NOW, dns_failing).is_err());
+    assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 0);
+}

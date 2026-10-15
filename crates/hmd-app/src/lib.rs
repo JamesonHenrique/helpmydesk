@@ -34,6 +34,9 @@ use hmd_store::{OpenOutcome, PurgeStats, Store, StoreError};
 /// Setting key for the autonomy mode.
 pub const AUTONOMY_KEY: &str = "autonomy_mode";
 
+/// Largest edited report kept or saved (a generated one is a few KiB; spec 016).
+pub const MAX_REPORT_BYTES: usize = 64 * 1024;
+
 #[derive(Debug)]
 pub enum AppError {
     /// The embedded catalog is invalid: the app must stay in guidance-only mode.
@@ -54,6 +57,10 @@ pub enum AppError {
     StepNotInPlan,
     /// "Só observar" is on: nothing that changes the system runs, even if approved before.
     ObserveOnly,
+    /// A kill switch turned off a capability of the plan after it was proposed.
+    CapabilityDisabled,
+    /// An edited report above [`MAX_REPORT_BYTES`].
+    ReportTooLarge,
 }
 
 impl AppError {
@@ -70,6 +77,8 @@ impl AppError {
             AppError::KillSwitch(e) => e.reason_code(),
             AppError::StepNotInPlan => "STEP_NOT_IN_PLAN",
             AppError::ObserveOnly => "OBSERVE_ONLY",
+            AppError::CapabilityDisabled => "CAPABILITY_DISABLED",
+            AppError::ReportTooLarge => "REPORT_TOO_LARGE",
         }
     }
 }
@@ -295,6 +304,13 @@ impl App {
             .set_kill_switch(ks.issued_at, file, signature_hex, now)?;
         self.last_kill_switch = Some(ks.issued_at);
         self.disabled = ks.disabled_capabilities;
+        let disabled = &self.disabled;
+        self.pending.retain(|_, p| {
+            !p.proposal
+                .steps
+                .iter()
+                .any(|s| disabled.contains(&s.capability))
+        });
         Ok(self.disabled.clone())
     }
 
@@ -616,6 +632,11 @@ impl App {
         }
         let pending = self.take_pending(&ticket.id, plan_id)?;
         let approval = pending.approval.as_ref().ok_or(AppError::NoPendingPlan)?;
+        if pending.proposal.steps.iter().any(|s| {
+            approval.approved_step_ids.contains(&s.step_id) && self.disabled.contains(&s.capability)
+        }) {
+            return Err(AppError::CapabilityDisabled);
+        }
         let plan = EvaluatedPlan {
             proposal: &pending.proposal,
             decision: &pending.decision,
@@ -739,6 +760,9 @@ impl App {
     }
 
     pub fn edit_report(&mut self, report_id: i64, text: &str, now: Timestamp) -> Result<()> {
+        if text.len() > MAX_REPORT_BYTES {
+            return Err(AppError::ReportTooLarge);
+        }
         Ok(self.store.edit_report(report_id, text, now)?)
     }
 
