@@ -1,0 +1,20 @@
+[package]
+name = "hmd-ai"
+description = "HelpMyDesk AI client (spec 017): OpenCode Zen chat completions with a closed answer schema and a model allowlist"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+hmd-domain = { path = "../hmd-domain" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.145"
+# HTTPS client (ADR-027): rustls with the ring provider and the Mozilla root store, no system
+# OpenSSL, no async runtime.
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls"] }
+
+[lints]
+workspace = true
