@@ -27,8 +27,9 @@
 ## Consequências
 
 - Rodar o app localmente no Linux exige `sudo apt install libwebkit2gtk-4.1-dev`.
-- Mais de 400 dependências: risco de cadeia de suprimentos. A mitigação é `cargo-deny` e
-  auditoria, ainda pendentes.
+- Mais de 400 dependências: risco de cadeia de suprimentos. Mitigação: `cargo-deny` (licenças,
+  RustSec, origem só crates.io; `deny.toml`) nos dois workspaces, no CI e em
+  `tools/check-all.sh`; `npm audit` na interface.
 - Os pacotes de instalação (NSIS, AppImage, .deb), a assinatura e o updater ficam para a F5
   (`bundle.active = false`).
 
