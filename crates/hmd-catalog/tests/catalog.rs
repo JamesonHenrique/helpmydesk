@@ -519,3 +519,20 @@ fn copy_has_no_jargon_in_the_first_layer() {
         found.join("\n")
     );
 }
+
+#[test]
+fn only_fixes_may_be_idempotent() {
+    let probe = PROBE.replace("kind = \"probe\"", "kind = \"probe\"\nidempotent = true");
+    let c = codes(load_from_sources(
+        MANIFEST,
+        &[
+            ("net.dns.resolve.toml", &probe),
+            ("net.dns.flush_cache.toml", FIX),
+        ],
+    ));
+    assert_eq!(c, vec!["INVALID_IDEMPOTENT"]);
+    assert!(
+        embedded().unwrap().meta["net.dns.flush_cache"].idempotent,
+        "flushing the DNS cache twice is harmless"
+    );
+}

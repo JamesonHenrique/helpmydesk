@@ -68,6 +68,9 @@ pub struct ProbeDisclosure<'a> {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EntryMeta {
     pub produces: Vec<String>,
+    /// Fixes only: running it twice is harmless, so an `unknown` run whose problem is still there
+    /// may be proposed again (with a new approval).
+    pub idempotent: bool,
     pub copy: BTreeMap<String, Copy>,
 }
 
@@ -281,6 +284,13 @@ fn cross_check(
             "only probes may declare `produces`",
         ));
     }
+    if cap.kind != CapabilityKind::Fix && entry.is_some_and(|m| m.idempotent) {
+        errors.push(err(
+            file,
+            "INVALID_IDEMPOTENT",
+            "only fixes may declare `idempotent`",
+        ));
+    }
     for other in &cap.exclusive_with {
         if catalog.get(other).is_none() {
             errors.push(err(
@@ -439,6 +449,7 @@ fn convert(raw: RawCapability) -> (Capability, EntryMeta) {
     };
     let meta = EntryMeta {
         produces: raw.produces,
+        idempotent: raw.idempotent,
         copy: raw
             .copy
             .into_iter()

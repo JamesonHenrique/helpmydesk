@@ -196,6 +196,17 @@ struct Pending {
     approved_at: Option<std::time::Instant>,
 }
 
+/// How a verification probe that ran resolves an `unknown` fix: `Some(true)` applied (problem
+/// gone), `Some(false)` not applied (problem still there; only for idempotent fixes, which may be
+/// proposed again), `None` stays `unknown` (a non-idempotent fix is never risked twice).
+pub fn unknown_resolution(problem_gone: bool, idempotent: bool) -> Option<bool> {
+    match (problem_gone, idempotent) {
+        (true, _) => Some(true),
+        (false, true) => Some(false),
+        (false, false) => None,
+    }
+}
+
 /// Whether an approval given `elapsed` ago (monotonic) is past [`hmd_executor::APPROVAL_TTL`].
 pub fn approval_too_old(elapsed: std::time::Duration) -> bool {
     elapsed.as_secs() > u64::try_from(hmd_executor::APPROVAL_TTL).unwrap_or(0)
@@ -222,6 +233,8 @@ pub struct App {
     registry: Registry,
     pending: BTreeMap<i64, Pending>,
     last_diagnosis: BTreeMap<String, DiagnosisReport>,
+    /// Offset of the computer's clock, told by the interface; reports show local dates.
+    utc_offset_minutes: Option<i32>,
 }
 
 fn catalog() -> Result<&'static LoadedCatalog> {
@@ -250,6 +263,7 @@ impl App {
             registry: Registry::production(),
             pending: BTreeMap::new(),
             last_diagnosis: BTreeMap::new(),
+            utc_offset_minutes: None,
         };
         app.load_kill_switch()?;
         let interrupted = app.store.recover_interrupted(now)?;
@@ -633,11 +647,22 @@ impl App {
             if !matches!(outcome, hmd_core::ProbeOutcome::Ran(_)) {
                 continue;
             }
-            let applied = verification_passed(variant, &outcome);
-            self.store.clarify_unknown(execution, applied, now)?;
+            let idempotent = self.catalog.meta.get(id).is_some_and(|m| m.idempotent);
+            let Some(effect) =
+                unknown_resolution(verification_passed(variant, &outcome), idempotent)
+            else {
+                continue;
+            };
+            self.store.clarify_unknown(execution, effect, now)?;
             clarified += 1;
         }
         Ok(clarified)
+    }
+
+    /// The interface tells the computer's UTC offset (minutes) so reports show local dates;
+    /// implausible values are ignored (UTC).
+    pub fn set_utc_offset(&mut self, minutes: Option<i32>) {
+        self.utc_offset_minutes = minutes.and_then(hmd_core::report::valid_utc_offset);
     }
 
     /// Removes the plan only when it belongs to `ticket_id`.
@@ -806,6 +831,7 @@ impl App {
             system: system.as_ref(),
             created_at: now,
             fixes_attempted: self.store.fix_attempts(&ticket.id)?,
+            utc_offset_minutes: self.utc_offset_minutes,
         });
         let id = self.store.save_report(&ticket.id, trigger, &text, now)?;
         if ticket.state == TicketState::InProgress {
