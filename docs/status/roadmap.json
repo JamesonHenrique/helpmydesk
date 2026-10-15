@@ -463,11 +463,11 @@
    "phase_name": "Correções seguras",
    "phase_order": 5,
    "title": "Kill switch assinado",
-   "status": "todo",
+   "status": "doing",
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "Verificação, regra de mais novo e aplicação prontas (spec 014); falta a chave do projeto e o download do GitHub"
   },
   {
    "id": "F5-SIGN",

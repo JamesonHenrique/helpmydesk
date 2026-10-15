@@ -242,3 +242,31 @@ fn spec010_audio_video_diagnoses() {
     assert!(r.is_fallback);
     assert_eq!(r.report.map(|t| t.code()), Some("REP-01"));
 }
+
+/// Spec 014: capabilities turned off by the kill switch are neither run nor proposed.
+#[test]
+fn spec014_kill_switch_disables_probes_and_fixes() {
+    let opts = DiagnoseOptions {
+        platform: hmd_policy::Platform::Linux,
+        disabled: ["net.http.check", "net.dns.flush_cache"]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+        ..DiagnoseOptions::default()
+    };
+    let r = run(
+        ProblemFamily::Connectivity,
+        &[("net.dns.resolve", &["net.dns.resolution_failing"])],
+        &[],
+        &opts,
+    );
+    assert!(r.probes.iter().any(|p| p.probe_id == "net.http.check"
+        && p.outcome == ProbeOutcome::NotAuthorized("CAPABILITY_DISABLED")));
+    let decision = r
+        .fix_decision
+        .expect("the DNS diagnosis still evaluates its fix");
+    assert!(
+        decision.accepted().next().is_none(),
+        "disabled fix is not offered"
+    );
+}

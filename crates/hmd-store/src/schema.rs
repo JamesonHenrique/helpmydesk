@@ -2,10 +2,10 @@
 //! SQL schema, one entry per `user_version` (spec 007 FR-003). Never edit a released entry:
 //! changes are new migrations.
 
-pub const MIGRATIONS: &[&str] = &[V1, V2, V3, V4];
+pub const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5];
 
 /// Schema version this build writes.
-pub const SCHEMA_VERSION: i32 = 4;
+pub const SCHEMA_VERSION: i32 = 5;
 
 #[doc(hidden)]
 pub const V1: &str = r#"
@@ -156,5 +156,16 @@ CREATE TABLE setting (
     key        TEXT    PRIMARY KEY,
     value      TEXT    NOT NULL,
     updated_at INTEGER NOT NULL
+) STRICT;
+"#;
+
+/// Spec 014: the last accepted kill switch (one row), kept so it applies offline.
+const V5: &str = r#"
+CREATE TABLE kill_switch_state (
+    id          INTEGER PRIMARY KEY CHECK (id = 1),
+    issued_at   INTEGER NOT NULL,
+    payload     BLOB    NOT NULL,
+    signature   TEXT    NOT NULL,
+    accepted_at INTEGER NOT NULL
 ) STRICT;
 "#;

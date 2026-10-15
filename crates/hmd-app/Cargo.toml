@@ -16,7 +16,11 @@ hmd-catalog = { path = "../hmd-catalog" }
 hmd-probes = { path = "../hmd-probes" }
 hmd-core = { path = "../hmd-core" }
 hmd-executor = { path = "../hmd-executor" }
+hmd-killswitch = { path = "../hmd-killswitch" }
 hmd-store = { path = "../hmd-store" }
+
+[dev-dependencies]
+ed25519-dalek = { version = "=3.0.0", default-features = false, features = ["zeroize"] }
 
 [lints]
 workspace = true
