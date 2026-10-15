@@ -237,4 +237,45 @@ mod tests {
         assert_eq!(redact_names("ab", &[("ab", "[c]")]), "[c]");
         assert_eq!(redact_names("abc", &[("", "[c]")]), "abc");
     }
+
+    /// Spec 016: characters whose lowercase has another byte length (Turkish İ, the Kelvin sign)
+    /// must not shift the match and leak the name.
+    #[test]
+    fn redaction_survives_case_mappings_that_change_length() {
+        let names = [("james", "[usuário]")];
+        assert_eq!(
+            redact_names("\u{130}\u{130} james", &names),
+            "\u{130}\u{130} [usuário]"
+        );
+        assert_eq!(
+            redact_names("\u{212A}\u{212A}-JAMES-james", &names),
+            "\u{212A}\u{212A}-[usuário]-[usuário]"
+        );
+        let turkish = [("\u{130}smail", "[usuário]")];
+        assert_eq!(
+            redact_names("/home/\u{130}smail/x \u{130}SMAIL", &turkish),
+            "/home/[usuário]/x [usuário]"
+        );
+    }
+
+    /// Every mix of tricky characters around the name: the name never survives.
+    #[test]
+    fn redaction_never_leaks_the_name() {
+        let pieces = [
+            "james", "JAMES", "\u{130}", "\u{212A}", "\u{2126}", "\u{1E9E}", "ß", "é", " ", "-",
+            "a", "\u{3A3}",
+        ];
+        let mut seed: u64 = 0x5EED;
+        for _ in 0..5000 {
+            let mut text = String::new();
+            for _ in 0..8 {
+                seed = seed
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                text.push_str(pieces[(seed >> 33) as usize % pieces.len()]);
+            }
+            let out = redact_names(&text, &[("james", "[u]")]);
+            assert!(!out.to_lowercase().contains("james"), "{text:?} -> {out:?}");
+        }
+    }
 }
