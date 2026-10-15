@@ -7,10 +7,9 @@ use std::fmt::Write as _;
 
 use hmd_catalog::LoadedCatalog;
 use hmd_domain::{ReportTrigger, Timestamp};
-use hmd_policy::{PolicyContext, StepVerdict, evaluate};
 use hmd_probes::{Evidence, ProbeError, ProbeOutput, Severity};
 
-use crate::{DiagnoseOptions, DiagnosisReport, LOCALE, ProbeOutcome, confidence_phrase, proposal};
+use crate::{DiagnoseOptions, DiagnosisReport, LOCALE, ProbeOutcome, confidence_phrase};
 
 /// Contract version written in the report header.
 pub const REPORT_FORMAT: &str = "report@1";
@@ -51,19 +50,8 @@ pub fn system_summary_with(
     opts: &DiagnoseOptions,
     run_probe: impl Fn(&str) -> Result<ProbeOutput, ProbeError>,
 ) -> Option<SystemSummary> {
-    let mut ctx = PolicyContext::new(opts.platform);
-    ctx.mode = opts.mode;
-    ctx.consents = opts.consents.clone();
-    let decision = evaluate(
-        &proposal(catalog, &[SYSTEM_PROBE.to_string()], "p"),
-        &catalog.catalog,
-        &ctx,
-    )
-    .ok()?;
-    match decision.verdicts.first()? {
-        StepVerdict::Accepted { .. } => run_probe(SYSTEM_PROBE)
-            .ok()
-            .map(|out| SystemSummary::from_probe(&out)),
+    match crate::run_authorized_probe(catalog, opts, SYSTEM_PROBE, run_probe) {
+        ProbeOutcome::Ran(out) => Some(SystemSummary::from_probe(&out)),
         _ => None,
     }
 }

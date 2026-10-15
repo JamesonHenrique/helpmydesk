@@ -1,6 +1,6 @@
 [package]
 name = "hmd-store"
-description = "HelpMyDesk local history: tickets, sessions, consents and reports in SQLite (spec 007)"
+description = "HelpMyDesk local history: tickets, sessions, consents and reports in SQLite (specs 007, 008)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -14,6 +14,7 @@ publish = false
 hmd-domain = { path = "../hmd-domain" }
 hmd-catalog = { path = "../hmd-catalog" }
 hmd-core = { path = "../hmd-core" }
+hmd-executor = { path = "../hmd-executor" }
 hmd-policy = { path = "../hmd-policy" }
 hmd-probes = { path = "../hmd-probes" }
 rusqlite = { version = "0.40.2", features = ["bundled"] }

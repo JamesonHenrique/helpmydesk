@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/hmd-domain", "crates/hmd-policy", "crates/hmd-catalog", "crates/hmd-probes", "crates/hmd-core", "crates/hmd-store"]
+members = ["crates/hmd-domain", "crates/hmd-policy", "crates/hmd-catalog", "crates/hmd-probes", "crates/hmd-core", "crates/hmd-executor", "crates/hmd-store"]
 
 [workspace.package]
 version = "0.1.0"

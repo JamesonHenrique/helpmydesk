@@ -2,12 +2,13 @@
 //! SQL schema, one entry per `user_version` (spec 007 FR-003). Never edit a released entry:
 //! changes are new migrations.
 
-pub(crate) const MIGRATIONS: &[&str] = &[V1];
+pub const MIGRATIONS: &[&str] = &[V1, V2];
 
 /// Schema version this build writes.
-pub const SCHEMA_VERSION: i32 = 1;
+pub const SCHEMA_VERSION: i32 = 2;
 
-const V1: &str = r#"
+#[doc(hidden)]
+pub const V1: &str = r#"
 CREATE TABLE ticket (
     id              INTEGER PRIMARY KEY,
     family          TEXT    NOT NULL,
@@ -84,4 +85,48 @@ CREATE TABLE report (
     exported_at INTEGER
 ) STRICT;
 CREATE INDEX report_by_ticket ON report(ticket_id);
+"#;
+
+/// Spec 008: plans, approvals and the write-ahead execution journal.
+const V2: &str = r#"
+CREATE TABLE action_plan (
+    id              INTEGER PRIMARY KEY,
+    ticket_id       INTEGER NOT NULL REFERENCES ticket(id) ON DELETE CASCADE,
+    session_ref     TEXT    NOT NULL,
+    plan_hash       TEXT    NOT NULL UNIQUE,
+    catalog_version TEXT    NOT NULL,
+    canonical       TEXT    NOT NULL,
+    created_at      INTEGER NOT NULL
+) STRICT;
+CREATE INDEX action_plan_by_ticket ON action_plan(ticket_id);
+
+-- The row id is the approval nonce (unique by construction).
+CREATE TABLE action_approval (
+    id         INTEGER PRIMARY KEY,
+    plan_id    INTEGER NOT NULL REFERENCES action_plan(id) ON DELETE CASCADE,
+    plan_hash  TEXT    NOT NULL,
+    step_ids   TEXT    NOT NULL,
+    mode       TEXT    NOT NULL CHECK (mode IN ('observe_only', 'ask_always', 'auto_simple')),
+    decided_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX action_approval_by_plan ON action_approval(plan_id);
+
+CREATE TABLE action_execution (
+    id              INTEGER PRIMARY KEY,
+    plan_id         INTEGER NOT NULL REFERENCES action_plan(id) ON DELETE CASCADE,
+    approval_id     INTEGER NOT NULL REFERENCES action_approval(id) ON DELETE CASCADE,
+    step_id         TEXT    NOT NULL,
+    capability      TEXT    NOT NULL,
+    platform        TEXT    NOT NULL CHECK (platform IN ('windows', 'linux')),
+    idempotency_key TEXT    NOT NULL UNIQUE,
+    state           TEXT    NOT NULL,
+    started_at      INTEGER NOT NULL,
+    finished_at     INTEGER,
+    result          TEXT,
+    verification    TEXT,
+    rollback_state  TEXT
+) STRICT;
+CREATE INDEX action_execution_by_plan ON action_execution(plan_id);
+CREATE INDEX action_execution_by_state ON action_execution(state);
 "#;
