@@ -23,7 +23,8 @@ use hmd_domain::{
     TicketEvent, TicketState, Timestamp, due_event, repeated_reopen_trigger,
 };
 use hmd_executor::{
-    ActionApproval, EvaluatedPlan, ExecError, ExecuteInput, Registry, execute_step, verify_step,
+    ActionApproval, EvaluatedPlan, ExecError, ExecuteInput, Registry, execute_step,
+    verification_passed, verify_step,
 };
 use hmd_policy::{
     ActionPlanProposal, ApprovalRequirement, AutonomyMode, Platform, PolicyDecision, StepVerdict,
@@ -478,6 +479,7 @@ impl App {
         // longer match the system (spec 016).
         self.pending.retain(|_, p| p.ticket_id != ticket.id);
         let ticket = self.begin_session(&ticket, now)?;
+        self.clarify_unknowns(now, &run_probe)?;
         let opts = self.options(format!("ticket:{}@{now}", ticket.id))?;
         let diagnosis = diagnose_with(self.catalog, ticket.family, &opts, run_probe)?;
 
@@ -589,6 +591,43 @@ impl App {
                 .apply(&ticket.id, TicketEvent::UserResponded, now)?;
         }
         Ok(approval)
+    }
+
+    /// The way out of `unknown` (spec 016, P2): the fix's verification probe runs. Problem gone →
+    /// the fix counts as applied; problem still there → it counts as not applied, so the same
+    /// fix can be proposed again and needs a new approval. A probe that fails or is not
+    /// authorized leaves the execution `unknown` (still blocked). Never re-runs a fix.
+    fn clarify_unknowns(
+        &mut self,
+        now: Timestamp,
+        run_probe: &impl Fn(&str) -> std::result::Result<ProbeOutput, ProbeError>,
+    ) -> Result<usize> {
+        let mut clarified = 0;
+        for (execution, capability) in self.store.unknown_executions()? {
+            let id = capability
+                .split_once('@')
+                .map_or(capability.as_str(), |(id, _)| id);
+            let Some(variant) = self
+                .catalog
+                .catalog
+                .get(id)
+                .and_then(|c| c.variants.get(&self.platform))
+            else {
+                continue;
+            };
+            let Some(probe) = variant.verification.as_deref() else {
+                continue;
+            };
+            let opts = self.options(format!("clarify:{execution}@{now}"))?;
+            let outcome = run_authorized_probe(self.catalog, &opts, probe, run_probe);
+            if !matches!(outcome, hmd_core::ProbeOutcome::Ran(_)) {
+                continue;
+            }
+            let applied = verification_passed(variant, &outcome);
+            self.store.clarify_unknown(execution, applied, now)?;
+            clarified += 1;
+        }
+        Ok(clarified)
     }
 
     /// Removes the plan only when it belongs to `ticket_id`.

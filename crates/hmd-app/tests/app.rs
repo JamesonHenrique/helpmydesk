@@ -249,7 +249,7 @@ fn us3_fix_that_does_not_help_is_rep03() {
 }
 
 #[test]
-fn us3_unknown_outcome_is_rep04_and_blocks_the_fix_next_time() {
+fn us3_unknown_outcome_is_rep04_and_the_verification_probe_clarifies_it() {
     let mut a = app().with_registry(Registry::default().with(
         FIX,
         Box::new(Fake {
@@ -275,7 +275,8 @@ fn us3_unknown_outcome_is_rep04_and_blocks_the_fix_next_time() {
             trigger: ReportTrigger::UnknownExecutionState
         }
     );
-    // Trying again: the same fix is not offered while its last run is `unknown`.
+    // Spec 016 (P2): the next diagnosis runs the verification probe. The problem is still there,
+    // so the fix counts as not applied and is proposed again, needing a new approval.
     let again = a
         .start_ticket(ProblemFamily::Connectivity, NOW + 7)
         .unwrap();
@@ -283,7 +284,60 @@ fn us3_unknown_outcome_is_rep04_and_blocks_the_fix_next_time() {
     let view = a
         .diagnose(&again.ticket.id, NOW + 8, dns_probe(&still))
         .unwrap();
-    assert!(view.plan.is_none());
+    let plan = view.plan.expect("fix offered again");
+    assert!(
+        a.execute(&again.ticket.id, plan.plan_id, NOW + 9, dns_probe(&still))
+            .is_err(),
+        "a new approval is needed"
+    );
+}
+
+#[test]
+fn unknown_fix_whose_problem_is_gone_counts_as_applied() {
+    let mut a = app().with_registry(Registry::default().with(
+        FIX,
+        Box::new(Fake {
+            outcome: FixOutcome::Unknown,
+            fixes: None,
+        }),
+    ));
+    let t = a
+        .start_ticket(ProblemFamily::Connectivity, NOW)
+        .unwrap()
+        .ticket;
+    let fixed = AtomicBool::new(false);
+    let plan = a
+        .diagnose(&t.id, NOW, dns_probe(&fixed))
+        .unwrap()
+        .plan
+        .unwrap();
+    a.approve(&t.id, plan.plan_id, &["s1"], NOW + 5).unwrap();
+    a.execute(&t.id, plan.plan_id, NOW + 6, dns_probe(&fixed))
+        .unwrap();
+    // A failing verification probe keeps it blocked (nothing is guessed).
+    let id = a
+        .start_ticket(ProblemFamily::Connectivity, NOW + 7)
+        .unwrap()
+        .ticket
+        .id;
+    let broken = |_: &str| Err(ProbeError::Timeout);
+    assert!(a.diagnose(&id, NOW + 8, broken).unwrap().plan.is_none());
+    // The problem went away: clarified as applied, nothing to propose.
+    fixed.store(true, SeqCst);
+    assert!(
+        a.diagnose(&id, NOW + 9, dns_probe(&fixed))
+            .unwrap()
+            .plan
+            .is_none()
+    );
+    fixed.store(false, SeqCst);
+    assert!(
+        a.diagnose(&id, NOW + 10, dns_probe(&fixed))
+            .unwrap()
+            .plan
+            .is_some(),
+        "clarified, so a later DNS problem gets the fix again"
+    );
 }
 
 #[test]
