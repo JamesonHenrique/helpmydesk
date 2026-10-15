@@ -527,7 +527,7 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Spec 016: 19 ataques pela interface (3 modos) + kill switch após aprovação + entradas do sistema, todos barrados; achou e corrigiu 5 brechas de aprovação, 1 vazamento do nome na redação (İ/Kelvin) e 2 limites. Falta revisão independente e suíte da IA"
+   "note": "Spec 016: 19 ataques pela interface (3 modos) + kill switch após aprovação + entradas do sistema + revisão de leitura; todos barrados. Corrigidos 5 brechas de aprovação, vazamento do nome (İ/Kelvin), verificação vazia no catálogo, relatório que negava correção e 4 limites. 6 itens anotados como P2. Falta revisão independente e suíte da IA"
   },
   {
    "id": "F5-DOCS",
