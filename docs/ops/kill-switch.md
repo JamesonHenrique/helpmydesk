@@ -2,8 +2,10 @@
 
 O kill switch permite desligar uma capacidade do catálogo (ou um modelo de IA) sem lançar uma
 versão nova (spec 014). O app só aceita arquivos assinados por uma chave compilada nele
-(`TRUSTED_KEYS` em `crates/hmd-killswitch/src/lib.rs`). **Hoje essa lista está vazia**, então o
-app recusa qualquer arquivo até o mantenedor gerar a chave.
+(`TRUSTED_KEYS` em `crates/hmd-killswitch/src/lib.rs`). A chave do projeto foi gerada em
+15/10/2026 (pública: `0e495f7a74cee62c7bdf1a72bb4b962ee45757238da6d0edb9161c4f3f097b47`). A
+privada está só no computador do mantenedor, em `~/.config/helpmydesk-maintainer/` (permissão
+600): **faça uma cópia de segurança offline**; perder a chave obriga a lançar versão com chave nova.
 
 Comandos conferidos com OpenSSL 3.5.7 em 2026-10-15.
 

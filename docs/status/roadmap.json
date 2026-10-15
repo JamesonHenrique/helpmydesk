@@ -127,11 +127,11 @@
    "phase_name": "Validação e spikes",
    "phase_order": 1,
    "title": "E-06: consulta escrita ao OpenCode sobre os termos (Q-01)",
-   "status": "todo",
+   "status": "done",
    "weight": 1,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": "Rascunho pronto no plano, XII.1; não enviado"
+   "note": "Enviada pelo mantenedor; resposta: uso liberado (texto da resposta a registrar no ADR)"
   },
   {
    "id": "F1-01",
@@ -187,11 +187,11 @@
    "phase_name": "Fundação open source + protótipo",
    "phase_order": 2,
    "title": "Proteção da branch main",
-   "status": "todo",
+   "status": "done",
    "weight": 1,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": ""
+   "note": "PR obrigatório com os 8 checks do CI, vale para admin; sem force-push nem apagar a main"
   },
   {
    "id": "F1-06",
@@ -479,7 +479,7 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Verificação, regra de mais novo e aplicação prontas (spec 014); falta a chave do projeto e o download do GitHub"
+   "note": "Verificação, regra de mais novo e aplicação prontas; chave do projeto gerada e compilada (15/10). Falta o download do GitHub"
   },
   {
    "id": "F5-SIGN",
