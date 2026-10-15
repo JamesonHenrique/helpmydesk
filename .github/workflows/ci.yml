@@ -94,7 +94,11 @@ jobs:
       - name: Build
         working-directory: apps/desktop/src-tauri
         run: cargo build --locked
+      # Linux only: Windows test binaries lack the app manifest Tauri embeds in the real exe
+      # (STATUS_ENTRYPOINT_NOT_FOUND). The permission logic does not depend on the platform; the
+      # Windows smoke test below runs the real executable.
       - name: Test (IPC and window permissions on the mock runtime)
+        if: runner.os == 'Linux'
         working-directory: apps/desktop/src-tauri
         run: cargo test --locked
       - name: Smoke test, the app stays up (Linux, virtual display)
