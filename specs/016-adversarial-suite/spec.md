@@ -92,3 +92,20 @@ com motivo `PANICKED` (`catch_unwind`), sem deixar a linha `started` nem envenen
 Ficam como P2 (dependem de pessoas ou de dados): revisão independente, teste com leigos (textos e
 atraso de 1 s), cópia offline da chave do kill switch, limite de 8 programas (só informativo; trocar
 com dados do S-01/E-01).
+
+## Rodada 7: revisão independente (Opus, 15/10) e primeiro uso real
+
+| Achado | Correção |
+|---|---|
+| M1: recusa por "só observar" deixava o plano aprovado pendente; voltar para "perguntar sempre" e executar rodava a correção | `execute` consome o plano antes de qualquer recusa; "só observar" descarta os pendentes. Ataque novo |
+| M2: a seleção parcial feita na janela principal voltava toda marcada na janela de aprovação | a janela de aprovação abre sem nada marcado; a escolha é feita só nela |
+| M3: `execute` não reconferia execuções `unknown` de outro chamado | recusa com `PENDING_UNKNOWN_EXECUTION` |
+| M4: "Apagar tudo" apagava o kill switch (e o anti-rollback) e os bloqueios | `safety_state`/`restore_safety_state`: kill switch revalidado e bloqueios levados ao histórico novo |
+| Caminho salvo mostrava o nome de usuário | `save_report` devolve só `<pasta>/<arquivo>` |
+| Aprovar de novo renovava a validade | plano aprovado não aceita nova aprovação. Ataque novo |
+| `system` ignorava kill switch e consentimentos | usa as opções do app |
+| Saída de `unknown` usava o `idempotent` do catálogo atual para versão antiga | versão diferente mantém o bloqueio |
+| "Sim" chegava armado numa janela aberta por trás | o atraso recomeça ao ganhar foco ou ficar visível |
+| Testes que passavam no vazio | cada ataque declara o código esperado (21); teste de ACL exige a recusa de permissão e testa `approve`/`decline` na janela de aprovação |
+| Actions por tag | fixadas por SHA + Dependabot |
+| Binário carregava `devUrl` (achado também no primeiro uso real) | `custom-protocol` padrão; teste de fumaça exige a interface carregada (Linux e Windows) |

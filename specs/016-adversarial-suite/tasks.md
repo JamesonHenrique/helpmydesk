@@ -12,3 +12,4 @@
 - [x] T010 Pânico dentro de uma correção vira unknown (catch_unwind)
 - [x] T011 Rodada 5: P2 decididos pelo mantenedor
 - [x] T012 Rodada 6: idempotente, data local no relatório, CI Windows fixado
+- [x] T013 Rodada 7: revisão independente e primeiro uso real
