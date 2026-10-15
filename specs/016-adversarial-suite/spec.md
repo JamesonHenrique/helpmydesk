@@ -66,6 +66,6 @@ ataques ao processo nativo e ao sistema operacional. F5-SEC continua aberto.
 
 Anotados como P2 (não corrigidos): purga da auditoria com relógio adiantado >180 dias; `confirm` e
 `report_exported` chamáveis pela janela principal; `erase_all` deixa o backend `NOT_OPEN` se falhar;
-`clarify_unknown` sem chamador (capacidade em `unknown` fica bloqueada para sempre); pânico dentro
-de uma correção envenena o mutex (`catch_unwind` antes da primeira correção real); validade da
-aprovação pelo relógio de parede.
+`clarify_unknown` sem chamador (capacidade em `unknown` fica bloqueada para sempre); validade da
+aprovação pelo relógio de parede. Corrigido depois: pânico dentro de uma correção vira `unknown`
+com motivo `PANICKED` (`catch_unwind`), sem deixar a linha `started` nem envenenar o mutex.
