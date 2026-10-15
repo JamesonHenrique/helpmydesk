@@ -62,6 +62,8 @@ pub enum AppError {
     CapabilityDisabled,
     /// An edited report above [`MAX_REPORT_BYTES`].
     ReportTooLarge,
+    /// The fix has a run in `unknown` (or still `started`): it cannot run again yet.
+    PendingUnknown,
 }
 
 impl AppError {
@@ -80,6 +82,7 @@ impl AppError {
             AppError::ObserveOnly => "OBSERVE_ONLY",
             AppError::CapabilityDisabled => "CAPABILITY_DISABLED",
             AppError::ReportTooLarge => "REPORT_TOO_LARGE",
+            AppError::PendingUnknown => "PENDING_UNKNOWN_EXECUTION",
         }
     }
 }
@@ -374,9 +377,13 @@ impl App {
     }
 
     pub fn set_autonomy(&mut self, mode: AutonomyMode, now: Timestamp) -> Result<()> {
-        Ok(self
-            .store
-            .set_setting(AUTONOMY_KEY, autonomy_code(mode), now)?)
+        self.store
+            .set_setting(AUTONOMY_KEY, autonomy_code(mode), now)?;
+        if mode == AutonomyMode::ObserveOnly {
+            // "Só observar" cancels everything proposed or approved before.
+            self.pending.clear();
+        }
+        Ok(())
     }
 
     pub fn set_consent(&mut self, scope: &str, granted: bool, now: Timestamp) -> Result<()> {
@@ -596,7 +603,9 @@ impl App {
         let pending = self
             .pending
             .get_mut(&plan_id)
-            .filter(|p| p.ticket_id == ticket.id)
+            // An approved plan cannot be approved again (it would renew the validity and change
+            // the steps; independent review).
+            .filter(|p| p.ticket_id == ticket.id && p.approval.is_none())
             .ok_or(AppError::NoPendingPlan)?;
         let offered = |id: &&str| pending.view.steps.iter().any(|s| s.step_id == *id);
         if step_ids.is_empty() || !step_ids.iter().all(offered) {
@@ -701,10 +710,12 @@ impl App {
         if ticket.state != TicketState::InProgress {
             return Err(AppError::InvalidState(ticket.state.code()));
         }
+        // Taken first: any refusal below consumes the plan, so it cannot be retried later
+        // (independent review, M1).
+        let pending = self.take_pending(&ticket.id, plan_id)?;
         if self.autonomy()? == AutonomyMode::ObserveOnly {
             return Err(AppError::ObserveOnly);
         }
-        let pending = self.take_pending(&ticket.id, plan_id)?;
         let approval = pending.approval.as_ref().ok_or(AppError::NoPendingPlan)?;
         if pending
             .approved_at
@@ -716,6 +727,14 @@ impl App {
             approval.approved_step_ids.contains(&s.step_id) && self.disabled.contains(&s.capability)
         }) {
             return Err(AppError::CapabilityDisabled);
+        }
+        // Independent review, M3: an `unknown` run of the same fix (e.g. from another ticket)
+        // that appeared after this plan was proposed still blocks it.
+        let blocked = self.store.unknown_capabilities()?;
+        if pending.proposal.steps.iter().any(|s| {
+            approval.approved_step_ids.contains(&s.step_id) && blocked.contains(&s.capability)
+        }) {
+            return Err(AppError::PendingUnknown);
         }
         let plan = EvaluatedPlan {
             proposal: &pending.proposal,

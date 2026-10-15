@@ -180,6 +180,19 @@ const ATTACKS: &[(&str, Attack)] = &[
         }
         Err("no fix offered".into())
     }),
+    ("approve again to renew the validity", |l| {
+        let (id, plan) = l.dns_plan();
+        l.b.approve(&id, plan, &Lab::s1()).unwrap();
+        err(l.b.approve(&id, plan, &Lab::s1()))
+    }),
+    ("observe only refusal, then back to ask always", |l| {
+        let (id, plan) = l.dns_plan();
+        l.b.approve(&id, plan, &Lab::s1()).unwrap();
+        l.b.set_autonomy("observe_only").unwrap();
+        assert!(l.b.execute(&id, plan).is_err());
+        l.b.set_autonomy("ask_always").unwrap();
+        err(l.b.execute(&id, plan))
+    }),
     ("switch to observe only after approving", |l| {
         let (id, plan) = l.dns_plan();
         l.b.approve(&id, plan, &Lab::s1()).unwrap();
@@ -245,15 +258,59 @@ const ATTACKS: &[(&str, Attack)] = &[
     }),
 ];
 
+/// The refusal each attack must meet: blocked for the intended reason, not by accident.
+const EXPECTED: &[(&str, &str)] = &[
+    ("execute without approval", "INVALID_STATE"),
+    ("approve a step that is not in the plan", "STEP_NOT_IN_PLAN"),
+    ("approve nothing, then execute", "STEP_NOT_IN_PLAN"),
+    ("approve a plan id that does not exist", "NO_PENDING_PLAN"),
+    ("approve with extreme plan ids", "all refused"),
+    ("approve another ticket's plan", "NO_PENDING_PLAN"),
+    ("execute another ticket's approved plan", "NO_PENDING_PLAN"),
+    ("forged ticket ids", "all refused"),
+    ("approve after declining", "NO_PENDING_PLAN"),
+    ("execute an expired approval", "APPROVAL_EXPIRED"),
+    ("observe only: nothing to approve", "no fix offered"),
+    ("approve again to renew the validity", "NO_PENDING_PLAN"),
+    (
+        "observe only refusal, then back to ask always",
+        "NO_PENDING_PLAN",
+    ),
+    ("switch to observe only after approving", "NO_PENDING_PLAN"),
+    (
+        "old plan after a new diagnosis found nothing",
+        "NO_PENDING_PLAN",
+    ),
+    (
+        "approved old plan after a new diagnosis found nothing",
+        "NO_PENDING_PLAN",
+    ),
+    ("approved plan after a new diagnosis", "INVALID_STATE"),
+    ("plans of an erased history", "NO_SUCH_TICKET"),
+    ("auto simple: execute without approval", "INVALID_STATE"),
+    (
+        "auto simple: guessed plan ids without approval",
+        "all refused",
+    ),
+    ("save a huge report into Downloads", "REPORT_TOO_LARGE"),
+];
+
 #[test]
 fn every_attack_is_blocked_and_the_fix_never_runs() {
     let mut escaped = Vec::new();
     for (name, attack) in ATTACKS {
         let mut lab = Lab::new();
-        let refused = attack(&mut lab).is_err();
+        let result = attack(&mut lab);
         let runs = lab.runs.load(SeqCst);
-        if !refused || runs != 0 {
-            escaped.push(format!("{name}: refused={refused} fix_runs={runs}"));
+        let expected = EXPECTED
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, code)| *code);
+        match (&result, expected) {
+            (Err(code), Some(want)) if code == want && runs == 0 => {}
+            _ => escaped.push(format!(
+                "{name}: got={result:?} want={expected:?} fix_runs={runs}"
+            )),
         }
     }
     assert!(
@@ -265,7 +322,7 @@ fn every_attack_is_blocked_and_the_fix_never_runs() {
     );
     assert_eq!(
         ATTACKS.len(),
-        19,
+        21,
         "update the count in docs when adding cases"
     );
 }
