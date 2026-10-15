@@ -324,10 +324,10 @@ fn ai_connect_and_classify_as_json() {
     assert_eq!(status["connected"], false);
     assert_eq!(status["consoleUrl"], hmd_ai::CONSOLE_URL);
     assert_eq!(b.ai_classify("x").unwrap_err().code, "AI_NOT_CONNECTED");
-    assert_eq!(b.ai_connect("k").unwrap().connected, true);
+    assert!(b.ai_connect("k").unwrap().connected);
     let c = serde_json::to_value(b.ai_classify("o wifi caiu").unwrap()).unwrap();
     assert_eq!(c["family"], "connectivity");
     assert_eq!(c["confidence"], "medium");
     assert_eq!(c["question"], "Acontece no Wi-Fi e no cabo?");
-    assert_eq!(b.ai_disconnect().unwrap().connected, false);
+    assert!(!b.ai_disconnect().unwrap().connected);
 }
