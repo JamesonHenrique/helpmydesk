@@ -475,11 +475,11 @@
    "phase_name": "Correções seguras",
    "phase_order": 5,
    "title": "Kill switch assinado",
-   "status": "doing",
+   "status": "done",
    "weight": 1,
-   "delivered_on": "",
+   "delivered_on": "2026-10-15",
    "ref": "",
-   "note": "Verificação, regra de mais novo e aplicação prontas; chave do projeto gerada e compilada (15/10). Falta o download do GitHub"
+   "note": "Chave compilada; app baixa da release kill-switch ao abrir, verifica e aplica (testado no app real). Reassinar antes de 13/04/2027"
   },
   {
    "id": "F5-SIGN",

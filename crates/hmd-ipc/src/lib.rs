@@ -357,6 +357,40 @@ fn classification_dto(c: hmd_ai::Classification) -> AiClassificationDto {
     }
 }
 
+/// Spec 019 (SPEC-014a): where the signed kill switch is published (a dedicated GitHub Release,
+/// so its files can be replaced without an app release). ADR-030.
+pub const KILL_SWITCH_URL: &str = "https://github.com/JamesonHenrique/helpmydesk/releases/download/kill-switch/disabled-capabilities.json";
+
+/// Downloads the kill switch and its signature: HTTPS only (also after GitHub's redirect to its
+/// file host), bounded time and size. Nothing about the person is sent; GitHub sees the IP, as
+/// with any download.
+pub fn fetch_kill_switch() -> Result<(Vec<u8>, String), String> {
+    let config = ureq::Agent::config_builder()
+        .https_only(true)
+        .max_redirects(5)
+        .http_status_as_error(true)
+        .timeout_global(Some(std::time::Duration::from_secs(15)))
+        .user_agent("HelpMyDesk")
+        .build();
+    let agent: ureq::Agent = config.into();
+    let get = |url: &str, limit: u64| -> Result<Vec<u8>, String> {
+        agent
+            .get(url)
+            .call()
+            .map_err(|e| e.to_string())?
+            .body_mut()
+            .with_config()
+            .limit(limit)
+            .read_to_vec()
+            .map_err(|e| e.to_string())
+    };
+    let max = u64::try_from(hmd_app::KILL_SWITCH_MAX_BYTES).unwrap_or(65_536);
+    let file = get(KILL_SWITCH_URL, max)?;
+    let sig = get(&format!("{KILL_SWITCH_URL}.sig"), 1024)?;
+    let sig = String::from_utf8(sig).map_err(|e| e.to_string())?;
+    Ok((file, sig))
+}
+
 pub fn system_clock() -> Timestamp {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -428,6 +462,19 @@ impl Backend {
                 outcome: e.outcome,
             })
             .collect())
+    }
+
+    /// Applies a downloaded kill switch. Already having this file (or a newer one) is not an
+    /// error. Returns the capabilities now turned off.
+    pub fn apply_kill_switch(&mut self, file: &[u8], signature: &str) -> IpcResult<Vec<String>> {
+        let now = (self.clock)();
+        let app = self.app()?;
+        match app.apply_kill_switch(file, signature, now) {
+            Ok(_) => {}
+            Err(e) if e.reason_code() == "KILLSWITCH_NOT_NEWER" => {}
+            Err(e) => return Err(e.into()),
+        }
+        Ok(app.disabled_capabilities().iter().cloned().collect())
     }
 
     /// Checks and prepares an AI call; the shell runs it without holding the backend.

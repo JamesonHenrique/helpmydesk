@@ -395,3 +395,23 @@ fn ai_preview_and_log() {
     assert_eq!(log[0]["model"], hmd_ai::DEFAULT_MODEL);
     assert!(!log.to_string().contains("wifi"), "never the text");
 }
+
+/// Spec 019: a downloaded kill switch, signed with the project key, is applied; the same file
+/// again is fine; a bad signature is an error.
+#[test]
+fn downloaded_kill_switch_is_applied() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    let file = include_bytes!("../../hmd-app/tests/fixtures/killswitch-empty.json");
+    let sig = include_str!("../../hmd-app/tests/fixtures/killswitch-empty.json.sig");
+    assert_eq!(
+        b.apply_kill_switch(file, sig).unwrap(),
+        Vec::<String>::new()
+    );
+    assert!(b.apply_kill_switch(file, sig).is_ok(), "already have it");
+    let forged = "0".repeat(128);
+    assert_eq!(
+        b.apply_kill_switch(file, &forged).unwrap_err().code,
+        "KILLSWITCH_BAD_SIGNATURE"
+    );
+}
