@@ -4,7 +4,7 @@
 //! tested without a webview. Views carry catalog texts and codes only; no probe evidence text.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use hmd_app::{App, AppError, DiagnosisView, ExecutionOutcome, PlanView, Startup, StepView};
 use hmd_core::{LOCALE, ProbeOutcome, confidence_phrase};
@@ -447,6 +447,35 @@ impl Backend {
     pub fn report_exported(&mut self, report_id: i64) -> IpcResult<()> {
         let now = (self.clock)();
         Ok(self.app()?.report_exported(report_id, now)?)
+    }
+
+    /// "Salvar arquivo": writes the report the person sees (with their edits) into `dir`
+    /// (the shell passes the Downloads folder), never overwriting a file, and marks it exported.
+    pub fn save_report(&mut self, report_id: i64, text: &str, dir: &Path) -> IpcResult<String> {
+        let now = (self.clock)();
+        let app = self.app()?;
+        app.edit_report(report_id, text, now)?;
+        let date = hmd_core::report::utc_date(now);
+        let path = (0..100)
+            .map(|n| {
+                let suffix = if n == 0 {
+                    String::new()
+                } else {
+                    format!("-{n}")
+                };
+                dir.join(format!("relatorio-helpmydesk-{date}{suffix}.md"))
+            })
+            .find(|p| !p.exists())
+            .ok_or_else(|| IpcError::new("SAVE_FAILED", "too many reports with this date"))?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .map_err(|e| IpcError::new("SAVE_FAILED", e.to_string()))?;
+        std::io::Write::write_all(&mut file, text.as_bytes())
+            .map_err(|e| IpcError::new("SAVE_FAILED", e.to_string()))?;
+        self.app()?.report_exported(report_id, now)?;
+        Ok(path.display().to_string())
     }
 
     pub fn history(&mut self) -> IpcResult<Vec<TicketDto>> {

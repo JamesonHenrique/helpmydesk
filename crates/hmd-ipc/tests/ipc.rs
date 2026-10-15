@@ -178,3 +178,33 @@ fn settings_and_erase_all_on_disk() {
     assert_eq!(b.settings().unwrap().autonomy, "ask_always");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn save_report_writes_a_new_file_and_marks_it_exported() {
+    let dir = std::env::temp_dir().join(format!("hmd-ipc-save-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    let id = b.start_ticket("storage").unwrap().ticket.id;
+    b.diagnose(&id).unwrap();
+    let report = b.make_report(&id, None).unwrap();
+    let first = b.save_report(report.id, "texto editado", &dir).unwrap();
+    assert!(
+        first.ends_with("relatorio-helpmydesk-2025-10-14.md"),
+        "{first}"
+    );
+    assert_eq!(std::fs::read_to_string(&first).unwrap(), "texto editado");
+    let second = b.save_report(report.id, "outra versão", &dir).unwrap();
+    assert!(
+        second.ends_with("relatorio-helpmydesk-2025-10-14-1.md"),
+        "never overwrites"
+    );
+    assert_eq!(std::fs::read_to_string(&first).unwrap(), "texto editado");
+    let missing = dir.join("nao-existe");
+    assert_eq!(
+        b.save_report(report.id, "x", &missing).unwrap_err().code,
+        "SAVE_FAILED"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

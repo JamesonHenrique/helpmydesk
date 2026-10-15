@@ -173,6 +173,17 @@ export class MockApi implements CoreApi {
   async editReport(): Promise<void> {}
   async reportExported(): Promise<void> {}
 
+  async saveReport(_reportId: number, text: string): Promise<string> {
+    const name = 'relatorio-helpmydesk.md';
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+    return name;
+  }
+
   async history(): Promise<TicketDto[]> {
     return this.tickets.map((t) => ({ ...t }));
   }
