@@ -52,5 +52,14 @@ O `verify` precisa imprimir `OK: ...`. Qualquer byte alterado depois da assinatu
 
 ## 4. Publicar
 
-Os dois arquivos vão para os GitHub Releases (plano v1, VII.3). O download pelo app ainda não
-foi implementado: hoje o app só aceita o arquivo por `App::apply_kill_switch`.
+Os dois arquivos ficam na release `kill-switch` (não é uma versão do app; ADR-030). O app baixa
+de `https://github.com/JamesonHenrique/helpmydesk/releases/download/kill-switch/disabled-capabilities.json`
+(e `.sig`) toda vez que abre, em segundo plano. Para trocar o arquivo:
+
+```sh
+gh release upload kill-switch disabled-capabilities.json disabled-capabilities.json.sig --clobber
+```
+
+Guarde a cópia assinada em `ops/killswitch/` por PR, para ficar o histórico. O primeiro arquivo
+(15/10/2026, nada desligado) vence em 13/04/2027: **assine um novo antes disso** (um arquivo
+vencido não é aceito por quem ainda não tinha o anterior).

@@ -35,6 +35,9 @@ use hmd_store::{OpenOutcome, PurgeStats, Store, StoreError};
 /// Setting key for the autonomy mode.
 pub const AUTONOMY_KEY: &str = "autonomy_mode";
 
+/// Largest kill switch file accepted (re-exported for the downloader).
+pub const KILL_SWITCH_MAX_BYTES: usize = hmd_killswitch::MAX_BYTES;
+
 /// Setting with the fixes still blocked when the history was erased (comma-separated IDs).
 const CARRIED_BLOCKS_KEY: &str = "carried_blocks";
 

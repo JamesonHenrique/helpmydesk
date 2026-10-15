@@ -364,6 +364,19 @@ pub fn run() {
                 backend: Mutex::new(backend),
                 startup,
             });
+            // Spec 019: fetch the signed kill switch in the background; offline or any failure
+            // just keeps the last accepted one (it keeps applying without internet).
+            let handle = app.handle().clone();
+            std::thread::spawn(move || match hmd_ipc::fetch_kill_switch() {
+                Ok((file, sig)) => {
+                    let state = handle.state::<Shared>();
+                    match with(&state, |b| b.apply_kill_switch(&file, &sig)) {
+                        Ok(off) => eprintln!("helpmydesk: kill switch checked ({} off)", off.len()),
+                        Err(e) => eprintln!("helpmydesk: kill switch refused: {}", e.code),
+                    }
+                }
+                Err(e) => eprintln!("helpmydesk: kill switch not downloaded: {e}"),
+            });
             Ok(())
         })
         .run(tauri::generate_context!());

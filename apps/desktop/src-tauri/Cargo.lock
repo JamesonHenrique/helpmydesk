@@ -1853,6 +1853,7 @@ dependencies = [
  "hmd-probes",
  "hmd-store",
  "serde",
+ "ureq",
 ]
 
 [[package]]

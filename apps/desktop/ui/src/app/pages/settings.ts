@@ -123,6 +123,11 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
         <dd>GPL-3.0-or-later</dd>
         <dt>Código</dt>
         <dd>github.com/JamesonHenrique/helpmydesk</dd>
+        <dt>Ao abrir</dt>
+        <dd>
+          Consulto o GitHub para saber se alguma correção foi desligada por segurança. Nenhum dado
+          seu vai junto (o GitHub vê o endereço de internet, como em qualquer download).
+        </dd>
       </dl>
     </section>
   `,

@@ -759,6 +759,7 @@ dependencies = [
  "hmd-store",
  "serde",
  "serde_json",
+ "ureq",
 ]
 
 [[package]]
