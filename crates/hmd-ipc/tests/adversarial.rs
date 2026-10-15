@@ -215,6 +215,18 @@ const ATTACKS: &[(&str, Attack)] = &[
         l.b.erase_all().unwrap();
         err(l.b.execute(&id, plan))
     }),
+    ("save a huge report into Downloads", |l| {
+        let (id, _) = l.dns_plan();
+        let report = l.b.make_report(&id, None).unwrap();
+        let dir = std::env::temp_dir().join(format!("hmd-adv-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let huge = "x".repeat(hmd_app::MAX_REPORT_BYTES + 1);
+        let result = err(l.b.save_report(report.id, &huge, &dir));
+        let written = std::fs::read_dir(&dir).unwrap().count();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(written, 0, "nothing reaches the disk");
+        result
+    }),
 ];
 
 #[test]
@@ -237,7 +249,7 @@ fn every_attack_is_blocked_and_the_fix_never_runs() {
     );
     assert_eq!(
         ATTACKS.len(),
-        16,
+        17,
         "update the count in docs when adding cases"
     );
 }

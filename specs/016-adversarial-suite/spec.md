@@ -19,7 +19,9 @@ plano, daquele ticket, naquele momento.
 - **FR-004** Ataques cobertos: executar sem aprovar; aprovar passo inexistente ou nenhum passo;
   plano inexistente e ids extremos; plano e aprovação de outro ticket; ids de ticket forjados;
   aprovar depois de recusar; aprovação vencida; "só observar" antes e depois de aprovar; plano
-  antigo depois de um diagnóstico novo (aprovado ou não); planos de um histórico apagado.
+  antigo depois de um diagnóstico novo (aprovado ou não); planos de um histórico apagado; relatório
+  gigante salvo em Downloads (17 casos). Fora do IPC, em `hmd-app/tests/killswitch.rs`: kill switch
+  que chega entre a aprovação e a execução.
 
 ## Achados e correções (no `hmd-app`)
 
@@ -29,6 +31,8 @@ plano, daquele ticket, naquele momento.
 | Mudar para "só observar" depois de aprovar | a correção rodava | `execute` recusa com `OBSERVE_ONLY` |
 | Plano antigo depois de um diagnóstico que não achou mais o problema | podia ser aprovado e executado | diagnóstico novo descarta os planos pendentes do ticket |
 | Aprovar passo inexistente ou nenhum passo | aceito; `execute` dizia "verified" sem fazer nada | `approve` recusa com `STEP_NOT_IN_PLAN` |
+| Kill switch depois da aprovação | a correção desligada rodava | `apply_kill_switch` descarta planos afetados; `execute` recusa com `CAPABILITY_DISABLED` |
+| Relatório editado sem limite | qualquer tamanho ia para o banco e para Downloads | `MAX_REPORT_BYTES` = 64 KiB, `REPORT_TOO_LARGE` |
 
 ## Fora do escopo
 

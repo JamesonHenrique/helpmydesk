@@ -527,7 +527,7 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Suíte adversarial local (spec 016): 16 ataques pela interface, todos barrados; achou e corrigiu 4 brechas. Falta revisão independente e suíte da IA"
+   "note": "Suíte adversarial local (spec 016): 17 ataques pela interface + kill switch após aprovação, todos barrados; achou e corrigiu 5 brechas e um texto sem limite. Falta revisão independente e suíte da IA"
   },
   {
    "id": "F5-DOCS",
