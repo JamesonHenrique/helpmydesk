@@ -405,3 +405,85 @@ fn us1_real_catalog_discloses_every_probe_on_both_platforms() {
         assert!(catalog.consents.contains_key(id), "{id}");
     }
 }
+
+/// Plan v1 III.13: no jargon in the first layer (titles, explanations, steps, risk, undo,
+/// consent notices). The "o que eu olho" details (`looks_at`, `never`) may name technical terms.
+#[test]
+fn copy_has_no_jargon_in_the_first_layer() {
+    const JARGON: &[&str] = &[
+        "DNS",
+        "DHCP",
+        "IP",
+        "IPv4",
+        "TCP",
+        "HTTP",
+        "gateway",
+        "kernel",
+        "driver",
+        "cache",
+        "proxy",
+        "SSID",
+        "MAC",
+        "PipeWire",
+        "PulseAudio",
+        "ALSA",
+        "UAC",
+        "polkit",
+        "processo",
+        "serviço",
+    ];
+    let has = |text: &str| -> Option<&str> {
+        JARGON.iter().copied().find(|j| {
+            text.match_indices(j).any(|(i, _)| {
+                let before = text[..i].chars().next_back();
+                let after = text[i + j.len()..].chars().next();
+                let edge = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric() && c != '-');
+                edge(before) && edge(after)
+            })
+        })
+    };
+    let catalog = embedded().unwrap();
+    let mut found = Vec::new();
+    for (id, meta) in &catalog.meta {
+        if let Some(c) = meta.copy.get("pt-BR") {
+            for text in [Some(&c.title), c.risk.as_ref(), c.undo.as_ref()]
+                .into_iter()
+                .flatten()
+            {
+                if let Some(j) = has(text) {
+                    found.push(format!("{id}: `{j}` in {text}"));
+                }
+            }
+        }
+    }
+    for pb in catalog.playbooks.values() {
+        for title in pb.title.values() {
+            if let Some(j) = has(title) {
+                found.push(format!("{}: `{j}` in {title}", pb.id));
+            }
+        }
+        for d in pb.diagnoses.iter().chain(std::iter::once(&pb.fallback)) {
+            if let Some(c) = d.copy.get("pt-BR") {
+                for text in [&c.title, &c.explanation].into_iter().chain(&c.steps) {
+                    if let Some(j) = has(text) {
+                        found.push(format!("{}/{}: `{j}` in {text}", pb.id, d.id));
+                    }
+                }
+            }
+        }
+    }
+    for (id, notice) in &catalog.consents {
+        if let Some(c) = notice.copy.get("pt-BR") {
+            for text in [&c.title, &c.text] {
+                if let Some(j) = has(text) {
+                    found.push(format!("consent {id}: `{j}` in {text}"));
+                }
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "jargon in the first layer:\n{}",
+        found.join("\n")
+    );
+}

@@ -1,5 +1,5 @@
 id = "PB-AV-001"
-version = "1.1.0"
+version = "1.1.1"
 family = "audio_video"
 probes = ["av.privacy.mic_camera", "av.audio.devices", "av.camera.present"]
 
@@ -40,8 +40,8 @@ when_all = ["av.no_sound_server"]
 confidence = "probable"
 report = "REP-01"
 [diagnoses.copy.pt-BR]
-title = "O serviço de som não está rodando"
-explanation = "O programa do sistema que cuida do som (PipeWire ou PulseAudio) não está rodando na sua sessão. Sem ele, nada toca e o microfone não funciona."
+title = "O programa que cuida do som não está funcionando"
+explanation = "O programa do sistema que cuida do som não está rodando agora. Sem ele, nada toca e o microfone não funciona."
 steps = [
   "Salve o que estiver fazendo, saia da sessão e entre de novo.",
   "Se continuar sem som, reinicie o computador.",

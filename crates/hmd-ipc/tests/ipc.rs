@@ -95,7 +95,7 @@ fn full_flow_as_json() {
         .find(|p| p["probeId"] == "net.dns.resolve")
         .unwrap();
     assert_eq!(dns["status"], "found");
-    assert_eq!(dns["title"], "Tradução de nomes de sites (DNS)");
+    assert_eq!(dns["title"], "Tradução de nomes de sites");
     assert!(
         !json.to_string().contains("secret-host-name"),
         "probe evidence never reaches the UI"

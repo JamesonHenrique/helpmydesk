@@ -1,5 +1,5 @@
 id = "av.audio.devices"
-version = "1.0.0"
+version = "1.0.1"
 kind = "probe"
 family = "audio_video"
 produces = ["av.no_output_device", "av.no_input_device", "av.no_sound_server"]
@@ -16,5 +16,5 @@ max_per_session = 5
 
 [copy.pt-BR]
 title = "Saídas e entradas de som"
-looks_at = "Quantas saídas de som (alto-falante, fone) e entradas (microfone) estão ativas e, no Linux, se o serviço de som está rodando."
+looks_at = "Quantas saídas de som (alto-falante, fone) e entradas (microfone) estão ativas e, no Linux, se o programa que cuida do som está rodando (PipeWire ou PulseAudio)."
 never = "Nomes dos aparelhos, o som do microfone e o que você ouve."
