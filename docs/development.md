@@ -56,7 +56,7 @@ App desktop (Tauri, `apps/desktop/src-tauri`, workspace próprio): no Linux prec
 
 Rodar as sondas na sua máquina: `cargo run -p hmd-probes --example probe_all`.
 Guarda da constituição: `tools/check-no-process-spawn.sh`. Tudo o que o CI roda, localmente:
-`tools/check-all.sh`.
+`tools/check-all.sh` (inclui `cargo deny`, se instalado: `cargo install --locked cargo-deny@0.20.2`).
 
 Checar o código Windows a partir do Linux: `rustup target add x86_64-pc-windows-gnu` e
 `cargo clippy --workspace --all-targets --target x86_64-pc-windows-gnu -- -D warnings`.

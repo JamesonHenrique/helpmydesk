@@ -24,6 +24,14 @@ else
   echo "== Rust: Windows cross-lint skipped (needs the target and MinGW)"
 fi
 
+if command -v cargo-deny >/dev/null; then
+  echo "== Supply chain (cargo-deny)"
+  cargo deny --config deny.toml check -A license-not-encountered
+  (cd apps/desktop/src-tauri && cargo deny --config ../../../deny.toml check -A license-not-encountered)
+else
+  echo "== cargo-deny skipped (cargo install --locked cargo-deny@0.20.2)"
+fi
+
 echo "== Guards"
 tools/check-no-process-spawn.sh
 cargo run -q --locked -p hmd-core --example ui_fixtures | diff -u apps/desktop/ui/src/app/data/catalog.generated.ts -

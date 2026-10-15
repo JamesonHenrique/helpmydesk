@@ -132,6 +132,23 @@ jobs:
       - name: No process spawning outside executor/helper
         run: tools/check-no-process-spawn.sh
 
+  supply-chain:
+    name: Supply chain (cargo-deny)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Main workspace
+        uses: EmbarkStudios/cargo-deny-action@v2.1.1
+        with:
+          arguments: --config deny.toml
+      - name: Desktop shell
+        uses: EmbarkStudios/cargo-deny-action@v2.1.1
+        with:
+          manifest-path: apps/desktop/src-tauri/Cargo.toml
+          arguments: --config deny.toml
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest
