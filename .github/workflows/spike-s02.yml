@@ -1,0 +1,83 @@
+# Spike S-02 (privilege matrix): runs each fix of the catalog as a standard account and records what
+# the operating system answers. Evidence for docs/spikes/S-02-privilegios.md, not a gate: CI
+# runners are Windows Server and an Ubuntu without a desktop session, so Windows 10/11 and a real
+# desktop login still need the manual round (S-02 in the roadmap).
+name: Spike S-02
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['ci/spike-s02*']
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows, standard account
+    runs-on: windows-2025
+    steps:
+      - name: Standard local account (not in Administrators)
+        shell: pwsh
+        run: |
+          $bytes = [byte[]]::new(24); [Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+          $password = 'Aa1!' + [Convert]::ToBase64String($bytes)
+          $secure = ConvertTo-SecureString $password -AsPlainText -Force
+          New-LocalUser -Name hmdstd -Password $secure -AccountNeverExpires | Out-Null
+          Add-LocalGroupMember -Group Users -Member hmdstd
+          Write-Output "::add-mask::$password"
+          "HMD_STD_PASSWORD=$password" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          Get-LocalGroupMember -Group Administrators | Format-Table -AutoSize
+      - name: Run each command as the standard account
+        shell: pwsh
+        run: |
+          $secure = ConvertTo-SecureString $env:HMD_STD_PASSWORD -AsPlainText -Force
+          $cred = [pscredential]::new("$env:COMPUTERNAME\hmdstd", $secure)
+          $out = 'C:\Users\Public\hmd-s02'
+          New-Item -ItemType Directory -Force $out | Out-Null
+          icacls $out /grant 'Users:(OI)(CI)M' | Out-Null
+          $cases = [ordered]@{
+            'whoami-groups'        = @('whoami.exe', '/groups')
+            'ipconfig-flushdns'    = @('ipconfig.exe', '/flushdns')
+            'clear-dnsclientcache' = @('powershell.exe', '-NoProfile -Command "Clear-DnsClientCache; exit $LASTEXITCODE"')
+          }
+          foreach ($name in $cases.Keys) {
+            $exe, $argv = $cases[$name]
+            $p = Start-Process -FilePath $exe -ArgumentList $argv -Credential $cred -WorkingDirectory $out `
+              -RedirectStandardOutput "$out\$name.out" -RedirectStandardError "$out\$name.err" `
+              -NoNewWindow -Wait -PassThru
+            Write-Output "=== $name (standard account): exit $($p.ExitCode)"
+            Get-Content "$out\$name.out", "$out\$name.err" -ErrorAction SilentlyContinue
+          }
+      - name: Same commands as the runner's administrator, for comparison
+        shell: pwsh
+        run: |
+          ipconfig /flushdns; Write-Output "=== ipconfig-flushdns (admin): exit $LASTEXITCODE"
+          Clear-DnsClientCache; Write-Output "=== clear-dnsclientcache (admin): ok=$?"
+          [Environment]::OSVersion.VersionString
+          (Get-CimInstance Win32_OperatingSystem).Caption
+
+  linux:
+    name: Linux, user without sudo
+    runs-on: ubuntu-24.04
+    steps:
+      - name: systemd-resolved and its polkit policy
+        run: |
+          set +e
+          cat /etc/os-release | head -3
+          systemctl is-active systemd-resolved
+          resolvectl --version | head -1
+          pkaction --version
+          echo "=== polkit defaults for the DNS cache flush"
+          pkaction --verbose --action-id org.freedesktop.resolve1.flush-caches
+          echo "=== other resolve1 actions"
+          pkaction | grep -i resolve1
+      - name: Flush as a user without sudo and without a session
+        run: |
+          set +e
+          sudo useradd --create-home hmdstd
+          sudo -u hmdstd -H resolvectl flush-caches; echo "=== resolvectl flush-caches (no session): exit $?"
+          sudo -u hmdstd -H busctl call org.freedesktop.resolve1 /org/freedesktop/resolve1 \
+            org.freedesktop.resolve1.Manager FlushCaches; echo "=== busctl FlushCaches (no session): exit $?"
+          resolvectl flush-caches; echo "=== resolvectl flush-caches (runner user, no sudo): exit $?"
+          sudo resolvectl flush-caches; echo "=== resolvectl flush-caches (root): exit $?"
