@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-15",
+ "updated": "2026-10-16",
  "rows": [
   {
    "id": "F0-01",
@@ -451,11 +451,11 @@
    "phase_name": "Correções seguras",
    "phase_order": 5,
    "title": "Elevação: UAC no Windows, polkit no Linux",
-   "status": "todo",
+   "status": "doing",
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "Spec 020: helper elevado com revalidação, allowlist, instalador por máquina e aviso na tela. Falta o lançador no Windows (unsafe é proibido pela constituição, ADR-031) e a allowlist de produção depois do S-02"
   },
   {
    "id": "F4-FIXES",

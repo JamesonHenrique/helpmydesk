@@ -20,5 +20,10 @@ Diretórios `NNN-nome` criados pelo Spec Kit. A numeração do Spec Kit é o ID 
 | [013-desktop-shell](013-desktop-shell/spec.md) | ADR-004 + SPEC-005 (janela de aprovação) | Implementada (Tauri ligado ao núcleo; compila no CI; falta teste manual) |
 | [014-kill-switch](014-kill-switch/spec.md) | SPEC-014 (kill switch) | Implementada (verificação e aplicação; falta a chave do projeto e o download) |
 | [015-catalog-governance](015-catalog-governance/spec.md) | SPEC-016 | Implementada (guia, modelos, CODEOWNERS, trava G-SEC no executor) |
+| [016-adversarial-suite](016-adversarial-suite/spec.md) | F5-SEC (parte) | Implementada (suíte adversarial na fronteira do IPC) |
+| [017-ai-client](017-ai-client/spec.md) | SPEC-009 | Implementada (núcleo; falta a chave de quem roda para a avaliação real) |
+| [018-ai-onboarding](018-ai-onboarding/spec.md) | SPEC-015, SPEC-010 (parte) | Implementada ("ligar a ajuda inteligente"; falta o teste com a conta real) |
+| [019-killswitch-download](019-killswitch-download/spec.md) | SPEC-014a | Implementada (download do arquivo assinado; falta a chave e a release) |
+| [020-elevated-helper](020-elevated-helper/spec.md) | SPEC-007 | Parcial (helper elevado e caminho de elevação prontos; **sem lançador no Windows**: `unsafe` é proibido pela constituição, ver ADR-031) |
 
-Próximas, na ordem do plano: elevação UAC/polkit (SPEC-007, depende do spike S-02 em máquinas Windows e Ubuntu/Mint), cliente de IA e orquestração (SPEC-009/010, dependem da consulta Q-01 ao OpenCode), download do kill switch e updater (SPEC-014, F5).
+Próximas, na ordem do plano: allowlist de produção do helper e correção real (dependem do spike S-02 em máquinas Windows e Ubuntu/Mint), cliente de IA avaliado de verdade (SPEC-009/010, dependem da consulta Q-01 ao OpenCode) e assinatura dos instaladores (F5-SIGN).
