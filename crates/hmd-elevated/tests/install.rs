@@ -97,7 +97,9 @@ fn t015_the_windows_installer_carries_the_helper() {
         hmd_elevated::uac::HELPER_EXE,
         "the sidecar has to land where UacLauncher looks"
     );
-    let ci = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).expect("ci.yml");
+    // The CI test builds and the release both call this one workflow.
+    let ci = std::fs::read_to_string(root.join(".github/workflows/installers.yml"))
+        .expect("installers.yml");
     assert!(
         ci.contains("--config src-tauri/windows/helper.conf.json"),
         "the installer build has to merge the sidecar config"
