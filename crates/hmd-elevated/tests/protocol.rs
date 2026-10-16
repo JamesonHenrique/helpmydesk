@@ -264,10 +264,10 @@ fn us2_3_a_request_for_another_platform_is_refused() {
     );
 }
 
-/// SEC-028: the token does not get to decide how long it stays alive. An approval is valid for ten
+/// SEC-029: the token does not get to decide how long it stays alive. An approval is valid for ten
 /// minutes, so a request that claims more than that is refused however it was built.
 #[test]
-fn sec_028_a_request_cannot_buy_itself_more_than_an_approval() {
+fn sec_029_a_request_cannot_buy_itself_more_than_an_approval() {
     let plan = Plan::new();
     let catalog = embedded().unwrap();
     let (allowlist, _) = spy_allowlist();
@@ -513,10 +513,10 @@ fn fr_006_helper_and_executor_agree_on_the_hash() {
     );
 }
 
-/// FR-003 / US4: a UAC dialog answered late runs nothing. The request carries the second after
+/// FR-003 / SEC-028 / US4: a UAC dialog answered late runs nothing. The request carries the second after
 /// which it is dead, and the helper compares it with its own clock before anything else.
 #[test]
-fn fr_003_a_request_that_expired_runs_nothing() {
+fn fr_003_sec_028_a_request_that_expired_runs_nothing() {
     let plan = Plan::new();
     let catalog = embedded().unwrap();
     let (allowlist, spy) = spy_allowlist();
@@ -573,8 +573,17 @@ fn us1_elevation_outcomes_through_the_executor() {
         ExecError::ElevationDenied
     );
 
-    // FR-010: the deadline expired with the dialog open.
-    let fix = ElevatedFix::new(Box::new(FakeLauncher::refusing()));
+    // FR-010: the deadline expired with the dialog open: an answer slower than the launcher's
+    // deadline is a timeout, even when it would have been a success.
+    let mut launcher = FakeLauncher::refusing();
+    launcher.elapsed = Some(hmd_elevated::TIMEOUT + std::time::Duration::from_secs(1));
+    launcher.answer = Some(hmd_elevated::ElevatedResult {
+        protocol: PROTOCOL.into(),
+        outcome: Outcome::Succeeded,
+        reason_code: None,
+        detail: None,
+    });
+    let fix = ElevatedFix::new(Box::new(launcher));
     assert_eq!(
         fix.run(step, &evaluated, Platform::Linux, DEADLINE)
             .unwrap_err(),
@@ -601,7 +610,7 @@ fn us1_elevation_outcomes_through_the_executor() {
 /// SEC-027: the helper is ephemeral — one action per invocation, and the process holds nothing
 /// between them. What this checks is that two invocations are two independent actions (the request
 /// is not consumed by a resident daemon); it is not a claim that a token cannot be replayed, which
-/// SEC-028 bounds by time and the person's click, not by the token.
+/// SEC-028 and SEC-029 bound by time and the person's click, not by the token.
 #[test]
 fn sec_027_two_invocations_are_two_independent_actions() {
     let plan = Plan::new();

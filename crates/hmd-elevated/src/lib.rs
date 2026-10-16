@@ -125,7 +125,7 @@ pub enum ElevatedError {
     PlatformNotSupported,
     /// Parameters outside what the catalog allows (FR-007).
     InvalidParams,
-    /// The token asked to stay alive longer than an approval can (FR-003, SEC-028).
+    /// The token asked to stay alive longer than an approval can (FR-003, SEC-029).
     DeadlineTooLong,
     /// The plan was written against another catalog version (SEC-023).
     CatalogMismatch,
@@ -311,7 +311,7 @@ pub fn validate(
     if now >= request.expires_at {
         return Err(ElevatedError::Expired);
     }
-    // SEC-028: the token does not get to choose how long it stays alive. Whatever the deadline it
+    // SEC-029: the token does not get to choose how long it stays alive. Whatever the deadline it
     // carries, an approval is never valid for longer than [`APPROVAL_TTL`], so a token assembled by
     // hand (or captured from another run) cannot buy itself years of reuse.
     if request.expires_at > now.saturating_add(APPROVAL_TTL) {
@@ -871,11 +871,13 @@ impl Launcher for FakeLauncher {
     fn launch(
         &self,
         _request: &ElevatedRequest,
-        _timeout: std::time::Duration,
+        timeout: std::time::Duration,
     ) -> Result<ElevatedResult, LaunchError> {
+        // The deadline is the caller's, as in the real launcher: an answer that takes longer than
+        // it is a timeout, whatever the answer would have been.
         match self.elapsed {
-            None => Err(LaunchError::Timeout),
-            Some(_) => self.answer.clone().ok_or(LaunchError::Denied),
+            Some(elapsed) if elapsed <= timeout => self.answer.clone().ok_or(LaunchError::Denied),
+            _ => Err(LaunchError::Timeout),
         }
     }
 }
