@@ -21,21 +21,9 @@ fn run(args: &[&str]) -> (i32, String) {
     )
 }
 
-/// SEC-025: no request at all is a refusal with a stable code, not a crash.
-#[test]
-fn missing_request_is_refused_with_a_stable_code() {
-    let (code, stdout) = run(&[]);
-    assert_eq!(code, 11, "BAD_REQUEST exit code (spec 020 plan)");
-    assert!(
-        stdout.contains(r#""reason_code":"BAD_REQUEST""#),
-        "{stdout}"
-    );
-    assert!(stdout.ends_with('\n'), "one JSON line: {stdout}");
-}
-
 /// SEC-020 comes before SEC-022 on purpose: a helper that is not in the per-machine install folder
-/// refuses without even reading the request, so nothing outside the folder can be talked into
-/// running.
+/// refuses without even reading the command line, so nothing outside the folder can be talked into
+/// running — and the code says so, with no token to ask.
 #[test]
 fn forged_token_is_refused_before_it_is_read() {
     let (code, stdout) = run(&["nao-e-um-token"]);
@@ -44,6 +32,21 @@ fn forged_token_is_refused_before_it_is_read() {
         stdout.contains(r#""reason_code":"HELPER_PATH_NOT_TRUSTED""#),
         "{stdout}"
     );
+}
+
+/// A missing request is a refusal with a stable code too. In the test binary the path check always
+/// wins (the binary is never in `Program Files`), so this asserts the code the process actually
+/// returns; `BAD_REQUEST` for a missing token is covered as a library test, where the install
+/// folder is not in the way.
+#[test]
+fn missing_request_is_refused_with_a_stable_code() {
+    let (code, stdout) = run(&[]);
+    assert_eq!(code, 16, "SEC-020 is checked before SEC-022");
+    assert!(
+        stdout.contains(r#""reason_code":"HELPER_PATH_NOT_TRUSTED""#),
+        "{stdout}"
+    );
+    assert!(stdout.ends_with('\n'), "one JSON line: {stdout}");
 }
 
 /// SEC-020: even with a well-formed request, a helper that is not installed per machine refuses to

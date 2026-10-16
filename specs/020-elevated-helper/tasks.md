@@ -30,7 +30,15 @@
       só-admin; desinstalação limpa leva a pasta (e o helper) junto; `INSTALL_DIR` como fonte
       única, com teste que lê o `tauri.conf.json` real (`crates/hmd-elevated/tests/install.rs`).
       O helper entra no pacote como sidecar quando o lançador existir (T007, bloqueado)
-- [ ] T011 `tools/check-all.sh` verde, CI com o bin do helper, `specs/README.md` e
-      `docs/status/roadmap.json` atualizados
+- [x] T011 `tools/check-all.sh` verde (o job `rust` do CI já compila e testa o bin do helper nas
+      duas plataformas), `specs/README.md`, `docs/status/roadmap.json` e o guia de revisão
+      atualizados; `Cargo.lock` do shell regenerado (o `hmd-app` passou a depender do helper, e o
+      CI usa `--locked`)
+- [x] T014 Revisão adversarial da branch (leitura por outro agente, achados P1/P2/P3) e
+      correções: plataforma do pedido tem de ser a do helper, versão do catálogo conferida, prazo
+      máximo do token (SEC-029), `result_pipe` com uma só forma, token em grafia única, tamanho do
+      resultado com teto real, parser do plano estrito (aridade, duplicidade, catálogo), recusa do
+      helper chegando ao diário com o código dela (FR-016), ordem caminho→argv no binário, e texto
+      da janela de aprovação sem prometer um UAC que esta build não tem
 - [ ] T012 Teste manual no Windows (janela de aprovação + UAC) e registro no relatório do spike
 - [ ] T013 Allowlist de produção depois do S-02 (fora desta entrega)

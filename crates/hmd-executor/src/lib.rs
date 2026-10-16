@@ -51,6 +51,10 @@ pub enum ExecError {
     ElevationDenied,
     /// The hard deadline expired with the dialog or the action still open (spec 020 FR-010).
     ElevationTimeout,
+    /// The elevated helper refused the request with a stable code (spec 020 SEC-025): it ran
+    /// nothing, and the code says why. Kept apart from [`ExecError::ElevationNotAvailable`] so the
+    /// refusal does not disappear from the journal.
+    ElevationRefused(&'static str),
     /// The journal refused or failed; nothing was run after it.
     Journal(String),
 }
@@ -66,6 +70,7 @@ impl ExecError {
             ExecError::ElevationNotAvailable => "ELEVATION_NOT_AVAILABLE",
             ExecError::ElevationDenied => "ELEVATION_DENIED",
             ExecError::ElevationTimeout => "ELEVATION_TIMEOUT",
+            ExecError::ElevationRefused(code) => code,
             ExecError::Journal(_) => "JOURNAL_ERROR",
         }
     }
@@ -415,6 +420,10 @@ pub fn execute_step(
         Ok(Err(e)) => (
             match e {
                 ExecError::ElevationDenied => ExecutionState::Failed,
+                // The helper refused before running anything and says which code it refused with
+                // (spec 020 SEC-025): there is nothing to be uncertain about, so `failed` with
+                // that code, and the capability is not blocked waiting for a verification.
+                ExecError::ElevationRefused(_) => ExecutionState::Failed,
                 _ => ExecutionState::Unknown,
             },
             Some(e.reason_code()),
