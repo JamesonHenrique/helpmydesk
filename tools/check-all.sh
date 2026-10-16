@@ -34,6 +34,7 @@ fi
 
 echo "== Guards"
 tools/check-no-process-spawn.sh
+bash -n lab/linux/lab.sh
 cargo run -q --locked -p hmd-core --example ui_fixtures | diff -u apps/desktop/ui/src/app/data/catalog.generated.ts -
 
 if command -v npx >/dev/null; then
