@@ -24,6 +24,9 @@ const FIX: &str = "net.dns.flush_cache";
 const NOW: hmd_domain::Timestamp = 1_760_400_000;
 /// The request carries the deadline of the approval; the helper compares it with its own clock.
 const DEADLINE: hmd_domain::Timestamp = NOW + 300;
+/// The platform these tests pretend to be running on. It is a constant, not the real one, so the
+/// same test runs on any machine: what is under test is the helper's decision, not the host.
+const HOST: Platform = Platform::Linux;
 
 /// An action that reports what it was asked to do, so the tests can see that exactly one action ran
 /// with the validated step. Shared with the allowlist through an `Arc`, the way the real allowlist
@@ -131,6 +134,7 @@ fn context<'a>(
     HelperContext {
         exe,
         install_dir: dir,
+        host: HOST,
         catalog: embedded().unwrap(),
         allowlist,
     }
@@ -154,7 +158,7 @@ fn us2_1_only_the_compiled_allowlist_runs() {
         "production allowlist starts empty (S-02)"
     );
     assert_eq!(
-        validate(&request, embedded().unwrap(), &allowlist, NOW).unwrap_err(),
+        validate(&request, embedded().unwrap(), &allowlist, NOW, HOST).unwrap_err(),
         ElevatedError::NotInAllowlist
     );
 }
@@ -169,14 +173,14 @@ fn us2_2_tampered_plan_or_hash_is_refused() {
     let mut wrong_hash = plan.request();
     wrong_hash.plan_hash = "sha256:".to_string() + &"0".repeat(64);
     assert_eq!(
-        validate(&wrong_hash, catalog, &allowlist, NOW).unwrap_err(),
+        validate(&wrong_hash, catalog, &allowlist, NOW, HOST).unwrap_err(),
         ElevatedError::PlanMismatch
     );
 
     let mut edited_plan = plan.request();
     edited_plan.plan = edited_plan.plan.replace("catalog=", "catalog=x");
     assert_eq!(
-        validate(&edited_plan, catalog, &allowlist, NOW).unwrap_err(),
+        validate(&edited_plan, catalog, &allowlist, NOW, HOST).unwrap_err(),
         ElevatedError::PlanMismatch
     );
 
@@ -186,7 +190,7 @@ fn us2_2_tampered_plan_or_hash_is_refused() {
         .params
         .insert("dns.server".into(), "1.1.1.1".into());
     assert_eq!(
-        validate(&extra_param, catalog, &allowlist, NOW).unwrap_err(),
+        validate(&extra_param, catalog, &allowlist, NOW, HOST).unwrap_err(),
         ElevatedError::PlanMismatch
     );
 }
@@ -202,7 +206,7 @@ fn us2_3_unknown_platform_or_elevation_not_declared_is_refused() {
     let mut request = plan.request();
     request.platform = "macos".into();
     assert_eq!(
-        validate(&request, catalog, &allowlist, NOW).unwrap_err(),
+        validate(&request, catalog, &allowlist, NOW, HOST).unwrap_err(),
         ElevatedError::PlatformNotSupported
     );
 
@@ -225,9 +229,150 @@ fn us2_3_unknown_platform_or_elevation_not_declared_is_refused() {
         .join("\n")
         + "\n";
     demoted.plan_hash = hmd_canonical::sha256_tagged(&demoted.plan);
+    // A verdict that does not ask for elevation is not a platform problem: the plan itself is not
+    // what was approved for a privileged run.
     assert_eq!(
-        validate(&demoted, catalog, &allowlist, NOW).unwrap_err(),
+        validate(&demoted, catalog, &allowlist, NOW, HOST).unwrap_err(),
+        ElevatedError::PlanMismatch
+    );
+}
+
+/// US2.3: the platform in the request also has to be the platform this helper is running on. A
+/// token built for another system cannot pick the variant whose rules suit it better (and the
+/// allowlist, keyed by capability and version, stays unambiguous).
+#[test]
+fn us2_3_a_request_for_another_platform_is_refused() {
+    let plan = Plan::new();
+    let catalog = embedded().unwrap();
+    let (allowlist, _) = spy_allowlist();
+    let other = if HOST == Platform::Windows {
+        Platform::Linux
+    } else {
+        Platform::Windows
+    };
+
+    let mut request = plan.request();
+    request.platform = if other == Platform::Windows {
+        "windows"
+    } else {
+        "linux"
+    }
+    .into();
+    assert_eq!(
+        validate(&request, catalog, &allowlist, NOW, HOST).unwrap_err(),
         ElevatedError::PlatformNotSupported
+    );
+}
+
+/// SEC-028: the token does not get to decide how long it stays alive. An approval is valid for ten
+/// minutes, so a request that claims more than that is refused however it was built.
+#[test]
+fn sec_028_a_request_cannot_buy_itself_more_than_an_approval() {
+    let plan = Plan::new();
+    let catalog = embedded().unwrap();
+    let (allowlist, _) = spy_allowlist();
+
+    let mut request = plan.request();
+    request.expires_at = NOW + 86_400;
+    assert_eq!(
+        validate(&request, catalog, &allowlist, NOW, HOST).unwrap_err(),
+        ElevatedError::DeadlineTooLong
+    );
+
+    let mut reopened = plan.request();
+    reopened.expires_at = NOW + 86_400;
+    let token = encode_token(&reopened).unwrap();
+    let (exe, dir) = installed();
+    let (code, result) = hmd_elevated::run_request(&token, &context(&allowlist, &exe, &dir), NOW);
+    assert_eq!(code, 18);
+    assert_eq!(
+        result.reason_code.as_deref(),
+        Some("REQUEST_DEADLINE_TOO_LONG")
+    );
+}
+
+/// SEC-023: the person approved the risks and the verification the catalog said at the time. A plan
+/// written against another catalog version is not that plan.
+#[test]
+fn sec_023_a_plan_from_another_catalog_version_is_refused() {
+    let plan = Plan::new();
+    let catalog = embedded().unwrap();
+    let (allowlist, _) = spy_allowlist();
+
+    let mut other_version = plan.request();
+    other_version.plan = other_version
+        .plan
+        .lines()
+        .map(|line| {
+            if line.starts_with("catalog=") {
+                "catalog=0.0.0-de-outra-versao".to_string()
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
+        + "\n";
+    other_version.plan_hash = hmd_canonical::sha256_tagged(&other_version.plan);
+    assert_eq!(
+        validate(&other_version, catalog, &allowlist, NOW, HOST).unwrap_err(),
+        ElevatedError::CatalogMismatch
+    );
+}
+
+/// SEC-022: the transport the launcher may ask for is part of the protocol and is checked, so a
+/// token cannot point the result of a privileged run somewhere else.
+#[test]
+fn sec_022_the_result_pipe_of_the_request_has_one_shape() {
+    let plan = Plan::new();
+    let catalog = embedded().unwrap();
+    let (allowlist, _) = spy_allowlist();
+
+    let mut request = plan.request();
+    request.result_pipe = Some(r"\\.\pipe\helpmydesk-7f3a".into());
+    assert!(
+        validate(&request, catalog, &allowlist, NOW, HOST).is_ok(),
+        "the shape the launcher will use is accepted"
+    );
+
+    for pipe in [r"\\.\pipe\outro", r"\\\\servidor\pipe\x", r"\\.\pipe\a b"] {
+        let mut request = plan.request();
+        request.result_pipe = Some(pipe.into());
+        assert_eq!(
+            validate(&request, catalog, &allowlist, NOW, HOST).unwrap_err(),
+            ElevatedError::BadRequest,
+            "{pipe}"
+        );
+    }
+}
+
+/// FR-004/SEC-022: one request, one token. A token that decodes to the same bytes but was not
+/// written the way this helper writes them is refused, so nothing downstream can be fooled by two
+/// spellings of the same request.
+#[test]
+fn fr_004_one_request_has_one_token() {
+    let plan = Plan::new();
+    let token = encode_token(&plan.request()).unwrap();
+    assert!(decode_token(&token).is_ok());
+    // `YQ==` and `YR==` are the same byte; only the first is the spelling this helper writes.
+    assert!(hmd_elevated::base64url_decode("YR==").is_err());
+    assert!(hmd_elevated::base64url_decode("YQ==").is_ok());
+}
+
+/// FR-014: the result goes to the journal, so it has a size limit that actually applies.
+#[test]
+fn fr_014_a_result_over_the_cap_is_replaced_by_a_code_that_fits() {
+    let huge = hmd_elevated::ElevatedResult {
+        protocol: hmd_elevated::PROTOCOL.into(),
+        outcome: Outcome::Failed,
+        reason_code: Some("FIX_FAILED".into()),
+        detail: Some("x".repeat(hmd_elevated::MAX_RESULT_BYTES * 2)),
+    };
+    let json = result_json(&huge);
+    assert!(json.len() <= hmd_elevated::MAX_RESULT_BYTES, "{json}");
+    assert!(
+        json.contains(r#""reason_code":"RESULT_TOO_LARGE""#),
+        "{json}"
     );
 }
 
@@ -330,7 +475,14 @@ fn fr_003_request_is_one_closed_base64url_token() {
     let catalog = embedded().unwrap();
     let allowlist = Allowlist::production();
     assert_eq!(
-        validate(&decode_token(&token).unwrap(), catalog, &allowlist, NOW).unwrap_err(),
+        validate(
+            &decode_token(&token).unwrap(),
+            catalog,
+            &allowlist,
+            NOW,
+            HOST
+        )
+        .unwrap_err(),
         ElevatedError::ProtocolMismatch
     );
 
@@ -381,11 +533,11 @@ fn fr_003_a_request_that_expired_runs_nothing() {
     assert!(spy.seen().is_empty(), "nothing ran");
 
     assert_eq!(
-        validate(&late, catalog, &allowlist, NOW).unwrap_err(),
+        validate(&late, catalog, &allowlist, NOW, HOST).unwrap_err(),
         ElevatedError::Expired
     );
     // One second earlier it is still alive: the deadline is exclusive.
-    assert!(validate(&plan.request(), catalog, &allowlist, DEADLINE - 1).is_ok());
+    assert!(validate(&plan.request(), catalog, &allowlist, DEADLINE - 1, HOST).is_ok());
 }
 
 /// US1.1/US1.3/FR-010 through the executor: no elevation path in this build means refusal before the
@@ -445,10 +597,12 @@ fn us1_elevation_outcomes_through_the_executor() {
     );
 }
 
-/// SEC-027: the helper is ephemeral — one action, then the process is gone; nothing keeps running
-/// with administrator rights.
+/// SEC-027: the helper is ephemeral — one action per invocation, and the process holds nothing
+/// between them. What this checks is that two invocations are two independent actions (the request
+/// is not consumed by a resident daemon); it is not a claim that a token cannot be replayed, which
+/// SEC-028 bounds by time and the person's click, not by the token.
 #[test]
-fn sec_027_nothing_resident_after_the_invocation() {
+fn sec_027_two_invocations_are_two_independent_actions() {
     let plan = Plan::new();
     let (allowlist, spy) = spy_allowlist();
     let (exe, dir) = installed();
@@ -458,6 +612,44 @@ fn sec_027_nothing_resident_after_the_invocation() {
     assert_eq!(hmd_elevated::run_request(&token, &ctx, NOW).0, 0);
     // Two invocations, one action each: the process holds nothing between them.
     assert_eq!(spy.seen().len(), 2);
+}
+
+/// SEC-025: a refusal from the helper carries its own code, and that code is what the journal
+/// keeps. Flattening every refusal into "elevation not available" would hide a security event.
+#[test]
+fn sec_025_a_refusal_from_the_helper_reaches_the_journal_with_its_own_code() {
+    struct Refuses(&'static str);
+    impl hmd_elevated::Launcher for Refuses {
+        fn available(&self) -> bool {
+            true
+        }
+        fn platform(&self) -> Platform {
+            Platform::Linux
+        }
+        fn launch(
+            &self,
+            _request: &ElevatedRequest,
+            _timeout: std::time::Duration,
+        ) -> Result<hmd_elevated::ElevatedResult, hmd_elevated::LaunchError> {
+            Err(hmd_elevated::LaunchError::Refused(self.0))
+        }
+    }
+
+    let plan = Plan::new();
+    for code in [
+        "HELPER_PATH_NOT_TRUSTED",
+        "NOT_IN_ALLOWLIST",
+        "REQUEST_EXPIRED",
+    ] {
+        let fix = ElevatedFix::new(Box::new(Refuses(code)));
+        assert_eq!(
+            fix.run(plan.step(), &plan.evaluated(), Platform::Linux, DEADLINE)
+                .unwrap_err(),
+            ExecError::ElevationRefused(code),
+            "{code}"
+        );
+        assert_eq!(ExecError::ElevationRefused(code).reason_code(), code);
+    }
 }
 
 /// FR-015: on a platform with no privileged path, every elevated step is refused.

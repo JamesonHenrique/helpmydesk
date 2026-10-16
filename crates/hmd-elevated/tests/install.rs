@@ -31,6 +31,14 @@ fn fr_011_the_helper_only_runs_from_the_per_machine_folder() {
         INSTALL_DIR.starts_with(r"C:\Program Files"),
         "FR-011: {INSTALL_DIR:?} is not a folder only the administrator can write to"
     );
+    // The folder the installer creates is the folder the helper trusts, by name: `productName` is
+    // what the NSIS template puts inside `Program Files`.
+    let product = desktop_config()["productName"].clone();
+    let product = product.as_str().expect("productName is a string");
+    assert!(
+        INSTALL_DIR.ends_with(product),
+        "FR-011: INSTALL_DIR {INSTALL_DIR:?} is not the per-machine folder of {product:?}"
+    );
     let install_dir = Path::new(INSTALL_DIR);
     assert!(trusted_path(
         &install_dir.join("helpmydesk-elevated.exe"),

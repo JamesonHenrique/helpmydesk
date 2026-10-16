@@ -573,8 +573,10 @@ fn spec020_us1_3_denied_dialog_is_failed_with_its_reason_code() {
 }
 
 /// Spec 020 FR-010: past the hard deadline the step is `unknown` and never re-run automatically.
+/// (`unknown` is what makes the Policy Engine hold the capability back until the probe sees the
+/// problem resolved; that side of it belongs to the Policy Engine's own tests.)
 #[test]
-fn spec020_fr_010_timeout_is_unknown_and_blocks_the_capability() {
+fn spec020_fr_010_timeout_is_unknown_with_its_reason_code() {
     let f = Fixture::new();
     let approval = f.approve(1);
     let registry = registry(FakeElevation::refusing(ExecError::ElevationTimeout));
@@ -582,6 +584,22 @@ fn spec020_fr_010_timeout_is_unknown_and_blocks_the_capability() {
     let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
     assert_eq!(run.state, ExecutionState::Unknown);
     assert_eq!(run.reason, Some("ELEVATION_TIMEOUT"));
+}
+
+/// Spec 020 SEC-025: the helper refused and said why. Nothing ran, so the step is `failed` with
+/// that code (not `unknown`, which would block the capability for a request that never became an
+/// action) and the code is not replaced by a generic one.
+#[test]
+fn spec020_sec_025_a_refusal_from_the_helper_is_failed_with_its_own_code() {
+    let f = Fixture::new();
+    let approval = f.approve(1);
+    let registry = registry(FakeElevation::refusing(ExecError::ElevationRefused(
+        "HELPER_PATH_NOT_TRUSTED",
+    )));
+    let mut j = MemJournal::default();
+    let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
+    assert_eq!(run.state, ExecutionState::Failed);
+    assert_eq!(run.reason, Some("HELPER_PATH_NOT_TRUSTED"));
 }
 
 /// Spec 008 US3 + spec 020 FR-009: the undo of an elevated step goes through the same elevation
