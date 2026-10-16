@@ -32,6 +32,9 @@ use serde::{Deserialize, Serialize};
 
 /// Version of the request/result contract (spec 020 FR-002). Unknown versions are refused.
 pub const PROTOCOL: &str = "hmd-elevated@1";
+/// Where the per-machine installer puts the helper (spec 020 FR-011, SEC-020). A helper found
+/// anywhere else refuses to do anything.
+pub const INSTALL_DIR: &str = r"C:\Program Files\HelpMyDesk";
 
 /// FR-004: the decoded request may not exceed this size.
 pub const MAX_REQUEST_BYTES: usize = 4 * 1024;
@@ -659,7 +662,7 @@ pub trait Launcher: Send + Sync {
     fn available(&self) -> bool;
     fn launch(
         &self,
-        token: &str,
+        request: &ElevatedRequest,
         timeout: std::time::Duration,
     ) -> Result<ElevatedResult, LaunchError>;
     /// The request goes through a launcher, so the catalog variant for the platform is what decides.
@@ -696,7 +699,7 @@ impl Launcher for FakeLauncher {
     }
     fn launch(
         &self,
-        _token: &str,
+        _request: &ElevatedRequest,
         _timeout: std::time::Duration,
     ) -> Result<ElevatedResult, LaunchError> {
         match self.elapsed {
@@ -741,11 +744,10 @@ impl Elevation for ElevatedFix {
         let Some(step) = Self::step_of(step, plan) else {
             return Err(ExecError::StepNotApproved);
         };
-        let token = encode_token(&build_request(plan, step, self.platform, None, deadline)?)
-            .map_err(|_| ExecError::ElevationNotAvailable)?;
+        let request = build_request(plan, step, self.platform, None, deadline)?;
         let result = self
             .launcher
-            .launch(&token, TIMEOUT)
+            .launch(&request, TIMEOUT)
             .map_err(map_launch_error)?;
         Ok(match result.outcome {
             Outcome::Succeeded => FixOutcome::Succeeded,
@@ -790,10 +792,10 @@ fn map_launch_error(error: LaunchError) -> ExecError {
 
 /// The launcher of this build.
 ///
-/// There is none yet, on purpose: the UAC launcher is Windows-only FFI and the spike S-02 has to
-/// measure on real machines which fixes really need privileges before anything runs elevated
-/// (spec 020 FR-005, FR-015). Until then every elevated step is refused with
-/// `ELEVATION_NOT_AVAILABLE`, which is the safe answer, not a missing feature.
+/// There is none yet, on purpose. The UAC launcher needs `ShellExecuteExW`, and the workspace
+/// forbids `unsafe` (`[workspace.lints.rust] unsafe_code = "forbid"`); opening that door is a
+/// constitution decision, not a detail of this crate (spec 020 T007, still open). Until then every
+/// elevated step ends in `ELEVATION_NOT_AVAILABLE`, which is the safe answer, not a missing feature.
 pub fn production_launcher() -> Box<dyn Launcher> {
     Box::new(UnavailableLauncher {
         platform: host_platform(),
@@ -828,7 +830,7 @@ impl Launcher for UnavailableLauncher {
     }
     fn launch(
         &self,
-        _token: &str,
+        _request: &ElevatedRequest,
         _timeout: std::time::Duration,
     ) -> Result<ElevatedResult, LaunchError> {
         Err(LaunchError::NotAvailable)

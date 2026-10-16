@@ -468,7 +468,7 @@ fn fr_015_no_elevation_path_on_this_platform() {
     assert!(!launcher.available(), "no UAC or pkexec path in this build");
     assert_eq!(
         launcher
-            .launch("whatever", std::time::Duration::from_millis(1))
+            .launch(&plan.request(), std::time::Duration::from_millis(1))
             .unwrap_err()
             .reason_code(),
         "ELEVATION_NOT_AVAILABLE"
