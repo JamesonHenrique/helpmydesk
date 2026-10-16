@@ -11,7 +11,7 @@ use std::io::Write as _;
 use std::process::ExitCode;
 
 use hmd_catalog::embedded;
-use hmd_elevated::{Allowlist, ElevatedError, HelperContext, result_json, run_request};
+use hmd_elevated::{Allowlist, ElevatedError, HelperContext, result_json, run_request, system_now};
 
 /// Where the installer puts the helper (per machine, spec 020 FR-011 / SEC-020). The per-user
 /// variant of the app has no elevation path.
@@ -31,7 +31,10 @@ fn main() -> ExitCode {
     let Some(token) = std::env::args().nth(1) else {
         return refuse(&ElevatedError::BadRequest);
     };
-    let (code, result) = run_request(&token, &context);
+    let Some(now) = system_now() else {
+        return refuse(&ElevatedError::BadRequest);
+    };
+    let (code, result) = run_request(&token, &context, now);
     // SEC-025: JSON on stdout plus the exit code; the user-level process is the one that writes to
     // the journal. Nothing else is printed: no probe output, no path, no name.
     let line = format!("{}\n", result_json(&result));

@@ -70,6 +70,7 @@ impl<T: FixImpl> Elevation for FakeElevation<T> {
         step: &ProposedStep,
         _plan: &EvaluatedPlan<'_>,
         _platform: Platform,
+        _deadline: hmd_domain::Timestamp,
     ) -> Result<FixOutcome, ExecError> {
         Ok(self.0.run(step))
     }
@@ -78,6 +79,7 @@ impl<T: FixImpl> Elevation for FakeElevation<T> {
         step: &ProposedStep,
         _plan: &EvaluatedPlan<'_>,
         _platform: Platform,
+        _deadline: hmd_domain::Timestamp,
     ) -> Option<FixOutcome> {
         Some(self.0.rollback(step))
     }
