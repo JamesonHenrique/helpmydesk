@@ -1,8 +1,9 @@
 # Tarefas — spec 020
 
 - [x] T001 Spec, plano e tarefas (spec 020, decisão de instalação por máquina)
-- [ ] T002 ADR-031: helper elevado (binário separado, instalação por máquina, pedido em argv,
-      sem `pkexec` nesta versão, `windows-sys` só se preciso)
+- [x] T002 ADR-031: helper elevado (binário separado, instalação por máquina, pedido em argv,
+      sem `pkexec` nesta versão, `windows-sys` só se preciso) — inclui o bloqueio do `unsafe`
+      (`unsafe_code = "forbid"`) e as três saídas para o mantenedor decidir
 - [x] T003 `hmd-canonical`: `canonical.rs` movido do executor, reexportado (hash único para
       executor e helper); `cargo deny` e lints limpos
 - [x] T004 `hmd-elevated` lib: pedido estrito (`deny_unknown_fields`, base64url, 4 KiB),

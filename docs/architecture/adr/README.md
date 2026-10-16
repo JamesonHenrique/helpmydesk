@@ -30,3 +30,8 @@ Formato: MADR simplificado. Os ADRs ainda sem arquivo próprio estão resumidos 
 | [024](ADR-024-plan-hash-sha2.md) | Hash do plano e chave de idempotência com `sha2` | Aceita |
 | [025](ADR-025-tauri-shell.md) | App desktop com Tauri 2, workspace próprio, permissões por janela | Aceita |
 | [026](ADR-026-kill-switch-signature.md) | Kill switch assinado com Ed25519 (`ed25519-dalek`) | Aceita |
+| [027](ADR-027-ai-client-https.md) | Cliente de IA por HTTPS com `ureq`; allowlist de modelos | Aceita |
+| [028](ADR-028-ai-key-vault-and-plugins.md) | Chave da IA no cofre do SO e plugins de IA | Aceita |
+| [029](ADR-029-test-installers.md) | Instaladores de teste pelo CI (`.deb` + NSIS) | Aceita |
+| [030](ADR-030-kill-switch-download.md) | Download do kill switch assinado | Aceita |
+| [031](ADR-031-elevated-helper.md) | Helper elevado em processo separado (UAC, instalação por máquina) | Aceita (sem lançador, ver ADR) |
