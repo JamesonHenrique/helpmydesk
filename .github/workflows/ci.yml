@@ -25,6 +25,13 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Lint
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Lab script parses (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD\lab\windows\lab.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors | ForEach-Object { Write-Error $_.ToString() }; exit 1 }
       - name: Test
         run: cargo test --workspace --locked
         env:
@@ -142,6 +149,8 @@ jobs:
           persist-credentials: false
       - name: No process spawning outside executor/helper
         run: tools/check-no-process-spawn.sh
+      - name: Lab script parses (Linux)
+        run: bash -n lab/linux/lab.sh
 
   supply-chain:
     name: Supply chain (cargo-deny)
