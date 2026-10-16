@@ -14,8 +14,8 @@ use hmd_domain::{
     Timestamp,
 };
 use hmd_executor::{
-    EvaluatedPlan, ExecError, ExecuteInput, ExecutionStart, FixImpl, FixOutcome, Journal, Registry,
-    execute_step, idempotency_key, verify_step,
+    Elevation, EvaluatedPlan, ExecError, ExecuteInput, ExecutionStart, FixImpl, FixOutcome,
+    Journal, Registry, VerifyInput, execute_step, idempotency_key, verify_step,
 };
 use hmd_policy::{
     ActionPlanProposal, AutonomyMode, Confidence, Platform, PolicyContext, PolicyDecision,
@@ -52,6 +52,32 @@ struct Fake(FixOutcome);
 impl FixImpl for Fake {
     fn run(&self, _step: &ProposedStep) -> FixOutcome {
         self.0
+    }
+}
+
+/// Spec 020: `net.dns.flush_cache` declares `requires_elevation`, so the executor routes it to the
+/// elevation path. The tests keep their own fake and wrap it here.
+struct FakeElevation<T>(T);
+
+impl<T: FixImpl> Elevation for FakeElevation<T> {
+    fn available(&self, _step: &ProposedStep, _platform: Platform) -> bool {
+        true
+    }
+    fn run(
+        &self,
+        step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Result<FixOutcome, ExecError> {
+        Ok(self.0.run(step))
+    }
+    fn rollback(
+        &self,
+        step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Option<FixOutcome> {
+        Some(self.0.rollback(step))
     }
 }
 
@@ -213,7 +239,8 @@ fn us2_interrupted_execution_becomes_unknown_and_blocks_the_capability() {
     ));
 
     // The same approval cannot run the step again, even through the executor.
-    let registry = Registry::default().with(FIX, Box::new(Fake(FixOutcome::Succeeded)));
+    let registry =
+        Registry::default().with_elevation(Box::new(FakeElevation(Fake(FixOutcome::Succeeded))));
     let input = ExecuteInput {
         plan,
         plan_ref: plan_id,
@@ -271,7 +298,8 @@ fn full_flow(still_failing: bool) -> (Store, String, i64) {
     let a = s
         .approve(plan_id, &plan, &["s1"], AutonomyMode::AskAlways, NOW + 10)
         .unwrap();
-    let registry = Registry::default().with(FIX, Box::new(Fake(FixOutcome::Succeeded)));
+    let registry =
+        Registry::default().with_elevation(Box::new(FakeElevation(Fake(FixOutcome::Succeeded))));
     let input = ExecuteInput {
         plan,
         plan_ref: plan_id,
@@ -285,16 +313,20 @@ fn full_flow(still_failing: bool) -> (Store, String, i64) {
     let variant = &catalog.catalog.get(FIX).unwrap().variants[&Platform::Linux];
     let asked = Cell::new(false);
     let v = verify_step(
-        run.execution,
-        &p.steps[0],
-        variant,
+        &VerifyInput {
+            execution: run.execution,
+            step: &p.steps[0],
+            variant,
+            plan,
+            platform: Platform::Linux,
+            now: NOW + 30,
+        },
         &registry,
         &mut s,
         |probe| {
             asked.set(probe == "net.dns.resolve");
             dns(still_failing)
         },
-        NOW + 30,
     )
     .unwrap();
     assert!(asked.get());

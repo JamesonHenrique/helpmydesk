@@ -118,12 +118,21 @@ fn disabled_fix_is_not_offered_and_survives_restart_offline() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-struct CountingFix(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+/// Spec 020: the only fix in the catalog is elevated, so it runs through a fake elevation path.
+struct CountingElevation(std::sync::Arc<std::sync::atomic::AtomicUsize>);
 
-impl hmd_executor::FixImpl for CountingFix {
-    fn run(&self, _: &hmd_policy::ProposedStep) -> hmd_executor::FixOutcome {
+impl hmd_executor::Elevation for CountingElevation {
+    fn available(&self, _: &hmd_policy::ProposedStep, _: hmd_policy::Platform) -> bool {
+        true
+    }
+    fn run(
+        &self,
+        _: &hmd_policy::ProposedStep,
+        _: &hmd_executor::EvaluatedPlan<'_>,
+        _: hmd_policy::Platform,
+    ) -> Result<hmd_executor::FixOutcome, hmd_executor::ExecError> {
         self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        hmd_executor::FixOutcome::Succeeded
+        Ok(hmd_executor::FixOutcome::Succeeded)
     }
 }
 
@@ -138,7 +147,7 @@ fn kill_switch_after_approval_blocks_the_approved_fix() {
         .unwrap()
         .with_registry(
             hmd_executor::Registry::default()
-                .with("net.dns.flush_cache", Box::new(CountingFix(runs.clone()))),
+                .with_elevation(Box::new(CountingElevation(runs.clone()))),
         );
     let t = app
         .start_ticket(ProblemFamily::Connectivity, NOW)
