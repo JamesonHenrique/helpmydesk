@@ -46,6 +46,7 @@
     "homepage": "https://github.com/JamesonHenrique/helpmydesk",
     "windows": {
       "nsis": {
+        "installMode": "perMachine",
         "installerHooks": "./windows/hooks.nsh"
       }
     }
