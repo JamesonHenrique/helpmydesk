@@ -75,6 +75,7 @@ import { PrototypeState } from '../state/prototype';
             >
               <option value="verified">Verificado</option>
               <option value="not_available">Correção ainda não disponível</option>
+              <option value="elevation_not_available">Sem permissão de administrador</option>
               <option value="not_resolved">Não resolveu</option>
             </select>
           </details>
