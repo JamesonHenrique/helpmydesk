@@ -8,8 +8,6 @@
 //! measures the privileges each fix needs.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
-pub mod canonical;
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -20,7 +18,9 @@ use hmd_policy::{
     Rollback, StepVerdict,
 };
 
-pub use canonical::{PLAN_FORMAT, canonical, idempotency_key, plan_hash, sha256_tagged};
+// Spec 020: the canonical encoding lives in `hmd-canonical` so the elevated helper recalculates
+// the plan hash with this same code. The re-exports keep `hmd-store` and `hmd-app` unchanged.
+pub use hmd_canonical::{PLAN_FORMAT, canonical, idempotency_key, plan_hash, sha256_tagged};
 
 /// Default lifetime of an approval (Plan v1 V.7).
 pub const APPROVAL_TTL: i64 = 10 * 60;

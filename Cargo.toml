@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/hmd-domain", "crates/hmd-policy", "crates/hmd-catalog", "crates/hmd-probes", "crates/hmd-core", "crates/hmd-executor", "crates/hmd-store", "crates/hmd-app", "crates/hmd-ipc", "crates/hmd-killswitch", "crates/hmd-ai", "crates/hmd-vault"]
+members = ["crates/hmd-domain", "crates/hmd-policy", "crates/hmd-catalog", "crates/hmd-probes", "crates/hmd-core", "crates/hmd-canonical", "crates/hmd-executor", "crates/hmd-store", "crates/hmd-app", "crates/hmd-ipc", "crates/hmd-killswitch", "crates/hmd-ai", "crates/hmd-vault"]
 exclude = ["apps/desktop/src-tauri"]
 
 [workspace.package]
