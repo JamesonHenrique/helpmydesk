@@ -102,11 +102,16 @@ pub trait Elevation: Send + Sync {
     fn available(&self, step: &ProposedStep, platform: Platform) -> bool;
     /// Runs one approved step elevated. The implementation revalidates the plan by itself; the
     /// executor does not assume anything about what happened.
+    ///
+    /// `deadline` is the second after which the approval is no longer valid: the request handed to
+    /// the privileged process carries it, so a UAC dialog answered late runs nothing (spec 020
+    /// FR-003).
     fn run(
         &self,
         step: &ProposedStep,
         plan: &EvaluatedPlan<'_>,
         platform: Platform,
+        deadline: Timestamp,
     ) -> Result<FixOutcome, ExecError>;
 
     /// Undo of an elevated step, called only when the catalog declares
@@ -117,6 +122,7 @@ pub trait Elevation: Send + Sync {
         _step: &ProposedStep,
         _plan: &EvaluatedPlan<'_>,
         _platform: Platform,
+        _deadline: Timestamp,
     ) -> Option<FixOutcome> {
         None
     }
@@ -137,6 +143,7 @@ impl Elevation for NoElevation {
         _step: &ProposedStep,
         _plan: &EvaluatedPlan<'_>,
         _platform: Platform,
+        _deadline: Timestamp,
     ) -> Result<FixOutcome, ExecError> {
         Err(ExecError::ElevationNotAvailable)
     }
@@ -394,7 +401,11 @@ pub fn execute_step(
     // `started`) nor unwind into the caller, which holds the backend lock.
     let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match implementation {
         Some(implementation) => Ok(implementation.run(step)),
-        None => registry.elevation().run(step, &input.plan, input.platform),
+        None => {
+            registry
+                .elevation()
+                .run(step, &input.plan, input.platform, input.approval.expires_at)
+        }
     }));
     let (state, reason) = match outcome {
         Ok(Ok(FixOutcome::Succeeded)) => (ExecutionState::Succeeded, None),
@@ -499,7 +510,15 @@ pub fn verify_step(
     // through the same elevation path that ran it.
     let rolled_back = if variant.rollback == Rollback::Implemented {
         if variant.requires_elevation {
-            registry.elevation().rollback(step, &plan, platform)
+            registry.elevation().rollback(
+                step,
+                &plan,
+                platform,
+                // The undo is authorized by the same approval, but it happens later and undoing a
+                // change that happened must not be refused only because the approval window closed.
+                // One elevation timeout from now is the deadline of the rollback request.
+                now.saturating_add(ELEVATION_TIMEOUT.as_secs() as Timestamp),
+            )
         } else {
             registry.get(&step.capability).map(|i| i.rollback(step))
         }

@@ -130,6 +130,7 @@ impl hmd_executor::Elevation for CountingElevation {
         _: &hmd_policy::ProposedStep,
         _: &hmd_executor::EvaluatedPlan<'_>,
         _: hmd_policy::Platform,
+        _: hmd_domain::Timestamp,
     ) -> Result<hmd_executor::FixOutcome, hmd_executor::ExecError> {
         self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         Ok(hmd_executor::FixOutcome::Succeeded)
