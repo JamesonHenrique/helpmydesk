@@ -31,7 +31,7 @@ INV-01 e INV-02 (IA) ainda não têm código: não existe cliente de IA (SPEC-00
 | Auditoria encadeada | `crates/hmd-store/src/audit.rs` | `crates/hmd-store/tests/privacy.rs` |
 | Kill switch assinado (Ed25519, mais novo, não vencido) | `crates/hmd-killswitch` | testes do crate |
 | Nada privilegiado fora do caminho de elevação (`ELEVATION_NOT_AVAILABLE` antes do diário) | `crates/hmd-executor/src/lib.rs` (`Elevation`, `execute_step`) | `crates/hmd-executor/tests/executor.rs` |
-| Helper revalida tudo e só roda o que está na allowlist compilada (SEC-020…SEC-024, SEC-028) | `crates/hmd-elevated/src/lib.rs` (`validate`, `run_request`), `crates/hmd-canonical` | `crates/hmd-elevated/tests/protocol.rs` |
+| Helper revalida tudo e só roda o que está na allowlist compilada (SEC-020…SEC-024, SEC-028, SEC-029) | `crates/hmd-elevated/src/lib.rs` (`validate`, `run_request`), `crates/hmd-canonical` | `crates/hmd-elevated/tests/protocol.rs` |
 | Helper recusa rodar fora da pasta só-admin; instalador é por máquina (FR-011, FR-012) | `crates/hmd-elevated/src/lib.rs` (`trusted_path`, `INSTALL_DIR`), `apps/desktop/src-tauri/tauri.conf.json` | `crates/hmd-elevated/tests/install.rs`, `crates/hmd-elevated/tests/protocol.rs` |
 | Helper é efêmero: uma ação por invocação, JSON no stdout, prazo duro (SEC-025…SEC-027, FR-010) | `crates/hmd-elevated/src/lib.rs`, `crates/hmd-elevated/src/main.rs` | `crates/hmd-elevated/tests/protocol.rs`, `crates/hmd-elevated/tests/binary.rs` |
 
