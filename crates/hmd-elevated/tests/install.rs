@@ -55,40 +55,23 @@ fn fr_011_the_helper_only_runs_from_the_per_machine_folder() {
 }
 
 #[test]
-fn fr_012_the_uninstaller_takes_the_install_folder_with_it() {
-    // The helper lives inside $INSTDIR, so the NSIS template that removes that folder removes the
-    // helper with it. Nothing else is ours under Program Files, and the helper writes no registry
-    // key, so the hook only has to cover the per-user history (F2-UNINST).
-    let hooks = std::fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../apps/desktop/src-tauri/windows/hooks.nsh"),
-    )
-    .expect("the installer hook file is readable");
-    assert!(hooks.contains("NSIS_HOOK_POSTUNINSTALL"));
+fn fr_012_the_uninstaller_is_the_template_alone() {
+    // The template deletes every file it installed, sidecars included, and then the folder. With no
+    // hook of ours there is nothing custom in the uninstaller: no registry key, no extra question.
+    let nsis = &desktop_config()["bundle"]["windows"]["nsis"];
     assert!(
-        !hooks.contains(r"DeleteRegKey HKLM"),
-        "FR-012: the helper creates no registry key; a key removal here would be unexplained"
+        nsis.get("installerHooks").is_none(),
+        "FR-012: an uninstaller hook would need its own review"
     );
 }
 
-/// F2-UNINST with the per-machine installer: the template runs with `SetShellVarContext all`, so
-/// `$APPDATA` would be ProgramData and the history of the person would stay. The hook switches to
-/// `current` before deleting and back to `all` after.
+/// F2-UNINST: one question about the history, the template's "Remover dados do programa" box,
+/// which deletes in the profile of whoever uninstalls (`SetShellVarContext current`). Portuguese
+/// first, so the box speaks the language of the person.
 #[test]
-fn f2_uninst_history_is_deleted_in_the_person_profile() {
-    let hooks = std::fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../apps/desktop/src-tauri/windows/hooks.nsh"),
-    )
-    .expect("the installer hook file is readable");
-    let current = hooks
-        .find("SetShellVarContext current")
-        .expect("context switch");
-    let delete = hooks.find(r#"RMDir /r "$APPDATA"#).expect("history delete");
-    let back = hooks
-        .rfind("SetShellVarContext all")
-        .expect("context restored");
-    assert!(current < delete && delete < back, "{hooks}");
+fn f2_uninst_the_history_question_is_the_template_box_in_portuguese() {
+    let languages = desktop_config()["bundle"]["windows"]["nsis"]["languages"].clone();
+    assert_eq!(languages[0], "PortugueseBR", "{languages}");
 }
 
 /// Spec 020 T015: the Windows installer build merges the sidecar config, and the sidecar is the

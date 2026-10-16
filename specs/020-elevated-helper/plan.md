@@ -91,9 +91,10 @@ conta de administrador antes de começar. O helper (e o app) ficam em `$INSTDIR`
 é a única fonte dessa pasta e um teste (`crates/hmd-elevated/tests/install.rs`) lê o
 `tauri.conf.json` de verdade, para o instalador e o helper não divergirem em silêncio.
 
-Desinstalação: o template do NSIS remove `$INSTDIR` inteiro, então o helper vai com a pasta
-(FR-012). O helper não grava chave de registro nenhuma, e o hook existente continua cobrindo só o
-histórico por usuário (F2-UNINST da spec 008).
+Desinstalação: o template do NSIS apaga cada arquivo que instalou (app, sidecars, recursos) e
+depois a pasta vazia, então o helper vai junto (FR-012). O helper não grava chave de registro
+nenhuma, e a caixa "Remover dados do programa" do template cobre só o histórico por usuário
+(F2-UNINST da spec 008).
 
 Onde o helper entra no pacote (T015): sidecar (`bundle.externalBin`), que o Tauri coloca ao lado
 do executável principal e apaga na desinstalação (lista `binaries` do template NSIS). O sidecar

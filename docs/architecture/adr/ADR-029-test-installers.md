@@ -25,9 +25,13 @@ testadores precisam de algo que se instala com dois cliques.
 
 ## Desinstalação (F2-UNINST)
 
-- Windows: o desinstalador pergunta "Apagar também o histórico do HelpMyDesk neste computador?"
-  (`windows/hooks.nsh`, `NSIS_HOOK_POSTUNINSTALL`); em desinstalação silenciosa, guarda os dados.
-  Apaga `%APPDATA%` e `%LOCALAPPDATA%` do app. A chave da IA no Gerenciador de Credenciais sai
+- Windows: a tela de confirmação do desinstalador traz a caixa "Remover dados do programa", do
+  próprio template do Tauri (instalador em português, `languages: ["PortugueseBR", "English"]`).
+  Marcada, apaga `%APPDATA%` e `%LOCALAPPDATA%` do app no perfil de quem desinstala
+  (`SetShellVarContext current`); desinstalação silenciosa guarda os dados. Até 16/10 havia também
+  uma pergunta nossa (`windows/hooks.nsh`), removida porque repetia a caixa. Limite: quando uma
+  conta padrão digita a senha de um administrador no UAC, "quem desinstala" é o administrador, e o
+  histórico da pessoa fica; "Apagar tudo" no app sempre alcança o perfil certo. A chave da IA no Gerenciador de Credenciais sai
   pelo "Apagar tudo" do app (o desinstalador não mexe no cofre).
 - Linux (`.deb`): `apt remove` não apaga dados da pasta pessoal (padrão dos pacotes). Para tirar
   tudo, use "Apagar tudo" no app antes de desinstalar.
