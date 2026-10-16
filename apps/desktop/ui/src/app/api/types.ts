@@ -70,7 +70,7 @@ export interface ApprovalDto {
 }
 
 export interface OutcomeDto {
-  kind: 'verified' | 'not_available' | 'not_resolved';
+  kind: 'verified' | 'not_available' | 'elevation_not_available' | 'not_resolved';
   stepId: string | null;
   trigger: string | null;
 }
