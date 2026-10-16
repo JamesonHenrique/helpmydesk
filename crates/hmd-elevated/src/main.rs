@@ -36,7 +36,13 @@ fn main() -> ExitCode {
         catalog,
         allowlist: &allowlist,
     };
-    let Some(token) = std::env::args().nth(1) else {
+    // `args()` panics on an argument that is not Unicode; the helper refuses instead. Exactly one
+    // argument: anything more is not a request this build sends.
+    let mut args = std::env::args_os().skip(1);
+    let (Some(token), None) = (args.next(), args.next()) else {
+        return refuse(&ElevatedError::BadRequest);
+    };
+    let Ok(token) = token.into_string() else {
         return refuse(&ElevatedError::BadRequest);
     };
     let Some(now) = system_now() else {

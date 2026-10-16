@@ -359,6 +359,18 @@ fn journal(e: JournalError) -> ExecError {
     ExecError::Journal(e.0)
 }
 
+/// Spec 020 FR-010: the deadline the elevated request carries. The launcher stops waiting after
+/// [`ELEVATION_TIMEOUT`] and the journal says `unknown`; a UAC dialog clicked after that must find
+/// a dead token, or the action would run behind a step the journal already closed. So the token
+/// lives for the shorter of the approval and this one invocation.
+pub fn elevation_deadline(input: &ExecuteInput<'_>) -> Timestamp {
+    input.approval.expires_at.min(
+        input
+            .now
+            .saturating_add(ELEVATION_TIMEOUT.as_secs() as Timestamp),
+    )
+}
+
 /// FR-003: checks in order, then writes `started`, runs the implementation and records the
 /// outcome. A panic-free implementation that cannot tell the outcome yields `unknown`.
 pub fn execute_step(
@@ -409,7 +421,7 @@ pub fn execute_step(
         None => {
             registry
                 .elevation()
-                .run(step, &input.plan, input.platform, input.approval.expires_at)
+                .run(step, &input.plan, input.platform, elevation_deadline(input))
         }
     }));
     let (state, reason) = match outcome {
