@@ -48,6 +48,8 @@ Com ela, você escreve o problema com as suas palavras ("a internet caiu desde o
 
 ## Desinstalar
 
-- **Windows:** desinstale pelo Painel de Controle; o desinstalador pergunta se apaga também o
-  histórico.
+- **Windows:** desinstale pelo Painel de Controle. Para levar o histórico junto, marque **Remover
+  dados do programa** na tela de confirmação. Se você precisou digitar a senha de outra pessoa
+  (administrador) para desinstalar, use antes **Apagar tudo** no app: o desinstalador só alcança o
+  histórico de quem digitou a senha.
 - **Linux:** use **Apagar tudo** no app e depois `sudo apt remove help-my-desk`.
