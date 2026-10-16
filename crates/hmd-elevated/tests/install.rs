@@ -70,3 +70,23 @@ fn fr_012_the_uninstaller_takes_the_install_folder_with_it() {
         "FR-012: the helper creates no registry key; a key removal here would be unexplained"
     );
 }
+
+/// F2-UNINST with the per-machine installer: the template runs with `SetShellVarContext all`, so
+/// `$APPDATA` would be ProgramData and the history of the person would stay. The hook switches to
+/// `current` before deleting and back to `all` after.
+#[test]
+fn f2_uninst_history_is_deleted_in_the_person_profile() {
+    let hooks = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../apps/desktop/src-tauri/windows/hooks.nsh"),
+    )
+    .expect("the installer hook file is readable");
+    let current = hooks
+        .find("SetShellVarContext current")
+        .expect("context switch");
+    let delete = hooks.find(r#"RMDir /r "$APPDATA"#).expect("history delete");
+    let back = hooks
+        .rfind("SetShellVarContext all")
+        .expect("context restored");
+    assert!(current < delete && delete < back, "{hooks}");
+}
