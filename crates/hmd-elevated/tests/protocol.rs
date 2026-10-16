@@ -580,7 +580,7 @@ fn us1_elevation_outcomes_through_the_executor() {
         ExecError::ElevationTimeout
     );
 
-    // A refusal from the helper is reported as not available, never as success.
+    // A refusal from the helper keeps its own code, never success.
     let mut launcher = FakeLauncher::refusing();
     launcher.elapsed = Some(std::time::Duration::from_millis(1));
     launcher.answer = Some(hmd_elevated::ElevatedResult {
@@ -652,23 +652,76 @@ fn sec_025_a_refusal_from_the_helper_reaches_the_journal_with_its_own_code() {
     }
 }
 
-/// FR-015: on a platform with no privileged path, every elevated step is refused.
+/// FR-015/US1.1: with the allowlist empty, no elevated step is offered on any platform, so no UAC
+/// dialog opens and nothing is written. Off Windows there is no launcher at all.
 #[test]
 fn fr_015_no_elevation_path_on_this_platform() {
     let plan = Plan::new();
-    let launcher = hmd_elevated::production_launcher();
-    assert!(!launcher.available(), "no UAC or pkexec path in this build");
-    assert_eq!(
-        launcher
-            .launch(&plan.request(), std::time::Duration::from_millis(1))
-            .unwrap_err()
-            .reason_code(),
-        "ELEVATION_NOT_AVAILABLE"
-    );
     let fix = ElevatedFix::new(hmd_elevated::production_launcher());
+    for platform in [Platform::Linux, Platform::Windows] {
+        assert!(!fix.available(plan.step(), platform), "{platform:?}");
+    }
+    #[cfg(not(windows))]
+    {
+        let launcher = hmd_elevated::production_launcher();
+        assert!(!launcher.available(), "no pkexec path in this build");
+        assert_eq!(
+            launcher
+                .launch(&plan.request(), std::time::Duration::from_millis(1))
+                .unwrap_err()
+                .reason_code(),
+            "ELEVATION_NOT_AVAILABLE"
+        );
+        assert_eq!(
+            fix.run(plan.step(), &plan.evaluated(), Platform::Linux, DEADLINE)
+                .unwrap_err(),
+            ExecError::ElevationNotAvailable
+        );
+    }
+}
+
+/// US1.1: the executor reads the helper's allowlist. A step the helper would refuse is not offered,
+/// even with a working launcher; the same step inside the allowlist is.
+#[test]
+fn us1_1_a_step_outside_the_allowlist_is_not_offered() {
+    let plan = Plan::new();
+    let ready = || {
+        let mut launcher = FakeLauncher::refusing();
+        launcher.platform = Platform::Linux;
+        Box::new(launcher)
+    };
+    assert!(!ElevatedFix::new(ready()).available(plan.step(), Platform::Linux));
+    let (allowlist, _spy) = spy_allowlist();
+    let fix = ElevatedFix::new(ready()).with_allowlist(allowlist);
+    assert!(fix.available(plan.step(), Platform::Linux));
+    assert!(!fix.available(plan.step(), Platform::Windows));
+}
+
+/// FR-016: a request the launcher could not even build ran nothing, so it is `failed` with its own
+/// code, never the `unknown` that "not available" becomes after `started`.
+#[test]
+fn fr_016_a_request_that_cannot_be_built_is_a_refusal() {
+    struct Malformed;
+    impl hmd_elevated::Launcher for Malformed {
+        fn available(&self) -> bool {
+            true
+        }
+        fn platform(&self) -> Platform {
+            Platform::Linux
+        }
+        fn launch(
+            &self,
+            _request: &ElevatedRequest,
+            _timeout: std::time::Duration,
+        ) -> Result<hmd_elevated::ElevatedResult, hmd_elevated::LaunchError> {
+            Err(hmd_elevated::LaunchError::Malformed)
+        }
+    }
+    let plan = Plan::new();
+    let fix = ElevatedFix::new(Box::new(Malformed));
     assert_eq!(
         fix.run(plan.step(), &plan.evaluated(), Platform::Linux, DEADLINE)
             .unwrap_err(),
-        ExecError::ElevationNotAvailable
+        ExecError::ElevationRefused("ELEVATION_MALFORMED")
     );
 }

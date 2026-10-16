@@ -821,12 +821,26 @@ impl Launcher for FakeLauncher {
 pub struct ElevatedFix {
     launcher: Box<dyn Launcher>,
     platform: Platform,
+    /// The helper's allowlist, read on this side too: a step the helper would refuse is not
+    /// offered, so it never opens a UAC dialog nor writes `started` (US1.1).
+    allowlist: Allowlist,
 }
 
 impl ElevatedFix {
     pub fn new(launcher: Box<dyn Launcher>) -> ElevatedFix {
         let platform = launcher.platform();
-        ElevatedFix { launcher, platform }
+        ElevatedFix {
+            launcher,
+            platform,
+            allowlist: Allowlist::production(),
+        }
+    }
+
+    /// Tests only need it: production uses [`Allowlist::production`], the one compiled into the
+    /// helper.
+    pub fn with_allowlist(mut self, allowlist: Allowlist) -> ElevatedFix {
+        self.allowlist = allowlist;
+        self
     }
 
     fn step_of<'a>(step: &ProposedStep, plan: &'a EvaluatedPlan<'_>) -> Option<&'a ProposedStep> {
@@ -838,8 +852,13 @@ impl ElevatedFix {
 }
 
 impl Elevation for ElevatedFix {
-    fn available(&self, _step: &ProposedStep, platform: Platform) -> bool {
-        self.launcher.platform() == platform && self.launcher.available()
+    fn available(&self, step: &ProposedStep, platform: Platform) -> bool {
+        self.launcher.platform() == platform
+            && self
+                .allowlist
+                .get(&step.capability, &step.version)
+                .is_some()
+            && self.launcher.available()
     }
 
     fn run(
@@ -900,7 +919,9 @@ fn map_launch_error(error: LaunchError) -> ExecError {
         // `ElevationNotAvailable` would hide a security event (a helper in the wrong folder, a plan
         // that does not match) behind "we have no elevation path".
         LaunchError::Refused(code) => ExecError::ElevationRefused(code),
-        LaunchError::Malformed => ExecError::ElevationNotAvailable,
+        // Nothing ran: the request could not even be built. `failed` with its own code, not the
+        // `unknown` that "not available" would become after `started` (FR-016).
+        LaunchError::Malformed => ExecError::ElevationRefused("ELEVATION_MALFORMED"),
     }
 }
 

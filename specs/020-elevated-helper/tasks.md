@@ -40,3 +40,15 @@
 - [ ] T013 Allowlist de produção depois do S-02 (fora desta entrega)
 - [ ] T015 Helper no instalador do Windows (sidecar `bundle.externalBin`), com o CI compilando o
       helper antes do `tauri build`; até lá o lançador se declara indisponível
+- [x] T016 Revisão independente (Opus, 16/10) da spec 020, correções que vêm antes do helper no
+      instalador: o token do passo elevado vive no máximo um `ELEVATION_TIMEOUT`
+      (`elevation_deadline`; um clique tardio no UAC encontra pedido vencido); o executor lê a
+      allowlist do helper (passo fora dela não é oferecido, sem UAC e sem `started`); pedido que
+      não pôde ser montado vira `failed ELEVATION_MALFORMED`; o helper lê o argv com `args_os` e
+      recusa argumento extra ou que não seja Unicode (sem pânico)
+- [ ] T017 Achados baixos da revisão de 16/10, ainda abertos: `trusted_path` exige a pasta exata
+      e só componentes normais; substituto de resultado grande diz `unknown`; parser do plano no
+      helper exige o texto canônico byte a byte; campo `operation` no protocolo antes do primeiro
+      rollback elevado; hook de desinstalação em `perMachine` pode apontar `$APPDATA` para o
+      ProgramData (conferir no template do bundler ou em VM); docs dizem com clareza que o hash
+      dá integridade, não autenticidade (as barreiras reais são o clique no UAC e a allowlist)

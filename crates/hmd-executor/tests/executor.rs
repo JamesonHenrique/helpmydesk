@@ -10,8 +10,9 @@ use hmd_catalog::embedded;
 use hmd_core::ProbeOutcome;
 use hmd_domain::{ExecutionState, ReportTrigger, Timestamp, execution};
 use hmd_executor::{
-    ActionApproval, Elevation, EvaluatedPlan, ExecError, ExecuteInput, ExecutionStart, FixOutcome,
-    Journal, JournalError, Registry, VerifyInput, execute_step, plan_hash, verify_step,
+    ActionApproval, ELEVATION_TIMEOUT, Elevation, EvaluatedPlan, ExecError, ExecuteInput,
+    ExecutionStart, FixOutcome, Journal, JournalError, Registry, VerifyInput, elevation_deadline,
+    execute_step, plan_hash, verify_step,
 };
 use hmd_policy::{
     ActionPlanProposal, AutonomyMode, Confidence, Platform, PolicyContext, PolicyDecision,
@@ -689,4 +690,27 @@ fn spec020_a_step_without_elevation_still_needs_an_implementation() {
         ExecError::NotImplemented
     );
     assert!(j.rows.is_empty());
+}
+
+/// Spec 020 FR-010: the token of an elevated step dies with the launcher's wait, not with the
+/// approval. A UAC dialog clicked after the journal said `unknown` must find a dead request.
+#[test]
+fn fr_010_elevated_token_lives_no_longer_than_one_invocation() {
+    let f = Fixture::new();
+    let approval = f.approve(1);
+    let limit = ELEVATION_TIMEOUT.as_secs() as Timestamp;
+    assert!(
+        approval.expires_at > NOW + limit,
+        "the approval outlives one invocation"
+    );
+    assert_eq!(
+        elevation_deadline(&input(f.plan(), &approval, "s1", NOW)),
+        NOW + limit
+    );
+    // Near the end of the approval, the approval is the shorter one.
+    let late = approval.expires_at - 30;
+    assert_eq!(
+        elevation_deadline(&input(f.plan(), &approval, "s1", late)),
+        approval.expires_at
+    );
 }
