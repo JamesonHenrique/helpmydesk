@@ -22,9 +22,13 @@
       inteiro para o transporte poder entrar no token
 - [x] T008 Testes citando IDs (FR-/SEC-): pedido forjado, allowlist furada, hash adulterado,
       caminho não confiável, timeout, recusa sem admin
-- [ ] T009 App: aviso pré-elevação antes do UAC + motivo de `ELEVATION_NOT_AVAILABLE` na tela
-- [ ] T010 Instalador: NSIS por máquina com o helper em pasta só-admin; desinstalação remove
-      helper e sobras do registro (FR-011, FR-012)
+- [x] T009 App: aviso pré-elevação na janela de aprovação (UAC e o que acontece se a pessoa
+      recusar) e tela de resultado para `elevation_not_available` (`Nada foi alterado` + pedir a
+      instalação por máquina)
+- [x] T010 Instalador: NSIS **por máquina** (`installMode: perMachine`) com o helper em pasta
+      só-admin; desinstalação limpa leva a pasta (e o helper) junto; `INSTALL_DIR` como fonte
+      única, com teste que lê o `tauri.conf.json` real (`crates/hmd-elevated/tests/install.rs`).
+      O helper entra no pacote como sidecar quando o lançador existir (T007, bloqueado)
 - [ ] T011 `tools/check-all.sh` verde, CI com o bin do helper, `specs/README.md` e
       `docs/status/roadmap.json` atualizados
 - [ ] T012 Teste manual no Windows (janela de aprovação + UAC) e registro no relatório do spike

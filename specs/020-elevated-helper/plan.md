@@ -71,6 +71,25 @@ qualquer escrita no diário. Mantém o write-ahead: `started` primeiro, UAC depo
 (continua valendo `UNKNOWN_PENDING` da spec 008). A verificação continua no processo de usuário,
 com a sonda somente leitura do catálogo.
 
+## Instalador (FR-011, FR-012, SEC-020)
+
+O instalador NSIS é **por máquina**: `bundle.windows.nsis.installMode = "perMachine"` em
+`apps/desktop/src-tauri/tauri.conf.json` grava em `Program Files` e em `HKLM`, e o Windows pede
+conta de administrador antes de começar. O helper (e o app) ficam em `$INSTDIR`, a pasta que
+`trusted_path` aceita; qualquer outro caminho devolve `HELPER_PATH_NOT_TRUSTED`. `hmd-elevated::INSTALL_DIR`
+é a única fonte dessa pasta e um teste (`crates/hmd-elevated/tests/install.rs`) lê o
+`tauri.conf.json` de verdade, para o instalador e o helper não divergirem em silêncio.
+
+Desinstalação: o template do NSIS remove `$INSTDIR` inteiro, então o helper vai com a pasta
+(FR-012). O helper não grava chave de registro nenhuma, e o hook existente continua cobrindo só o
+histórico por usuário (F2-UNINST da spec 008).
+
+Onde o helper entra no pacote: sidecar (`bundle.externalBin`), que o Tauri coloca ao lado do
+executável principal. Isso exige o binário do helper compilado para a plataforma alvo no momento do
+`tauri build`, então entra junto com o lançador (T007), que está bloqueado por decisão de
+constituição: até lá o instalador não traz helper nenhum e a elevação responde
+`ELEVATION_NOT_AVAILABLE`, que é a recusa segura.
+
 ## Constitution Check
 
 | Princípio | Verificação | Resultado |
