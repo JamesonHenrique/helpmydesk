@@ -10,8 +10,8 @@ use hmd_catalog::embedded;
 use hmd_core::ProbeOutcome;
 use hmd_domain::{ExecutionState, ReportTrigger, Timestamp, execution};
 use hmd_executor::{
-    ActionApproval, EvaluatedPlan, ExecError, ExecuteInput, ExecutionStart, FixImpl, FixOutcome,
-    Journal, JournalError, Registry, execute_step, plan_hash, verify_step,
+    ActionApproval, Elevation, EvaluatedPlan, ExecError, ExecuteInput, ExecutionStart, FixOutcome,
+    Journal, JournalError, Registry, VerifyInput, execute_step, plan_hash, verify_step,
 };
 use hmd_policy::{
     ActionPlanProposal, AutonomyMode, Confidence, Platform, PolicyContext, PolicyDecision,
@@ -79,40 +79,83 @@ impl Journal for SharedJournal {
     }
 }
 
-struct Fake {
+/// Spec 020: the only `fix` in the catalog, `net.dns.flush_cache`, declares `requires_elevation`,
+/// so the fakes run through a fake elevation path instead of the plain registry. The executor
+/// routes elevated steps there and nowhere else.
+struct FakeElevation {
     outcome: FixOutcome,
     rollback: FixOutcome,
-    /// When set, `run` asserts the journal already says `started` (US2.1).
     watch: Option<Shared>,
     runs: Arc<Mutex<u32>>,
+    panics: bool,
+    refusal: Option<ExecError>,
 }
 
-impl Fake {
-    fn new(outcome: FixOutcome) -> Fake {
-        Fake {
+impl FakeElevation {
+    fn new(outcome: FixOutcome) -> FakeElevation {
+        FakeElevation {
             outcome,
             rollback: FixOutcome::Succeeded,
             watch: None,
             runs: Arc::new(Mutex::new(0)),
+            panics: false,
+            refusal: None,
+        }
+    }
+    /// Spec 020 US1.3 / FR-010: the elevation path refuses with a launcher error.
+    fn refusing(error: ExecError) -> FakeElevation {
+        FakeElevation {
+            refusal: Some(error),
+            ..FakeElevation::new(FixOutcome::Unknown)
+        }
+    }
+    fn panicking() -> FakeElevation {
+        FakeElevation {
+            panics: true,
+            ..FakeElevation::new(FixOutcome::Unknown)
         }
     }
 }
 
-impl FixImpl for Fake {
-    fn run(&self, _step: &ProposedStep) -> FixOutcome {
+impl Elevation for FakeElevation {
+    fn available(&self, _step: &ProposedStep, _platform: Platform) -> bool {
+        true
+    }
+    fn run(
+        &self,
+        _step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Result<FixOutcome, ExecError> {
+        if let Some(ref error) = self.refusal {
+            return Err(error.clone());
+        }
+        if self.panics {
+            panic!("bug inside a fix");
+        }
         if let Some(j) = &self.watch {
             let j = j.lock().unwrap();
             assert!(
                 j.rows.values().any(|(_, s)| *s == ExecutionState::Started),
-                "started must be written before the implementation runs"
+                "started must be written before the elevated implementation runs"
             );
         }
         *self.runs.lock().unwrap() += 1;
-        self.outcome
+        Ok(self.outcome)
     }
-    fn rollback(&self, _step: &ProposedStep) -> FixOutcome {
-        self.rollback
+    fn rollback(
+        &self,
+        _step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Option<FixOutcome> {
+        Some(self.rollback)
     }
+}
+
+/// Registry whose elevation path is the given fake.
+fn registry(elevation: FakeElevation) -> Registry {
+    Registry::default().with_elevation(Box::new(elevation))
 }
 
 fn proposal(steps: &[&str]) -> ActionPlanProposal {
@@ -223,9 +266,9 @@ fn us1_2_other_plan_is_refused_and_nothing_runs() {
         proposal: &changed,
         ..f.plan()
     };
-    let fake = Fake::new(FixOutcome::Succeeded);
+    let fake = FakeElevation::new(FixOutcome::Succeeded);
     let runs = fake.runs.clone();
-    let registry = Registry::default().with(FIX, Box::new(fake));
+    let registry = registry(fake);
     let mut j = MemJournal::default();
     let err = execute_step(&input(plan, &approval, "s1", NOW), &registry, &mut j).unwrap_err();
     assert_eq!(err, ExecError::PlanHashMismatch);
@@ -237,7 +280,7 @@ fn us1_2_other_plan_is_refused_and_nothing_runs() {
 fn us1_3_expired_approval() {
     let f = Fixture::new();
     let approval = f.approve(1);
-    let registry = Registry::default().with(FIX, Box::new(Fake::new(FixOutcome::Succeeded)));
+    let registry = registry(FakeElevation::new(FixOutcome::Succeeded));
     let mut j = MemJournal::default();
     let late = input(f.plan(), &approval, "s1", NOW + 600);
     assert_eq!(
@@ -257,7 +300,7 @@ fn us1_3_expired_approval() {
 fn us1_4_step_not_approved_or_not_accepted() {
     let f = Fixture::new();
     let none = ActionApproval::new(&f.plan(), [], AutonomyMode::AskAlways, NOW, 1);
-    let registry = Registry::default().with(FIX, Box::new(Fake::new(FixOutcome::Succeeded)));
+    let registry = registry(FakeElevation::new(FixOutcome::Succeeded));
     let mut j = MemJournal::default();
     assert_eq!(
         execute_step(&input(f.plan(), &none, "s1", NOW), &registry, &mut j).unwrap_err(),
@@ -287,9 +330,9 @@ fn us1_4_step_not_approved_or_not_accepted() {
 fn us1_5_same_approval_runs_a_step_once() {
     let f = Fixture::new();
     let approval = f.approve(7);
-    let fake = Fake::new(FixOutcome::Succeeded);
+    let fake = FakeElevation::new(FixOutcome::Succeeded);
     let runs = fake.runs.clone();
-    let registry = Registry::default().with(FIX, Box::new(fake));
+    let registry = registry(fake);
     let mut j = MemJournal::default();
     let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
     assert_eq!(run.state, ExecutionState::Succeeded);
@@ -321,8 +364,10 @@ fn production_registry_has_no_system_changing_fix() {
             &mut j
         )
         .unwrap_err(),
-        ExecError::NotImplemented
+        ExecError::ElevationNotAvailable
     );
+    // Spec 020 US1.1: refused before anything was written.
+    assert!(j.rows.is_empty());
     assert!(
         j.rows.is_empty(),
         "NOT_IMPLEMENTED is decided before `started`"
@@ -334,9 +379,9 @@ fn us2_1_started_is_written_before_the_fix_runs() {
     let f = Fixture::new();
     let approval = f.approve(1);
     let shared: Shared = Arc::new(Mutex::new(MemJournal::default()));
-    let mut fake = Fake::new(FixOutcome::Unknown);
+    let mut fake = FakeElevation::new(FixOutcome::Unknown);
     fake.watch = Some(shared.clone());
-    let registry = Registry::default().with(FIX, Box::new(fake));
+    let registry = registry(fake);
     let mut j = SharedJournal(shared.clone());
     let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
     assert_eq!(run.state, ExecutionState::Unknown);
@@ -375,21 +420,25 @@ fn succeeded_run(registry: &Registry, j: &mut MemJournal, f: &Fixture) -> i64 {
 #[test]
 fn us3_2_verified_when_the_problem_finding_is_gone() {
     let f = Fixture::new();
-    let registry = Registry::default().with(FIX, Box::new(Fake::new(FixOutcome::Succeeded)));
+    let registry = registry(FakeElevation::new(FixOutcome::Succeeded));
     let mut j = MemJournal::default();
     let id = succeeded_run(&registry, &mut j, &f);
     let mut asked = String::new();
     let v = verify_step(
-        id,
-        &f.proposal.steps[0],
-        &variant(),
+        &VerifyInput {
+            execution: id,
+            step: &f.proposal.steps[0],
+            variant: &variant(),
+            plan: f.plan(),
+            platform: Platform::Linux,
+            now: NOW + 5,
+        },
         &registry,
         &mut j,
         |probe| {
             asked = probe.to_string();
             dns_probe(false)
         },
-        NOW + 5,
     )
     .unwrap();
     assert_eq!(asked, "net.dns.resolve", "the catalog verification probe");
@@ -400,18 +449,22 @@ fn us3_2_verified_when_the_problem_finding_is_gone() {
 #[test]
 fn us3_3_still_failing_or_probe_failed_is_rep03() {
     let f = Fixture::new();
-    let registry = Registry::default().with(FIX, Box::new(Fake::new(FixOutcome::Succeeded)));
+    let registry = registry(FakeElevation::new(FixOutcome::Succeeded));
     for outcome in [dns_probe(true), ProbeOutcome::Failed("TIMEOUT")] {
         let mut j = MemJournal::default();
         let id = succeeded_run(&registry, &mut j, &f);
         let v = verify_step(
-            id,
-            &f.proposal.steps[0],
-            &variant(),
+            &VerifyInput {
+                execution: id,
+                step: &f.proposal.steps[0],
+                variant: &variant(),
+                plan: f.plan(),
+                platform: Platform::Linux,
+                now: NOW + 5,
+            },
             &registry,
             &mut j,
             |_| outcome.clone(),
-            NOW + 5,
         )
         .unwrap();
         // DNS flush declares rollback "not_needed": nothing to undo.
@@ -423,19 +476,23 @@ fn us3_3_still_failing_or_probe_failed_is_rep03() {
 #[test]
 fn us3_3_rollback_when_the_catalog_implements_it() {
     let f = Fixture::new();
-    let registry = Registry::default().with(FIX, Box::new(Fake::new(FixOutcome::Succeeded)));
+    let registry = registry(FakeElevation::new(FixOutcome::Succeeded));
     let mut j = MemJournal::default();
     let id = succeeded_run(&registry, &mut j, &f);
     let mut v = variant();
     v.rollback = Rollback::Implemented;
     let result = verify_step(
-        id,
-        &f.proposal.steps[0],
-        &v,
+        &VerifyInput {
+            execution: id,
+            step: &f.proposal.steps[0],
+            variant: &v,
+            plan: f.plan(),
+            platform: Platform::Linux,
+            now: NOW + 5,
+        },
         &registry,
         &mut j,
         |_| dns_probe(true),
-        NOW + 5,
     )
     .unwrap();
     assert_eq!(result.state, ExecutionState::RolledBack);
@@ -445,28 +502,24 @@ fn us3_3_rollback_when_the_catalog_implements_it() {
 #[test]
 fn verification_of_a_failed_execution_is_refused_by_the_journal() {
     let f = Fixture::new();
-    let registry = Registry::default().with(FIX, Box::new(Fake::new(FixOutcome::Failed("X"))));
+    let registry = registry(FakeElevation::new(FixOutcome::Failed("X")));
     let mut j = MemJournal::default();
     let id = succeeded_run(&registry, &mut j, &f);
     let err = verify_step(
-        id,
-        &f.proposal.steps[0],
-        &variant(),
+        &VerifyInput {
+            execution: id,
+            step: &f.proposal.steps[0],
+            variant: &variant(),
+            plan: f.plan(),
+            platform: Platform::Linux,
+            now: NOW + 5,
+        },
         &registry,
         &mut j,
         |_| dns_probe(false),
-        NOW,
     )
     .unwrap_err();
     assert_eq!(err.reason_code(), "JOURNAL_ERROR");
-}
-
-struct Panics;
-
-impl FixImpl for Panics {
-    fn run(&self, _: &ProposedStep) -> FixOutcome {
-        panic!("bug inside a fix");
-    }
 }
 
 /// Spec 016: a bug (panic) inside a fix is recorded as `unknown`, never left `started`, and does
@@ -475,7 +528,7 @@ impl FixImpl for Panics {
 fn panic_inside_a_fix_is_recorded_as_unknown() {
     let f = Fixture::new();
     let approval = f.approve(1);
-    let registry = Registry::default().with(FIX, Box::new(Panics));
+    let registry = registry(FakeElevation::panicking());
     let mut j = MemJournal::default();
     let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
     assert_eq!(run.state, ExecutionState::Unknown);
@@ -484,4 +537,136 @@ fn panic_inside_a_fix_is_recorded_as_unknown() {
         j.history,
         vec![(1, ExecutionState::Started), (1, ExecutionState::Unknown)]
     );
+}
+
+/// Spec 020 FR-005 / US1.1: an elevated step whose variant has no elevated implementation in this
+/// build is refused before anything is written to the journal, and no privilege prompt appears.
+#[test]
+fn spec020_us1_1_elevated_step_without_implementation_is_refused_before_the_journal() {
+    let f = Fixture::new();
+    let approval = f.approve(1);
+    let mut j = MemJournal::default();
+    assert_eq!(
+        execute_step(
+            &input(f.plan(), &approval, "s1", NOW),
+            &Registry::production(),
+            &mut j
+        )
+        .unwrap_err(),
+        ExecError::ElevationNotAvailable
+    );
+    assert!(j.rows.is_empty(), "nothing may be written to the journal");
+}
+
+/// Spec 020 US1.3: the person refusing the system dialog is a `failed` step, not an unknown one.
+#[test]
+fn spec020_us1_3_denied_dialog_is_failed_with_its_reason_code() {
+    let f = Fixture::new();
+    let approval = f.approve(1);
+    let registry = registry(FakeElevation::refusing(ExecError::ElevationDenied));
+    let mut j = MemJournal::default();
+    let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
+    assert_eq!(run.state, ExecutionState::Failed);
+    assert_eq!(run.reason, Some("ELEVATION_DENIED"));
+}
+
+/// Spec 020 FR-010: past the hard deadline the step is `unknown` and never re-run automatically.
+#[test]
+fn spec020_fr_010_timeout_is_unknown_and_blocks_the_capability() {
+    let f = Fixture::new();
+    let approval = f.approve(1);
+    let registry = registry(FakeElevation::refusing(ExecError::ElevationTimeout));
+    let mut j = MemJournal::default();
+    let run = execute_step(&input(f.plan(), &approval, "s1", NOW), &registry, &mut j).unwrap();
+    assert_eq!(run.state, ExecutionState::Unknown);
+    assert_eq!(run.reason, Some("ELEVATION_TIMEOUT"));
+}
+
+/// Spec 008 US3 + spec 020 FR-009: the undo of an elevated step goes through the same elevation
+/// path that ran it, never through the plain registry.
+#[test]
+fn spec020_fr_009_rollback_of_an_elevated_step_goes_through_the_elevation_path() {
+    let f = Fixture::new();
+    let mut elevation = FakeElevation::new(FixOutcome::Succeeded);
+    elevation.rollback = FixOutcome::Succeeded;
+    let registry = registry(elevation);
+    let mut j = MemJournal::default();
+    let id = succeeded_run(&registry, &mut j, &f);
+    let mut v = variant();
+    v.rollback = Rollback::Implemented;
+    let result = verify_step(
+        &VerifyInput {
+            execution: id,
+            step: &f.proposal.steps[0],
+            variant: &v,
+            plan: f.plan(),
+            platform: Platform::Linux,
+            now: NOW + 5,
+        },
+        &registry,
+        &mut j,
+        |_| dns_probe(true),
+    )
+    .unwrap();
+    assert_eq!(result.state, ExecutionState::RolledBack);
+}
+
+/// A step that does not declare `requires_elevation` still needs its own implementation: the
+/// elevation path is not a way around the registry.
+#[test]
+fn spec020_a_step_without_elevation_still_needs_an_implementation() {
+    let capability = hmd_policy::Capability {
+        id: "test.user.fix".into(),
+        version: "1.0.0".into(),
+        kind: hmd_policy::CapabilityKind::Fix,
+        family: None,
+        variants: BTreeMap::from([(
+            Platform::Linux,
+            hmd_policy::PlatformVariant {
+                risk_level: hmd_policy::RiskLevel::N2,
+                requires_elevation: false,
+                data_loss: hmd_policy::DataLoss::None,
+                disruption: hmd_policy::Disruption::Brief,
+                persistent_change: hmd_policy::Scope::None,
+                rollback: hmd_policy::Rollback::NotNeeded,
+                verification: Some("net.dns.resolve".into()),
+                preconditions: hmd_policy::Preconditions::default(),
+                params: vec![],
+                max_per_session: 1,
+                consent_category: None,
+                auto_eligible: false,
+            },
+        )]),
+        exclusive_with: vec![],
+    };
+    let catalog = hmd_policy::Catalog::new([capability]);
+    let proposal = ActionPlanProposal {
+        session_id: "s-1".into(),
+        steps: vec![ProposedStep {
+            step_id: "s1".into(),
+            capability: "test.user.fix".into(),
+            version: "1.0.0".into(),
+            params: vec![],
+        }],
+    };
+    let mut ctx = PolicyContext::new(Platform::Linux);
+    ctx.findings.insert("net.dns.resolution_failing".into());
+    let decision = evaluate(&proposal, &catalog, &ctx).unwrap();
+    let plan = EvaluatedPlan {
+        proposal: &proposal,
+        decision: &decision,
+        catalog_version: "test",
+    };
+    let approval = ActionApproval::new(&plan, ["s1".into()], AutonomyMode::AskAlways, NOW, 1);
+    let mut j = MemJournal::default();
+    assert_eq!(
+        execute_step(
+            &input(plan, &approval, "s1", NOW),
+            &registry(FakeElevation::new(FixOutcome::Succeeded)),
+            &mut j
+        )
+        .unwrap_err(),
+        ExecError::NotImplemented
+    );
+    assert!(j.rows.is_empty());
 }

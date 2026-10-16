@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering::SeqCst};
 
-use hmd_executor::{FixImpl, FixOutcome, Registry};
+use hmd_executor::{Elevation, EvaluatedPlan, ExecError, FixImpl, FixOutcome, Registry};
 use hmd_ipc::{Backend, Clock, ProbeRunner};
 use hmd_policy::{Platform, ProposedStep};
 use hmd_probes::{Evidence, Finding, ProbeOutput, Severity};
@@ -57,6 +57,32 @@ impl FixImpl for Fix {
     }
 }
 
+/// Spec 020: `net.dns.flush_cache` declares `requires_elevation`, so the executor routes it to the
+/// elevation path. The tests keep their own fake and wrap it here.
+struct FakeElevation<T>(T);
+
+impl<T: FixImpl> Elevation for FakeElevation<T> {
+    fn available(&self, _step: &ProposedStep, _platform: Platform) -> bool {
+        true
+    }
+    fn run(
+        &self,
+        step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Result<FixOutcome, ExecError> {
+        Ok(self.0.run(step))
+    }
+    fn rollback(
+        &self,
+        step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Option<FixOutcome> {
+        Some(self.0.rollback(step))
+    }
+}
+
 fn backend(fixed: &Arc<AtomicBool>, with_fix: bool) -> Backend {
     let (c, _) = clock();
     let mut b = Backend::in_memory(runner(fixed.clone()), c).unwrap();
@@ -64,7 +90,7 @@ fn backend(fixed: &Arc<AtomicBool>, with_fix: bool) -> Backend {
     b.map_app(move |app| {
         let app = app.with_platform(Platform::Linux);
         if with_fix {
-            app.with_registry(Registry::default().with("net.dns.flush_cache", Box::new(Fix(f))))
+            app.with_registry(Registry::default().with_elevation(Box::new(FakeElevation(Fix(f)))))
         } else {
             app
         }
@@ -131,7 +157,7 @@ fn production_build_cannot_run_the_fix_yet() {
     let out = b.execute(&id, plan.plan_id).unwrap();
     assert_eq!(
         serde_json::to_value(&out).unwrap(),
-        serde_json::json!({"kind": "not_available", "stepId": "s1", "trigger": null})
+        serde_json::json!({"kind": "elevation_not_available", "stepId": "s1", "trigger": null})
     );
     let report = b.make_report(&id, Some("não abre nada"), None).unwrap();
     assert!(report.text.starts_with("<!-- report@1 -->"));

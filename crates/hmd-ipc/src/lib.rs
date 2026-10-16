@@ -128,7 +128,7 @@ pub struct ApprovalDto {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutcomeDto {
-    /// `verified`, `not_available` or `not_resolved`.
+    /// `verified`, `not_available`, `elevation_not_available` or `not_resolved`.
     pub kind: String,
     pub step_id: Option<String>,
     pub trigger: Option<String>,
@@ -665,6 +665,11 @@ impl Backend {
             },
             ExecutionOutcome::NotAvailable { step_id } => OutcomeDto {
                 kind: "not_available".into(),
+                step_id: Some(step_id),
+                trigger: None,
+            },
+            ExecutionOutcome::ElevationNotAvailable { step_id } => OutcomeDto {
+                kind: "elevation_not_available".into(),
                 step_id: Some(step_id),
                 trigger: None,
             },
