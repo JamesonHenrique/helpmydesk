@@ -384,11 +384,11 @@
    "phase_name": "Núcleo somente leitura + modo básico",
    "phase_order": 3,
    "title": "Laboratório de falhas (VMs Windows e Linux)",
-   "status": "todo",
+   "status": "doing",
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "",
+   "note": "Scripts do laboratório em lab/ (Windows e Linux): 5 cenários (DNS, rede, disco, som, inicialização) com quebra, restauração e achado esperado; só rodam em VM. Falta rodar em VMs e registrar o resultado",
    "waiting_on": "máquinas virtuais"
   },
   {
