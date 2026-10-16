@@ -8,7 +8,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering::SeqCst};
 
-use hmd_executor::{APPROVAL_TTL, FixImpl, FixOutcome, Registry};
+use hmd_executor::{
+    APPROVAL_TTL, Elevation, EvaluatedPlan, ExecError, FixImpl, FixOutcome, Registry,
+};
 use hmd_ipc::{Backend, ProbeRunner};
 use hmd_policy::{Platform, ProposedStep};
 use hmd_probes::{Finding, ProbeOutput, Severity};
@@ -21,6 +23,32 @@ impl FixImpl for Fix {
     fn run(&self, _: &ProposedStep) -> FixOutcome {
         self.0.fetch_add(1, SeqCst);
         FixOutcome::Succeeded
+    }
+}
+
+/// Spec 020: `net.dns.flush_cache` declares `requires_elevation`, so the executor routes it to the
+/// elevation path. The tests keep their own fake and wrap it here.
+struct FakeElevation<T>(T);
+
+impl<T: FixImpl> Elevation for FakeElevation<T> {
+    fn available(&self, _step: &ProposedStep, _platform: Platform) -> bool {
+        true
+    }
+    fn run(
+        &self,
+        step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Result<FixOutcome, ExecError> {
+        Ok(self.0.run(step))
+    }
+    fn rollback(
+        &self,
+        step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Option<FixOutcome> {
+        Some(self.0.rollback(step))
     }
 }
 
@@ -65,7 +93,7 @@ impl Lab {
         let r = runs.clone();
         b.map_app(move |app| {
             app.with_platform(Platform::Linux)
-                .with_registry(Registry::default().with("net.dns.flush_cache", Box::new(Fix(r))))
+                .with_registry(Registry::default().with_elevation(Box::new(FakeElevation(Fix(r)))))
         });
         Lab {
             b,
