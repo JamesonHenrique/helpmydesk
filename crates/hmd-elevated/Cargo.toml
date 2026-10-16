@@ -1,0 +1,27 @@
+[package]
+name = "hmd-elevated"
+description = "HelpMyDesk elevated helper and launcher: one privileged action per invocation, compiled allowlist, request on the command line (spec 020)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "helpmydesk-elevated"
+path = "src/main.rs"
+
+[dependencies]
+hmd-canonical = { path = "../hmd-canonical" }
+hmd-catalog = { path = "../hmd-catalog" }
+hmd-executor = { path = "../hmd-executor" }
+hmd-policy = { path = "../hmd-policy" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+
+[dev-dependencies]
+serde_json = "=1.0.151"
+
+[lints]
+workspace = true

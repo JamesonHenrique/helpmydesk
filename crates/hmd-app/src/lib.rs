@@ -291,7 +291,10 @@ impl App {
             last_kill_switch: None,
             catalog: catalog()?,
             platform: current_platform(),
-            registry: Registry::production(),
+            // Spec 020: the real registry carries the elevation path of this platform. Until spike
+            // S-02 fills the allowlist, every elevated step is refused with
+            // `ELEVATION_NOT_AVAILABLE`, which is what the person is told.
+            registry: hmd_elevated::production_registry(),
             pending: BTreeMap::new(),
             last_diagnosis: BTreeMap::new(),
             utc_offset_minutes: None,

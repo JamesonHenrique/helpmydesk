@@ -699,6 +699,7 @@ dependencies = [
  "hmd-catalog",
  "hmd-core",
  "hmd-domain",
+ "hmd-elevated",
  "hmd-executor",
  "hmd-killswitch",
  "hmd-policy",
@@ -739,6 +740,18 @@ dependencies = [
 [[package]]
 name = "hmd-domain"
 version = "0.1.0"
+
+[[package]]
+name = "hmd-elevated"
+version = "0.1.0"
+dependencies = [
+ "hmd-canonical",
+ "hmd-catalog",
+ "hmd-executor",
+ "hmd-policy",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "hmd-executor"
