@@ -23,6 +23,12 @@ mantenedor em 15/10). O modo básico continua sendo caminho de primeira classe.
 - **FR-005** A resposta é validada num esquema fechado (campos extras, família ou confiança
   desconhecidas, pergunta longa ou com link/HTML/Markdown → `AI_BAD_ANSWER`). Nada é "consertado".
 - **FR-006** Erros viram códigos: chave recusada (401/403), limite (429), rede, HTTP.
+- **FR-007** (16/10, suíte adversarial da F5-SEC) A pergunta de acompanhamento também é recusada
+  (`AI_BAD_ANSWER`) quando traz link em qualquer grafia (`HTTPS://`, domínio sem `www`, e-mail),
+  número de telefone (8 dígitos ou mais), caractere invisível ou que muda a direção do texto, ou
+  quando pede um segredo (senha, PIN, cartão, CPF, token, chave, SMS, código de verificação). A
+  resposta da pessoa volta para a IA, então uma pergunta que pede senha levaria a senha para fora
+  do computador. "Código de erro" continua permitido. Testes em `crates/hmd-ai/tests/adversarial.rs`.
 
 ## Fora do escopo (próximas specs)
 

@@ -527,7 +527,7 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Spec 016 (7 rodadas) + revisão independente por outro modelo (15/10): achados médios e baixos corrigidos; 21 ataques com código esperado. Falta revisão humana externa e suíte da IA"
+   "note": "Spec 016 (7 rodadas) + revisão independente por outro modelo (15/10 e 16/10): achados corrigidos; 21 ataques com código esperado. Suíte adversarial da IA offline (spec 017 FR-007, 16/10): links em qualquer grafia, telefone, caracteres invisíveis e perguntas que pedem senha são recusados. Falta revisão humana externa"
   },
   {
    "id": "F5-DOCS",
