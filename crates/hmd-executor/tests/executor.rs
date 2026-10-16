@@ -126,6 +126,7 @@ impl Elevation for FakeElevation {
         _step: &ProposedStep,
         _plan: &EvaluatedPlan<'_>,
         _platform: Platform,
+        _deadline: Timestamp,
     ) -> Result<FixOutcome, ExecError> {
         if let Some(ref error) = self.refusal {
             return Err(error.clone());
@@ -148,6 +149,7 @@ impl Elevation for FakeElevation {
         _step: &ProposedStep,
         _plan: &EvaluatedPlan<'_>,
         _platform: Platform,
+        _deadline: Timestamp,
     ) -> Option<FixOutcome> {
         Some(self.rollback)
     }

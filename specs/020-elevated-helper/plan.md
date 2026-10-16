@@ -17,16 +17,16 @@ ExecError> }`, com `FakeLauncher` nos testes e `UacLauncher` só em `cfg(windows
 
 ## Protocolo `hmd-elevated@1`
 
-Um único token de argv: `base64url(sem padding)` do JSON UTF-8 do pedido
+Um único token de argv: `base64url` (alfabeto URL-safe, com padding) do JSON UTF-8 do pedido
 (`protocol`, `plan`, `plan_hash`, `step_id`, `capability`, `capability_version`, `variant_id`,
-`platform`, `params`). Base64url evita as regras de citação do `CommandLineToArgvW` do Windows
+`platform`, `params`, `expires_at`, `result_pipe` opcional). Base64url evita as regras de citação do `CommandLineToArgvW` do Windows
 (só `[A-Za-z0-9_-]`, sem espaço, aspas ou barra) e o limite de 4 KiB vale sobre o JSON decodificado.
 `deny_unknown_fields`, esquema fechado, nenhum segredo.
 
 O helper (SEC-023) não confia em nenhum campo recebido:
 
 1. confere o próprio caminho (`HELPER_PATH_NOT_TRUSTED`);
-2. parse estrito e limite de tamanho (`REQUEST_TOO_LARGE`);
+2. parse estrito e limite de tamanho (`REQUEST_TOO_LARGE`) e prazo (`REQUEST_EXPIRED`);
 3. `plan` precisa ter o cabeçalho `hmd-plan@1` e contém a linha `step=` e as linhas `param=` e
    `verdict=` do passo pedido; divergência → `PLAN_HASH_MISMATCH` (recalcula `sha256` do texto);
 4. a linha `verdict=` do passo precisa dizer `accepted` **e** elevação `1`;
@@ -46,6 +46,7 @@ O helper (SEC-023) não confia em nenhum campo recebido:
 | 14 | `PLATFORM_NOT_SUPPORTED` |
 | 15 | `INVALID_PARAMS` |
 | 16 | `HELPER_PATH_NOT_TRUSTED` |
+| 17 | `REQUEST_EXPIRED` |
 | 20 | `failed` (a ação correu e não deu certo) |
 | 21 | `unknown` (a ação não sabe se aconteceu) |
 

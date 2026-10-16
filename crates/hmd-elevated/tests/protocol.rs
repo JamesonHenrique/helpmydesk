@@ -20,6 +20,10 @@ use hmd_policy::{
 
 /// The only `fix` in the catalog, and the only one that declares `requires_elevation`.
 const FIX: &str = "net.dns.flush_cache";
+/// The clock of the user-level side, fixed so the tests do not depend on the wall clock.
+const NOW: hmd_domain::Timestamp = 1_760_400_000;
+/// The request carries the deadline of the approval; the helper compares it with its own clock.
+const DEADLINE: hmd_domain::Timestamp = NOW + 300;
 
 /// An action that reports what it was asked to do, so the tests can see that exactly one action ran
 /// with the validated step. Shared with the allowlist through an `Arc`, the way the real allowlist
@@ -102,6 +106,7 @@ impl Plan {
             &self.proposal.steps[0],
             Platform::Linux,
             None,
+            DEADLINE,
         )
         .unwrap()
     }
@@ -149,7 +154,7 @@ fn us2_1_only_the_compiled_allowlist_runs() {
         "production allowlist starts empty (S-02)"
     );
     assert_eq!(
-        validate(&request, embedded().unwrap(), &allowlist).unwrap_err(),
+        validate(&request, embedded().unwrap(), &allowlist, NOW).unwrap_err(),
         ElevatedError::NotInAllowlist
     );
 }
@@ -164,14 +169,14 @@ fn us2_2_tampered_plan_or_hash_is_refused() {
     let mut wrong_hash = plan.request();
     wrong_hash.plan_hash = "sha256:".to_string() + &"0".repeat(64);
     assert_eq!(
-        validate(&wrong_hash, catalog, &allowlist).unwrap_err(),
+        validate(&wrong_hash, catalog, &allowlist, NOW).unwrap_err(),
         ElevatedError::PlanMismatch
     );
 
     let mut edited_plan = plan.request();
     edited_plan.plan = edited_plan.plan.replace("catalog=", "catalog=x");
     assert_eq!(
-        validate(&edited_plan, catalog, &allowlist).unwrap_err(),
+        validate(&edited_plan, catalog, &allowlist, NOW).unwrap_err(),
         ElevatedError::PlanMismatch
     );
 
@@ -181,7 +186,7 @@ fn us2_2_tampered_plan_or_hash_is_refused() {
         .params
         .insert("dns.server".into(), "1.1.1.1".into());
     assert_eq!(
-        validate(&extra_param, catalog, &allowlist).unwrap_err(),
+        validate(&extra_param, catalog, &allowlist, NOW).unwrap_err(),
         ElevatedError::PlanMismatch
     );
 }
@@ -197,7 +202,7 @@ fn us2_3_unknown_platform_or_elevation_not_declared_is_refused() {
     let mut request = plan.request();
     request.platform = "macos".into();
     assert_eq!(
-        validate(&request, catalog, &allowlist).unwrap_err(),
+        validate(&request, catalog, &allowlist, NOW).unwrap_err(),
         ElevatedError::PlatformNotSupported
     );
 
@@ -221,7 +226,7 @@ fn us2_3_unknown_platform_or_elevation_not_declared_is_refused() {
         + "\n";
     demoted.plan_hash = hmd_canonical::sha256_tagged(&demoted.plan);
     assert_eq!(
-        validate(&demoted, catalog, &allowlist).unwrap_err(),
+        validate(&demoted, catalog, &allowlist, NOW).unwrap_err(),
         ElevatedError::PlatformNotSupported
     );
 }
@@ -233,7 +238,7 @@ fn us2_4_one_action_per_invocation_with_the_validated_step() {
     let (allowlist, spy) = spy_allowlist();
     let (exe, dir) = installed();
     let token = encode_token(&plan.request()).unwrap();
-    let (code, result) = hmd_elevated::run_request(&token, &context(&allowlist, &exe, &dir));
+    let (code, result) = hmd_elevated::run_request(&token, &context(&allowlist, &exe, &dir), NOW);
     assert_eq!(code, 0);
     assert_eq!(result.outcome, Outcome::Succeeded);
     assert_eq!(spy.seen(), vec![(FIX.to_string(), BTreeMap::new())]);
@@ -246,7 +251,7 @@ fn sec_025_result_is_json_with_a_stable_exit_code() {
     let allowlist = Allowlist::production().with(FIX, "1.0.0", Box::new(AlwaysFails));
     let (exe, dir) = installed();
     let token = encode_token(&plan.request()).unwrap();
-    let (code, result) = hmd_elevated::run_request(&token, &context(&allowlist, &exe, &dir));
+    let (code, result) = hmd_elevated::run_request(&token, &context(&allowlist, &exe, &dir), NOW);
     assert_eq!(code, ElevatedError::Failed.exit_code());
     assert_eq!(result.reason_code.as_deref(), Some("FIX_FAILED"));
     let json = result_json(&result);
@@ -282,7 +287,8 @@ fn us3_1_helper_refuses_to_run_outside_the_install_folder() {
     let (_, dir) = installed();
     let elsewhere = std::path::PathBuf::from("/home/pessoa/Downloads/helpmydesk-elevated");
     let token = encode_token(&plan.request()).unwrap();
-    let (code, result) = hmd_elevated::run_request(&token, &context(&allowlist, &elsewhere, &dir));
+    let (code, result) =
+        hmd_elevated::run_request(&token, &context(&allowlist, &elsewhere, &dir), NOW);
     assert_eq!(code, ElevatedError::HelperPathNotTrusted.exit_code());
     assert_eq!(
         result.reason_code.as_deref(),
@@ -324,7 +330,7 @@ fn fr_003_request_is_one_closed_base64url_token() {
     let catalog = embedded().unwrap();
     let allowlist = Allowlist::production();
     assert_eq!(
-        validate(&decode_token(&token).unwrap(), catalog, &allowlist).unwrap_err(),
+        validate(&decode_token(&token).unwrap(), catalog, &allowlist, NOW).unwrap_err(),
         ElevatedError::ProtocolMismatch
     );
 
@@ -354,6 +360,34 @@ fn fr_006_helper_and_executor_agree_on_the_hash() {
     );
 }
 
+/// FR-003 / US4: a UAC dialog answered late runs nothing. The request carries the second after
+/// which it is dead, and the helper compares it with its own clock before anything else.
+#[test]
+fn fr_003_a_request_that_expired_runs_nothing() {
+    let plan = Plan::new();
+    let catalog = embedded().unwrap();
+    let (allowlist, spy) = spy_allowlist();
+    let (exe, dir) = installed();
+
+    let mut late = plan.request();
+    late.expires_at = NOW;
+    let (code, result) = hmd_elevated::run_request(
+        &encode_token(&late).unwrap(),
+        &context(&allowlist, &exe, &dir),
+        NOW,
+    );
+    assert_eq!(code, ElevatedError::Expired.exit_code());
+    assert_eq!(result.reason_code.as_deref(), Some("REQUEST_EXPIRED"));
+    assert!(spy.seen().is_empty(), "nothing ran");
+
+    assert_eq!(
+        validate(&late, catalog, &allowlist, NOW).unwrap_err(),
+        ElevatedError::Expired
+    );
+    // One second earlier it is still alive: the deadline is exclusive.
+    assert!(validate(&plan.request(), catalog, &allowlist, DEADLINE - 1).is_ok());
+}
+
 /// US1.1/US1.3/FR-010 through the executor: no elevation path in this build means refusal before the
 /// journal; a refused dialog is `failed`; a timeout is `unknown`.
 #[test]
@@ -371,7 +405,7 @@ fn us1_elevation_outcomes_through_the_executor() {
     assert_eq!(
         Registry::production()
             .elevation()
-            .run(step, &evaluated, Platform::Linux)
+            .run(step, &evaluated, Platform::Linux, DEADLINE)
             .unwrap_err(),
         ExecError::ElevationNotAvailable
     );
@@ -381,14 +415,16 @@ fn us1_elevation_outcomes_through_the_executor() {
     launcher.elapsed = Some(std::time::Duration::from_millis(1));
     let fix = ElevatedFix::new(Box::new(launcher));
     assert_eq!(
-        fix.run(step, &evaluated, Platform::Linux).unwrap_err(),
+        fix.run(step, &evaluated, Platform::Linux, DEADLINE)
+            .unwrap_err(),
         ExecError::ElevationDenied
     );
 
     // FR-010: the deadline expired with the dialog open.
     let fix = ElevatedFix::new(Box::new(FakeLauncher::refusing()));
     assert_eq!(
-        fix.run(step, &evaluated, Platform::Linux).unwrap_err(),
+        fix.run(step, &evaluated, Platform::Linux, DEADLINE)
+            .unwrap_err(),
         ExecError::ElevationTimeout
     );
 
@@ -403,7 +439,8 @@ fn us1_elevation_outcomes_through_the_executor() {
     });
     let fix = ElevatedFix::new(Box::new(launcher));
     assert_eq!(
-        fix.run(step, &evaluated, Platform::Linux).unwrap(),
+        fix.run(step, &evaluated, Platform::Linux, DEADLINE)
+            .unwrap(),
         FixOutcome::Failed("NOT_IN_ALLOWLIST")
     );
 }
@@ -417,8 +454,8 @@ fn sec_027_nothing_resident_after_the_invocation() {
     let (exe, dir) = installed();
     let token = encode_token(&plan.request()).unwrap();
     let ctx = context(&allowlist, &exe, &dir);
-    assert_eq!(hmd_elevated::run_request(&token, &ctx).0, 0);
-    assert_eq!(hmd_elevated::run_request(&token, &ctx).0, 0);
+    assert_eq!(hmd_elevated::run_request(&token, &ctx, NOW).0, 0);
+    assert_eq!(hmd_elevated::run_request(&token, &ctx, NOW).0, 0);
     // Two invocations, one action each: the process holds nothing between them.
     assert_eq!(spy.seen().len(), 2);
 }
@@ -438,7 +475,7 @@ fn fr_015_no_elevation_path_on_this_platform() {
     );
     let fix = ElevatedFix::new(hmd_elevated::production_launcher());
     assert_eq!(
-        fix.run(plan.step(), &plan.evaluated(), Platform::Linux)
+        fix.run(plan.step(), &plan.evaluated(), Platform::Linux, DEADLINE)
             .unwrap_err(),
         ExecError::ElevationNotAvailable
     );

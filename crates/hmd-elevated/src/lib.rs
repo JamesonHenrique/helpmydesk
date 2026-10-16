@@ -23,6 +23,7 @@ use std::fmt;
 
 use hmd_canonical::{PLAN_FORMAT, parse_line, sha256_tagged};
 use hmd_catalog::LoadedCatalog;
+use hmd_domain::Timestamp;
 use hmd_executor::{
     ELEVATION_TIMEOUT, Elevation, EvaluatedPlan, ExecError, FixOutcome, MAX_PARAM_LEN, Registry,
 };
@@ -61,6 +62,10 @@ pub struct ElevatedRequest {
     /// Where to write the result (Windows named pipe name). Absent means stdout only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result_pipe: Option<String>,
+    /// Unix second after which this request is dead. The helper compares it with its own clock
+    /// before anything else, so a UAC dialog the person answers late cannot run an old approval
+    /// (FR-003).
+    pub expires_at: Timestamp,
 }
 
 /// What the helper reports back (SEC-025).
@@ -88,6 +93,8 @@ pub enum Outcome {
 pub enum ElevatedError {
     /// The helper is not running from the per-machine install folder (SEC-020).
     HelperPathNotTrusted,
+    /// The request arrived after the approval it came from expired (FR-003).
+    Expired,
     /// No token on the command line, or it is not base64url.
     BadRequest,
     /// Decoded request above [`MAX_REQUEST_BYTES`] (FR-004).
@@ -112,6 +119,7 @@ impl ElevatedError {
     pub fn reason_code(&self) -> &'static str {
         match self {
             ElevatedError::HelperPathNotTrusted => "HELPER_PATH_NOT_TRUSTED",
+            ElevatedError::Expired => "REQUEST_EXPIRED",
             ElevatedError::BadRequest => "BAD_REQUEST",
             ElevatedError::RequestTooLarge => "REQUEST_TOO_LARGE",
             ElevatedError::ProtocolMismatch => "PROTOCOL_MISMATCH",
@@ -128,6 +136,7 @@ impl ElevatedError {
     pub fn exit_code(&self) -> i32 {
         match self {
             ElevatedError::HelperPathNotTrusted => 16,
+            ElevatedError::Expired => 17,
             ElevatedError::BadRequest | ElevatedError::ProtocolMismatch => 11,
             ElevatedError::PlanMismatch => 13,
             ElevatedError::RequestTooLarge => 10,
@@ -150,6 +159,7 @@ impl ElevatedError {
             14 => "PLATFORM_NOT_SUPPORTED",
             15 => "INVALID_PARAMS",
             16 => "HELPER_PATH_NOT_TRUSTED",
+            17 => "REQUEST_EXPIRED",
             _ => return None,
         })
     }
@@ -264,9 +274,15 @@ pub fn validate(
     request: &ElevatedRequest,
     catalog: &LoadedCatalog,
     allowlist: &Allowlist,
+    now: Timestamp,
 ) -> Result<ValidatedStep, ElevatedError> {
     if request.protocol != PROTOCOL {
         return Err(ElevatedError::ProtocolMismatch);
+    }
+    // FR-003: dead on arrival means dead. Checked before the catalog work so a late request never
+    // gets as far as looking at what it asks for.
+    if now >= request.expires_at {
+        return Err(ElevatedError::Expired);
     }
     // FR-006: recalculate the hash of what arrived.
     if sha256_tagged(&request.plan) != request.plan_hash {
@@ -540,7 +556,21 @@ pub struct HelperContext<'a> {
 }
 
 /// The whole helper, as one pure function: token in, exit code and result out.
-pub fn run_request(token: &str, context: &HelperContext<'_>) -> (i32, ElevatedResult) {
+/// The helper reads its own clock. The deadline inside the request comes from the other side, so
+/// only a local reading can decide whether it is still alive (FR-003). `None` means the clock is
+/// before 1970, which this helper treats as a broken environment.
+pub fn system_now() -> Option<Timestamp> {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|since| since.as_secs() as Timestamp)
+}
+
+pub fn run_request(
+    token: &str,
+    context: &HelperContext<'_>,
+    now: Timestamp,
+) -> (i32, ElevatedResult) {
     let refuse = |error: ElevatedError| (error.exit_code(), error.result());
     if !trusted_path(context.exe, context.install_dir) {
         return refuse(ElevatedError::HelperPathNotTrusted);
@@ -549,7 +579,7 @@ pub fn run_request(token: &str, context: &HelperContext<'_>) -> (i32, ElevatedRe
         Ok(request) => request,
         Err(error) => return refuse(error),
     };
-    let step = match validate(&request, context.catalog, context.allowlist) {
+    let step = match validate(&request, context.catalog, context.allowlist, now) {
         Ok(step) => step,
         Err(error) => return refuse(error),
     };
@@ -579,6 +609,7 @@ pub fn build_request(
     step: &ProposedStep,
     platform: Platform,
     result_pipe: Option<String>,
+    expires_at: Timestamp,
 ) -> Result<ElevatedRequest, ExecError> {
     let params = step.params.iter().cloned().collect::<BTreeMap<_, _>>();
     Ok(ElevatedRequest {
@@ -590,6 +621,7 @@ pub fn build_request(
         capability_version: step.version.clone(),
         platform: platform_code(platform).to_string(),
         params,
+        expires_at,
         result_pipe,
     })
 }
@@ -704,11 +736,12 @@ impl Elevation for ElevatedFix {
         step: &ProposedStep,
         plan: &EvaluatedPlan<'_>,
         _platform: Platform,
+        deadline: Timestamp,
     ) -> Result<FixOutcome, ExecError> {
         let Some(step) = Self::step_of(step, plan) else {
             return Err(ExecError::StepNotApproved);
         };
-        let token = encode_token(&build_request(plan, step, self.platform, None)?)
+        let token = encode_token(&build_request(plan, step, self.platform, None, deadline)?)
             .map_err(|_| ExecError::ElevationNotAvailable)?;
         let result = self
             .launcher
@@ -740,6 +773,7 @@ fn static_reason(code: &str) -> Option<&'static str> {
         "BAD_REQUEST" => "BAD_REQUEST",
         "PROTOCOL_MISMATCH" => "PROTOCOL_MISMATCH",
         "REQUEST_TOO_LARGE" => "REQUEST_TOO_LARGE",
+        "REQUEST_EXPIRED" => "REQUEST_EXPIRED",
         "HELPER_PATH_NOT_TRUSTED" => "HELPER_PATH_NOT_TRUSTED",
         _ => return None,
     })
