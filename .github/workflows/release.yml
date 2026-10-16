@@ -1,0 +1,63 @@
+# F5-REL: a tag `vX.Y.Z` builds the installers and opens a DRAFT pre-release (the beta channel) with
+# them and SHA256SUMS. Nothing is published by the workflow: the maintainer reviews the draft,
+# attaches the GPG signature of SHA256SUMS and publishes it by hand (docs/ops/release.md).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Tag matches the version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Same version in the tag, the app and both workspaces
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          app=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          workspace=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          shell=$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)
+          echo "tag=$tag app=$app workspace=$workspace shell=$shell"
+          [ "$tag" = "$app" ] && [ "$tag" = "$workspace" ] && [ "$tag" = "$shell" ]
+
+  installers:
+    needs: version
+    uses: ./.github/workflows/installers.yml
+    with:
+      retention-days: 30
+
+  draft:
+    name: Draft pre-release
+    needs: installers
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: helpmydesk-*
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+      - name: Draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --draft --prerelease \
+            --title "HelpMyDesk $GITHUB_REF_NAME (beta)" \
+            --notes-file docs/release/notas-beta.md
