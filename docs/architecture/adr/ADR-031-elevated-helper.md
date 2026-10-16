@@ -1,6 +1,6 @@
 # ADR-031: helper elevado em processo separado
 
-**Status:** aceito (parcial: sem lançador no Windows, ver "Bloqueio") · **Data:** 2026-10-16
+**Status:** aceito · **Data:** 2026-10-16 (lançador decidido no mesmo dia, ver "Lançador no Windows")
 
 ## Contexto
 
@@ -49,21 +49,36 @@ outro programa rodando como ela.
 - **`hmd-canonical`** virou crate próprio para que executor e helper compartilhem *a mesma*
   codificação e o mesmo hash, sem cópia divergente.
 
-## Bloqueio: o lançador no Windows
-
+## Lançador no Windows (decidido pelo mantenedor em 2026-10-16)
 `ShellExecuteExW` (o "runas") só existe em FFI, e o workspace tem
-`[workspace.lints.rust] unsafe_code = "forbid"` — o repositório inteiro é zero-`unsafe`. Escrever o
-lançador é, portanto, decisão de constituição, não de implementação. Três saídas, para o mantenedor
-escolher:
+`[workspace.lints.rust] unsafe_code = "forbid"`. A constituição não fala de `unsafe`: a proibição é
+o lint, então a escolha era deste ADR. Das opções (liberar `unsafe` só no lançador, crate de
+terceiros, PowerShell, esperar), o mantenedor escolheu **PowerShell**:
+- `UacLauncher` (`crates/hmd-elevated/src/uac.rs`) roda o Windows PowerShell 5.1 pelo caminho
+  absoluto da pasta do Windows, sem perfil, com `-EncodedCommand`. O script é texto fixo com dois
+  buracos: o caminho do helper (constante da build) e o token (base64url). Qualquer outro byte num
+  buraco recusa antes de o PowerShell abrir.
+- `Start-Process -Verb RunAs -Wait -PassThru` é o mesmo pedido de UAC por uma API gerenciada.
+  Zero `unsafe`, zero dependência nova.
+- **O resultado volta só pelo código de saída**: um processo elevado pelo UAC não devolve o stdout
+  ao processo de usuário. O código já era a parte estável do contrato (SEC-025): `0` deu certo,
+  `20` falhou, `10`–`19` recusas com código, `21` incerto. O script acrescenta `1223` (a pessoa
+  recusou o UAC → `ELEVATION_DENIED`) e `201` (o helper não abriu → `ELEVATION_NOT_AVAILABLE`; como o `started` já foi escrito, o
+  diário registra `unknown` com esse código, a leitura conservadora do executor).
+  Qualquer outro código, ou nenhum, vira `unknown` e nunca é repetido (FR-010); `exit $null` é
+  tratado à parte para não virar `0`.
+- Prazo duro: o lançador espera o PowerShell até o prazo e o encerra depois; o passo vira
+  `unknown`. Um helper que já subiu como administrador não pode ser parado daqui.
+- `available()` só é verdade no Windows **e** com o helper em `INSTALL_DIR`. Até o helper entrar
+  no instalador (sidecar, spec 020 T010), toda elevação continua `ELEVATION_NOT_AVAILABLE` antes
+  de qualquer escrita.
+- Teste ponta a ponta no CI Windows (`crates/hmd-elevated/tests/uac.rs`, `HMD_UAC_E2E=1`): copia o
+  helper para `Program Files`, manda o maior token aceito e recebe `PLAN_HASH_MISMATCH`, o que
+  prova que o token cruzou a linha de comando inteiro.
 
-1. Emendar a constituição para permitir `unsafe` **só** em `hmd-elevated`, com ADR e revisão de
-   cada chamada (a superfície é pequena: uma chamada de UAC, uma de processo, um pipe nomeado).
-2. Usar um crate Community que embrulha a chamada com API segura, aceitando o custo de cadeia de
-   suprimento (`cargo deny` precisa passar).
-3. Ficar sem lançador até existir máquina Windows de teste (o estado de agora: recusa segura).
-
-Enquanto nenhuma estiver decidida, `production_launcher()` devolve `UnavailableLauncher` e a
-elevação falha com `ELEVATION_NOT_AVAILABLE` antes de qualquer escrita no diário.
+Custos aceitos: o detalhe em JSON se perde (o código basta para o diário); uma máquina com o
+PowerShell bloqueado por política fica sem elevação (recusa limpa, `ELEVATION_NOT_AVAILABLE`); o
+pipe nomeado do plano fica para quando houver motivo para mais que um código.
 
 ## Consequências
 

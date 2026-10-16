@@ -17,15 +17,12 @@ serializar. Com `FakeLauncher` nos testes e `UacLauncher` só em `cfg(windows)`.
 `UnavailableLauncher` responde `ELEVATION_NOT_AVAILABLE` até o S-02 decidir entre a API D-Bus
 (L1) e `pkexec` (L2).
 
-`UacLauncher` está **bloqueado por uma decisão de constituição**: `ShellExecuteExW` (`runas`) é
-`unsafe` e o workspace é `unsafe_code = "forbid"`. Desenho fechado e revisado aqui para não se
-perder: pipe nomeado com 128 bits de entropia de `BCryptGenRandom` e `PIPE_REJECT_REMOTE_CLIENTS`;
-`ShellExecuteExW` com `SEE_MASK_NOCLOSEPROCESS` e `nShow = SW_HIDE` (sem console na tela da
-pessoa, FR-014); espera em thread de trabalho com o prazo duro (o diálogo do UAC responde a
-nenhuma espera nossa, então o prazo é do chamador e o helper já carrega `expires_at`); a resposta
-só é aceita se `GetNamedPipeClientProcessId` for o PID do processo lançado, senão
-`ELEVATION_RESULT_NOT_TRUSTED`. Como a allowlist de produção está vazia, mesmo que o lançador
-funcionasse hoje nenhuma ação rodaria.
+`UacLauncher` (T007, decidido em 16/10): Windows PowerShell pelo caminho absoluto, `-NoProfile`,
+script fixo em `-EncodedCommand` com `Start-Process -Verb RunAs -WindowStyle Hidden -Wait
+-PassThru`; resultado pelo código de saída, prazo duro do chamador, e `unknown` para qualquer código
+fora do contrato. Detalhes e custos no ADR-031. O desenho anterior (pipe nomeado com
+`BCryptGenRandom`, `ShellExecuteExW` e `GetNamedPipeClientProcessId`) fica registrado para quando
+um código de saída não bastar; ele exige `unsafe` ou dependência.
 
 ## Protocolo `hmd-elevated@1`
 
@@ -100,9 +97,8 @@ histórico por usuário (F2-UNINST da spec 008).
 
 Onde o helper entra no pacote: sidecar (`bundle.externalBin`), que o Tauri coloca ao lado do
 executável principal. Isso exige o binário do helper compilado para a plataforma alvo no momento do
-`tauri build`, então entra junto com o lançador (T007), que está bloqueado por decisão de
-constituição: até lá o instalador não traz helper nenhum e a elevação responde
-`ELEVATION_NOT_AVAILABLE`, que é a recusa segura.
+`tauri build`, e fica para a T015: até lá o instalador não traz helper nenhum, o lançador se declara
+indisponível e a elevação responde `ELEVATION_NOT_AVAILABLE`, que é a recusa segura.
 
 ## Constitution Check
 
