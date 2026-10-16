@@ -81,6 +81,16 @@ PowerShell bloqueado por política fica sem elevação (recusa limpa, `ELEVATION
 pipe nomeado do plano fica para quando houver motivo para mais que um código.
 
 ## Consequências
+- **O que o hash garante e o que não garante.** O `plan_hash` é SHA-256 sem chave e viaja dentro do
+  próprio token: dá integridade (o helper lê exatamente o plano que o executor escreveu, no formato
+  canônico byte a byte) e, com o prazo, limita o reuso de um token capturado. **Não dá
+  autenticidade**: um programa rodando como a pessoa consegue montar um pedido coerente, com hash
+  certo e prazo curto, e o helper aceita. As barreiras reais contra isso são duas: o clique no UAC
+  e a allowlist compilada, pequena e inofensiva por desenho. Sem assinatura (F5-SIGN), o UAC do
+  helper aparece como "editor desconhecido", igual ao de qualquer programa.
+- Revisão independente de 16/10 (T016/T017): o helper só roda da pasta exata, com componentes
+  simples; o pedido tem `operation` (só `run` existe), para um desfazer futuro nunca ser lido como
+  "rodar de novo"; o substituto de resultado grande diz `unknown`.
 
 - Um usuário padrão (sem conta de administrador) não consegue instalar; é o custo aceito do
   ADR-002, e a tela diz o que fazer em vez de falhar em silêncio.

@@ -57,6 +57,9 @@ Rodar tudo: `tools/check-all.sh` (o mesmo que o CI).
   fixo e dois buracos validados (ADR-031). Ao mexer nele, confira: os buracos continuam recusando
   aspas, espaço, `$` e acento; nenhum código fora do contrato vira sucesso; o PowerShell continua
   pelo caminho absoluto e sem perfil.
+- O hash do plano dá **integridade, não autenticidade**: um programa rodando como a pessoa monta um
+  pedido válido. O que segura é o clique no UAC e a allowlist (ADR-031). Não aceite entrada na
+  allowlist que seria perigosa se rodasse sem a pessoa querer.
 - Ainda não foram revisados: o updater, a assinatura dos binários e o cliente de IA.
 
 ## Histórico

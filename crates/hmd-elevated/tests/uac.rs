@@ -15,8 +15,8 @@ use std::time::Duration;
 
 use hmd_elevated::uac::{HELPER_EXE, UacLauncher};
 use hmd_elevated::{
-    ElevatedRequest, INSTALL_DIR, LaunchError, Launcher, MAX_REQUEST_BYTES, PROTOCOL, encode_token,
-    system_now,
+    ElevatedRequest, INSTALL_DIR, LaunchError, Launcher, MAX_REQUEST_BYTES, Operation, PROTOCOL,
+    encode_token, system_now,
 };
 
 fn install_helper() {
@@ -34,6 +34,7 @@ fn install_helper() {
 fn largest_request() -> ElevatedRequest {
     let mut request = ElevatedRequest {
         protocol: PROTOCOL.to_string(),
+        operation: Operation::Run,
         plan: String::new(),
         plan_hash: format!("sha256:{}", "0".repeat(64)),
         step_id: "s1".to_string(),

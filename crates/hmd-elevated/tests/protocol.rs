@@ -373,7 +373,8 @@ fn fr_014_a_result_over_the_cap_is_replaced_by_a_code_that_fits() {
     assert!(
         json.contains(r#""reason_code":"RESULT_TOO_LARGE""#),
         "{json}"
-    );
+    ); // The action may have run: the substitute never says `failed`, which would allow a retry.
+    assert!(json.contains(r#""outcome":"unknown""#), "{json}");
 }
 
 /// US2.4 / SEC-026: one action per invocation, with the step the helper validated itself.
@@ -724,4 +725,93 @@ fn fr_016_a_request_that_cannot_be_built_is_a_refusal() {
             .unwrap_err(),
         ExecError::ElevationRefused("ELEVATION_MALFORMED")
     );
+}
+
+fn retext(request: &ElevatedRequest, text: String) -> ElevatedRequest {
+    let mut forged = request.clone();
+    forged.plan = text;
+    forged.plan_hash = hmd_canonical::sha256_tagged(&forged.plan);
+    forged
+}
+
+/// SEC-023: the helper reads the plan only in the exact form `hmd-canonical` writes. A text with
+/// the right hash but another shape (CRLF, no final newline, sections out of order, a repeated
+/// catalog or param) is a text the executor never produced.
+#[test]
+fn sec_023_the_plan_text_is_read_only_in_canonical_form() {
+    let plan = Plan::new();
+    let catalog = embedded().unwrap();
+    let (allowlist, _) = spy_allowlist();
+    let original = plan.request();
+    assert!(validate(&original, catalog, &allowlist, NOW, HOST).is_ok());
+    let text = original.plan.clone();
+    let lines = text.lines().collect::<Vec<_>>();
+    let join = |lines: &[&str]| lines.join("\n") + "\n";
+    let step_line = *lines.iter().find(|l| l.starts_with("step=")).unwrap();
+    let step_id = step_line["step=".len()..].split('|').next().unwrap();
+    let verdict = lines
+        .iter()
+        .position(|l| l.starts_with("verdict="))
+        .unwrap();
+    let mut swapped = lines.clone();
+    swapped.swap(1, 2);
+    let mut verdict_first = lines.clone();
+    let moved = verdict_first.remove(verdict);
+    verdict_first.insert(3, moved);
+    let forged = [
+        text.replace('\n', "\r\n"),
+        text.trim_end_matches('\n').to_string(),
+        join(&swapped),
+        join(&verdict_first),
+        text.replacen("catalog=", "catalog=\ncatalog=", 1),
+        text.replacen(
+            step_line,
+            &format!("{step_line}\nparam={step_id}|x|1\nparam={step_id}|x|1"),
+            1,
+        ),
+    ];
+    for text in forged {
+        assert_eq!(
+            validate(
+                &retext(&original, text.clone()),
+                catalog,
+                &allowlist,
+                NOW,
+                HOST
+            )
+            .unwrap_err(),
+            ElevatedError::PlanMismatch,
+            "{text:?}"
+        );
+    }
+}
+
+/// SEC-020: exactly the install folder, with plain components only. A subfolder, or a path that
+/// walks with `..`, is not the folder the installer protected.
+#[test]
+fn sec_020_only_the_exact_folder_with_plain_components() {
+    let (exe, dir) = installed();
+    assert!(trusted_path(&exe, &dir));
+    assert!(!trusted_path(
+        &dir.join("sub").join("helpmydesk-elevated"),
+        &dir
+    ));
+    assert!(!trusted_path(&dir.join(".."), &dir));
+}
+
+/// SEC-022: the operation is part of the closed schema. Only `run` exists; a missing or unknown
+/// operation is refused, so a future rollback can never be read as "run it again".
+#[test]
+fn sec_022_the_operation_is_closed() {
+    let plan = Plan::new();
+    let request = serde_json::to_value(plan.request()).unwrap();
+    assert_eq!(request["operation"], "run");
+    let mut unknown = request.clone();
+    unknown["operation"] = "rollback".into();
+    let mut missing = request.clone();
+    missing.as_object_mut().unwrap().remove("operation");
+    for value in [unknown, missing] {
+        let token = hmd_elevated::base64url_encode(value.to_string().as_bytes());
+        assert_eq!(decode_token(&token).unwrap_err(), ElevatedError::BadRequest);
+    }
 }
