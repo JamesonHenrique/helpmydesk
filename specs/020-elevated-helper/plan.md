@@ -30,23 +30,35 @@ funcionasse hoje nenhuma ação rodaria.
 ## Protocolo `hmd-elevated@1`
 
 Um único token de argv: `base64url` (alfabeto URL-safe, com padding) do JSON UTF-8 do pedido
-(`protocol`, `plan`, `plan_hash`, `step_id`, `capability`, `capability_version`, `variant_id`,
-`platform`, `params`, `expires_at`, `result_pipe` opcional). Base64url evita as regras de citação do `CommandLineToArgvW` do Windows
-(só `[A-Za-z0-9_-]`, sem espaço, aspas ou barra) e o limite de 4 KiB vale sobre o JSON decodificado.
-`deny_unknown_fields`, esquema fechado, nenhum segredo.
+(`protocol`, `plan`, `plan_hash`, `step_id`, `capability`, `capability_version`, `platform`,
+`params`, `expires_at`, `result_pipe` opcional). Sem `variant_id`: a variante é a do sistema em que
+o helper roda, e o helper exige que o `platform` do pedido seja esse sistema — o par
+`(capability, versão)` fica inequívoco e o plano (que é o que o hash cobre) não ganha um campo que
+ele não tem. Base64url evita as regras de citação do `CommandLineToArgvW` do Windows
+(só `[A-Za-z0-9_-]`, sem espaço, aspas ou barra) e o limite de 4 KiB vale sobre o JSON decodificado,
+conferido no token antes de decodificar. `deny_unknown_fields`, esquema fechado, nenhum segredo. O
+decodificador só aceita a grafia que ele mesmo escreve: um token que decodifica para os mesmos bytes
+com outro padding é recusado, para que não existam duas formas do mesmo pedido.
 
 O helper (SEC-023) não confia em nenhum campo recebido:
 
-1. confere o próprio caminho (`HELPER_PATH_NOT_TRUSTED`);
-2. parse estrito e limite de tamanho (`REQUEST_TOO_LARGE`) e prazo (`REQUEST_EXPIRED`);
+1. confere o próprio caminho (`HELPER_PATH_NOT_TRUSTED`), antes de olhar a linha de comando;
+2. protocolo (`PROTOCOL_MISMATCH`), tamanho do token (`REQUEST_TOO_LARGE`), prazo vencido
+   (`REQUEST_EXPIRED`), prazo maior que uma aprovação (`REQUEST_DEADLINE_TOO_LONG`) e a forma do
+   `result_pipe` (`BAD_REQUEST`);
 3. `plan` precisa ter o cabeçalho `hmd-plan@1` e contém a linha `step=` e as linhas `param=` e
-   `verdict=` do passo pedido; divergência → `PLAN_HASH_MISMATCH` (recalcula `sha256` do texto);
-4. a linha `verdict=` do passo precisa dizer `accepted` **e** elevação `1`;
-5. revalida `(capability, versão, variant_id)` contra o catálogo embutido: existe, tem
-   `requires_elevation: true`, existe para a plataforma atual e os params cabem no
+   `verdict=` do passo pedido, com a aridade exata que o executor escreve; divergência →
+   `PLAN_HASH_MISMATCH` (recalcula `sha256` do texto);
+4. a linha `verdict=` do passo precisa dizer `accepted` **e** elevação `1` — um veredito sem
+   elevação é um plano que não pede privilégio nenhum (`PLAN_HASH_MISMATCH`);
+5. a versão do catálogo do plano tem de ser a deste build (`CATALOG_MISMATCH`): a pessoa aprovou os
+   riscos e a verificação que o catálogo dizia naquele momento;
+6. revalida `(capability, versão)` contra o catálogo embutido: existe, tem `requires_elevation:
+   true`, a plataforma do pedido é a do processo, a variante existe e os params cabem no
    `params_schema` → senão `NOT_IN_ALLOWLIST` / `PLATFORM_NOT_SUPPORTED` / `INVALID_PARAMS`;
-6. executa **uma** ação da allowlist compilada, sem shell, sem rede, sem stdin, sem ambiente
-   herdado; resultado em JSON no stdout + código de saída.
+7. executa **uma** ação da allowlist compilada, sem shell, sem rede, sem stdin, sem ambiente
+   herdado; resultado em JSON no stdout (teto de 512 bytes, com código substituto) + código de
+   saída, que o processo de usuário traduz de volta para o diário (FR-016).
 
 | código | significado |
 |---|---|
@@ -59,6 +71,8 @@ O helper (SEC-023) não confia em nenhum campo recebido:
 | 15 | `INVALID_PARAMS` |
 | 16 | `HELPER_PATH_NOT_TRUSTED` |
 | 17 | `REQUEST_EXPIRED` |
+| 18 | `REQUEST_DEADLINE_TOO_LONG` (o token pediu mais prazo que uma aprovação) |
+| 19 | `CATALOG_MISMATCH` (o plano é de outra versão do catálogo) |
 | 20 | `failed` (a ação correu e não deu certo) |
 | 21 | `unknown` (a ação não sabe se aconteceu) |
 
@@ -109,6 +123,20 @@ constituição: até lá o instalador não traz helper nenhum e a elevação res
 - Instalação por máquina (ADR-002): conta padrão sem senha de admin nem instala (Q-10 do plano).
 - Sem assinatura ainda (F5-SIGN), o UAC mostra "editor desconhecido"; motivo para teste manual,
   não bloqueio de código.
+- **Hash não é autenticação**: o helper recalcula o hash do plano que recebeu e o compara com o
+  hash do mesmo token, o que prova que o texto não mudou, não que ele é o plano aprovado. O que
+  liga o pedido a uma aprovação é o caminho do executor (plano preso ao ticket, nonce único,
+  chave de idempotência única no diário) mais o prazo, e esse limite está declarado no plano v1.
+  O que dá para fechar aqui já foi fechado: o token não escolhe o próprio prazo (SEC-029).
+- **Valor de parâmetro não validado**: o esquema do catálogo valida nome e tamanho, não domínio. A
+  primeira entrada da allowlist só entra sem parâmetros até existir validação de valor (FR-005).
+- **Superfície do binário privilegiado**: o helper liga `hmd-executor` (para o trait `Elevation`) e
+  com ele chega a `hmd-core` e `hmd-probes` (`netdev`, `sysinfo`) num processo que roda como
+  administrador. Dá para separar quando o `Elevation` sair do executor; até lá, nenhuma ação real
+  existe para explore.
+- **`trusted_path` falha fechado**: no Windows a comparação de caminho é por componente e sensível
+  a caixa; um caminho resolvido de outro jeito (nome curto `PROGRA~1`) faz o helper recusar a si
+  mesmo. Falha para o lado seguro, mas precisa do teste no Windows real (T012).
 
 ## Decisões registradas
 

@@ -25,7 +25,8 @@ use hmd_canonical::{PLAN_FORMAT, parse_line, sha256_tagged};
 use hmd_catalog::LoadedCatalog;
 use hmd_domain::Timestamp;
 use hmd_executor::{
-    ELEVATION_TIMEOUT, Elevation, EvaluatedPlan, ExecError, FixOutcome, MAX_PARAM_LEN, Registry,
+    APPROVAL_TTL, ELEVATION_TIMEOUT, Elevation, EvaluatedPlan, ExecError, FixOutcome,
+    MAX_PARAM_LEN, Registry,
 };
 use hmd_policy::{Platform, ProposedStep, RiskLevel};
 use serde::{Deserialize, Serialize};
@@ -112,6 +113,10 @@ pub enum ElevatedError {
     PlatformNotSupported,
     /// Parameters outside what the catalog allows (FR-007).
     InvalidParams,
+    /// The token asked to stay alive longer than an approval can (FR-003, SEC-028).
+    DeadlineTooLong,
+    /// The plan was written against another catalog version (SEC-023).
+    CatalogMismatch,
     /// The action ran and did not work.
     Failed,
     /// The action cannot tell whether it happened.
@@ -130,6 +135,8 @@ impl ElevatedError {
             ElevatedError::NotInAllowlist => "NOT_IN_ALLOWLIST",
             ElevatedError::PlatformNotSupported => "PLATFORM_NOT_SUPPORTED",
             ElevatedError::InvalidParams => "INVALID_PARAMS",
+            ElevatedError::DeadlineTooLong => "REQUEST_DEADLINE_TOO_LONG",
+            ElevatedError::CatalogMismatch => "CATALOG_MISMATCH",
             ElevatedError::Failed => "FIX_FAILED",
             ElevatedError::Unknown => "FIX_UNKNOWN",
         }
@@ -146,6 +153,8 @@ impl ElevatedError {
             ElevatedError::NotInAllowlist => 12,
             ElevatedError::PlatformNotSupported => 14,
             ElevatedError::InvalidParams => 15,
+            ElevatedError::DeadlineTooLong => 18,
+            ElevatedError::CatalogMismatch => 19,
             ElevatedError::Failed => 20,
             ElevatedError::Unknown => 21,
         }
@@ -163,6 +172,8 @@ impl ElevatedError {
             15 => "INVALID_PARAMS",
             16 => "HELPER_PATH_NOT_TRUSTED",
             17 => "REQUEST_EXPIRED",
+            18 => "REQUEST_DEADLINE_TOO_LONG",
+            19 => "CATALOG_MISMATCH",
             _ => return None,
         })
     }
@@ -278,6 +289,7 @@ pub fn validate(
     catalog: &LoadedCatalog,
     allowlist: &Allowlist,
     now: Timestamp,
+    host: Platform,
 ) -> Result<ValidatedStep, ElevatedError> {
     if request.protocol != PROTOCOL {
         return Err(ElevatedError::ProtocolMismatch);
@@ -287,11 +299,38 @@ pub fn validate(
     if now >= request.expires_at {
         return Err(ElevatedError::Expired);
     }
+    // SEC-028: the token does not get to choose how long it stays alive. Whatever the deadline it
+    // carries, an approval is never valid for longer than [`APPROVAL_TTL`], so a token assembled by
+    // hand (or captured from another run) cannot buy itself years of reuse.
+    if request.expires_at > now.saturating_add(APPROVAL_TTL) {
+        return Err(ElevatedError::DeadlineTooLong);
+    }
+    // SEC-022: the transport the launcher may ask for, checked here so a token cannot point the
+    // result anywhere else. Nothing writes to a pipe yet (spec 020 T007); until then it is only
+    // ever absent.
+    if let Some(pipe) = &request.result_pipe {
+        let name = pipe
+            .strip_prefix(r"\\.\pipe\helpmydesk-")
+            .unwrap_or_default();
+        if name.is_empty()
+            || name.len() > 64
+            || !name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        {
+            return Err(ElevatedError::BadRequest);
+        }
+    }
     // FR-006: recalculate the hash of what arrived.
     if sha256_tagged(&request.plan) != request.plan_hash {
         return Err(ElevatedError::PlanMismatch);
     }
     let plan = PlanText::parse(&request.plan)?;
+    // SEC-023: the person approved the risks and the verification of the catalog this plan came
+    // from; another version of the catalog may say something else about the same capability.
+    if plan.catalog != catalog.version {
+        return Err(ElevatedError::CatalogMismatch);
+    }
     let entry = plan
         .step(&request.step_id)
         .ok_or(ElevatedError::PlanMismatch)?;
@@ -309,9 +348,10 @@ pub fn validate(
         return Err(ElevatedError::PlanMismatch);
     }
     // Constitution II: an N3 action needs the approval bound to the exact plan hash, and the
-    // catalog is what declares that elevation is needed at all.
+    // catalog is what declares that elevation is needed at all. A verdict without elevation says
+    // the plan does not ask for anything privileged: that is a plan mismatch, not a platform one.
     if !verdict.elevation {
-        return Err(ElevatedError::PlatformNotSupported);
+        return Err(ElevatedError::PlanMismatch);
     }
 
     let capability = catalog
@@ -322,6 +362,13 @@ pub fn validate(
         return Err(ElevatedError::NotInAllowlist);
     }
     let platform = platform_from_code(&request.platform)?;
+    // SEC-020/SEC-023: the platform is not only what the catalog is consulted about. It also has to
+    // be the platform this process is running on, so a token built for another system cannot pick
+    // the variant whose rules are more convenient (and the allowlist, which is keyed by capability
+    // and version, stays unambiguous).
+    if platform != host {
+        return Err(ElevatedError::PlatformNotSupported);
+    }
     let variant = capability
         .variants
         .get(&platform)
@@ -354,6 +401,8 @@ pub fn validate(
 
 /// The pieces of a canonical plan the helper needs: the step it was asked to run and its verdict.
 struct PlanText {
+    /// The catalog version the plan was written against (SEC-023).
+    catalog: String,
     steps: BTreeMap<String, PlanStep>,
     verdicts: BTreeMap<String, PlanVerdict>,
 }
@@ -376,6 +425,7 @@ impl PlanText {
             return Err(ElevatedError::PlanMismatch);
         }
         let mut plan = PlanText {
+            catalog: String::new(),
             steps: BTreeMap::new(),
             verdicts: BTreeMap::new(),
         };
@@ -383,17 +433,32 @@ impl PlanText {
         for line in lines {
             let (key, fields) = parse_line(line).map_err(|_| ElevatedError::PlanMismatch)?;
             match (key, fields.as_slice()) {
-                ("catalog", [_]) | ("session", [_]) => {}
+                // Written first, before anything else, by `hmd-canonical`.
+                ("catalog", [version]) => {
+                    if !plan.catalog.is_empty() {
+                        return Err(ElevatedError::PlanMismatch);
+                    }
+                    plan.catalog = version.clone();
+                }
+                ("session", [_]) => {}
                 ("step", [step_id, capability, version]) => {
                     current = Some(step_id.clone());
-                    plan.steps.insert(
-                        step_id.clone(),
-                        PlanStep {
-                            capability: capability.clone(),
-                            version: version.clone(),
-                            params: BTreeMap::new(),
-                        },
-                    );
+                    // A step that appears twice is a plan this helper did not read the way the
+                    // executor wrote it: no "last one wins".
+                    if plan
+                        .steps
+                        .insert(
+                            step_id.clone(),
+                            PlanStep {
+                                capability: capability.clone(),
+                                version: version.clone(),
+                                params: BTreeMap::new(),
+                            },
+                        )
+                        .is_some()
+                    {
+                        return Err(ElevatedError::PlanMismatch);
+                    }
                 }
                 ("param", [step_id, name, value]) => {
                     let Some(id) = current.as_ref() else {
@@ -409,21 +474,34 @@ impl PlanText {
                         .insert(name.clone(), value.clone());
                 }
                 ("verdict", [step_id, state, rest @ ..]) => {
-                    // `accepted|<risk>|<approval>|<elevation 0/1>|<verification>|<rollback>`;
-                    // `rest` starts at the risk field, so the elevation flag is its third.
-                    let elevation = rest.get(2).is_some_and(|e| e == "1");
-                    plan.verdicts.insert(
-                        step_id.clone(),
-                        PlanVerdict {
-                            state: state.clone(),
-                            elevation,
-                        },
-                    );
+                    // Exactly the arity `hmd-canonical` writes: `accepted` with
+                    // `<risk>|<approval>|<elevation>|<verification>|<rollback>` (the elevation flag
+                    // is the third field of `rest`), `downgraded` with `<capability>|<reason>`, or
+                    // `rejected` with `<reason>`. More or fewer fields is not a plan this helper
+                    // knows how to read.
+                    let elevation = match (state.as_str(), rest.len()) {
+                        ("accepted", 5) => rest[2] == "1",
+                        ("downgraded", 2) | ("rejected", 1) => false,
+                        _ => return Err(ElevatedError::PlanMismatch),
+                    };
+                    if plan
+                        .verdicts
+                        .insert(
+                            step_id.clone(),
+                            PlanVerdict {
+                                state: state.clone(),
+                                elevation,
+                            },
+                        )
+                        .is_some()
+                    {
+                        return Err(ElevatedError::PlanMismatch);
+                    }
                 }
                 _ => return Err(ElevatedError::PlanMismatch),
             }
         }
-        if plan.steps.is_empty() {
+        if plan.steps.is_empty() || plan.catalog.is_empty() {
             return Err(ElevatedError::PlanMismatch);
         }
         Ok(plan)
@@ -450,6 +528,11 @@ pub fn encode_token(request: &ElevatedRequest) -> Result<String, ElevatedError> 
 }
 
 pub fn decode_token(token: &str) -> Result<ElevatedRequest, ElevatedError> {
+    // FR-004: the size is checked on the token, before anything is decoded. Base64url grows the
+    // payload by a third plus padding, so the bound is the encoded length of the maximum.
+    if token.len() > base64url_encode(&[0u8; MAX_REQUEST_BYTES]).len() {
+        return Err(ElevatedError::RequestTooLarge);
+    }
     let json = base64url_decode(token)?;
     if json.len() > MAX_REQUEST_BYTES {
         return Err(ElevatedError::RequestTooLarge);
@@ -457,15 +540,16 @@ pub fn decode_token(token: &str) -> Result<ElevatedRequest, ElevatedError> {
     serde_json::from_str(&json).map_err(|_| ElevatedError::BadRequest)
 }
 
-/// FR-014: the result goes to the pipe and to stdout; both are small and sanitized.
+/// FR-014: the result goes to the pipe and to stdout; both are small and sanitized. Over the cap,
+/// the reason is replaced by a code that always fits: a journal a person can read beats a detail.
 pub fn result_json(result: &ElevatedResult) -> String {
-    serde_json::to_string(result).unwrap_or_else(|_| {
-        // Serializing a struct of strings and a three-variant enum cannot fail; if it ever did, the
-        // fallback is still valid JSON with the stable code.
-        format!(
-            "{{\"protocol\":\"{PROTOCOL}\",\"outcome\":\"failed\",\"reason_code\":\"RESULT_NOT_SERIALIZABLE\"}}"
-        )
-    })
+    let json = serde_json::to_string(result).unwrap_or_default();
+    if !json.is_empty() && json.len() <= MAX_RESULT_BYTES {
+        return json;
+    }
+    format!(
+        "{{\"protocol\":\"{PROTOCOL}\",\"outcome\":\"failed\",\"reason_code\":\"RESULT_TOO_LARGE\",\"detail\":null}}"
+    )
 }
 
 pub fn base64url_encode(bytes: &[u8]) -> String {
@@ -503,7 +587,21 @@ fn base64_value(c: u8) -> Result<u32, ElevatedError> {
     })
 }
 
-fn base64url_decode(token: &str) -> Result<String, ElevatedError> {
+pub fn base64url_decode(token: &str) -> Result<String, ElevatedError> {
+    let bytes = token.as_bytes();
+    if bytes.is_empty() || !bytes.len().is_multiple_of(4) {
+        return Err(ElevatedError::BadRequest);
+    }
+    // One encoding per request: without this, two different tokens would decode to the same bytes
+    // and anything that ever compared, counted or audited them by their text would be bypassed.
+    let decoded = base64url_decode_any(token)?;
+    if base64url_encode(decoded.as_bytes()) != token {
+        return Err(ElevatedError::BadRequest);
+    }
+    Ok(decoded)
+}
+
+fn base64url_decode_any(token: &str) -> Result<String, ElevatedError> {
     let bytes = token.as_bytes();
     if bytes.is_empty() || !bytes.len().is_multiple_of(4) {
         return Err(ElevatedError::BadRequest);
@@ -554,6 +652,8 @@ pub struct HelperContext<'a> {
     pub exe: &'a std::path::Path,
     /// Folder the installer registered (per machine).
     pub install_dir: &'a std::path::Path,
+    /// The platform this process is running on. The request may not claim any other (SEC-023).
+    pub host: Platform,
     pub catalog: &'a LoadedCatalog,
     pub allowlist: &'a Allowlist,
 }
@@ -582,7 +682,13 @@ pub fn run_request(
         Ok(request) => request,
         Err(error) => return refuse(error),
     };
-    let step = match validate(&request, context.catalog, context.allowlist, now) {
+    let step = match validate(
+        &request,
+        context.catalog,
+        context.allowlist,
+        now,
+        context.host,
+    ) {
         Ok(step) => step,
         Err(error) => return refuse(error),
     };
@@ -772,10 +878,12 @@ fn static_reason(code: &str) -> Option<&'static str> {
         "NOT_IN_ALLOWLIST" => "NOT_IN_ALLOWLIST",
         "PLATFORM_NOT_SUPPORTED" => "PLATFORM_NOT_SUPPORTED",
         "PLAN_HASH_MISMATCH" => "PLAN_HASH_MISMATCH",
+        "CATALOG_MISMATCH" => "CATALOG_MISMATCH",
         "BAD_REQUEST" => "BAD_REQUEST",
         "PROTOCOL_MISMATCH" => "PROTOCOL_MISMATCH",
         "REQUEST_TOO_LARGE" => "REQUEST_TOO_LARGE",
         "REQUEST_EXPIRED" => "REQUEST_EXPIRED",
+        "REQUEST_DEADLINE_TOO_LONG" => "REQUEST_DEADLINE_TOO_LONG",
         "HELPER_PATH_NOT_TRUSTED" => "HELPER_PATH_NOT_TRUSTED",
         _ => return None,
     })
@@ -786,7 +894,11 @@ fn map_launch_error(error: LaunchError) -> ExecError {
         LaunchError::Denied => ExecError::ElevationDenied,
         LaunchError::Timeout => ExecError::ElevationTimeout,
         LaunchError::NotAvailable => ExecError::ElevationNotAvailable,
-        LaunchError::Refused(_) | LaunchError::Malformed => ExecError::ElevationNotAvailable,
+        // SEC-025: the helper's own code travels to the journal. Flattening it into
+        // `ElevationNotAvailable` would hide a security event (a helper in the wrong folder, a plan
+        // that does not match) behind "we have no elevation path".
+        LaunchError::Refused(code) => ExecError::ElevationRefused(code),
+        LaunchError::Malformed => ExecError::ElevationNotAvailable,
     }
 }
 
@@ -808,7 +920,8 @@ pub fn production_registry() -> Registry {
     Registry::production().with_elevation(Box::new(ElevatedFix::new(production_launcher())))
 }
 
-fn host_platform() -> Platform {
+/// The platform this build is running on. The request has to agree with it (SEC-023).
+pub fn host_platform() -> Platform {
     if cfg!(windows) {
         Platform::Windows
     } else {

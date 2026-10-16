@@ -36,7 +36,13 @@ outro programa rodando como ela.
 - **Resultado em JSON no stdout + código de saída estável** (SEC-025). Quem escreve no diário é o
   processo de usuário; o helper não conhece banco, plano, pessoa nem máquina.
 - **Prazo duro de 120 s por invocação**, incluindo a espera pelo UAC; vencido, o passo vira
-  `unknown` e nunca é re-executado (FR-010, SEC-026).
+  `unknown` e nunca é re-executado (FR-010, SEC-026). O token carrega o prazo da aprovação, e o
+  helper **não aceita um prazo maior que uma aprovação** (SEC-029): sem isso, um token capturado
+  da linha de comando valeria para sempre.
+- **A recusa do helper vira `failed` com o código dela** no diário (`NOT_IN_ALLOWLIST`,
+  `HELPER_PATH_NOT_TRUSTED`, `PLAN_HASH_MISMATCH`, …), não `ELEVATION_NOT_AVAILABLE`: um evento de
+  segurança que some do diário é pior que um estado conservative. `ELEVATION_NOT_AVAILABLE` fica
+  reservado para "esta build não tem caminho de elevação" e acontece antes de qualquer escrita.
 - **Linux sem `pkexec` nesta versão** (FR-015): a via preferida do plano v1 é L1 (API de sistema via
   D-Bus, sem elevate); o S-02 precisa medir se o catálogo tem o que oferecer antes de criar
   privilégio no Linux.
@@ -64,7 +70,16 @@ elevação falha com `ELEVATION_NOT_AVAILABLE` antes de qualquer escrita no diá
 - Um usuário padrão (sem conta de administrador) não consegue instalar; é o custo aceito do
   ADR-002, e a tela diz o que fazer em vez de falhar em silêncio.
 - Instalação por máquina deixa as duas pastas em `Program Files`; o `.deb` do Linux segue como está.
-- A Reversão automática de um passo elevado é tentada pela **mesma** via de elevação (mesmo token,
-  prazo próprio), para não existir um caminho privilegiado que não revalida.
+- O **executor** sabe desfazer um passo elevado pela mesma via de elevação (`verify_step` desvia
+  para o `Elevation` quando a variante pede rollback), com prazo próprio para não ser recusado só
+  porque a janela da aprovação fechou. O que ainda **não** existe é a ação de desfazer do lado do
+  helper: `ElevatedFix` não implementa `rollback`, porque nenhuma correção elevada declara hoje um
+  `rollback` que valha uma ação privilegiada. Quando a primeira entrar (S-02), a ação de desfazer
+  entra na mesma allowlist, com o mesmo token e a mesma revalidação — não há, e não vai haver, um
+  caminho privilegiado que não passe por ela.
+- O binário privilegiado liga `hmd-executor` (trait `Elevation`) e, com ele, `hmd-core` e
+  `hmd-probes` (`netdev`, `sysinfo`): superfície de terceiros maior do que o helper precisa num
+  processo administrativo. Separar os dois lados do protocolo em crates distintos é a correção,
+  e fica para quando houver ação real para rodar.
 - Sem assinatura (F5-SIGN), o UAC mostra "editor desconhecido": motivo para o teste manual (T012),
   não bloqueio de código.

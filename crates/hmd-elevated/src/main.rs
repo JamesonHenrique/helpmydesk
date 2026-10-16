@@ -12,7 +12,8 @@ use std::process::ExitCode;
 
 use hmd_catalog::embedded;
 use hmd_elevated::{
-    Allowlist, ElevatedError, HelperContext, INSTALL_DIR, result_json, run_request, system_now,
+    Allowlist, ElevatedError, HelperContext, INSTALL_DIR, host_platform, result_json, run_request,
+    system_now, trusted_path,
 };
 
 fn main() -> ExitCode {
@@ -20,9 +21,18 @@ fn main() -> ExitCode {
     let Some(catalog) = embedded().ok() else {
         return refuse(&ElevatedError::BadRequest);
     };
+    let exe = std::env::current_exe().unwrap_or_default();
+    let install_dir = std::path::Path::new(INSTALL_DIR);
+    // SEC-020: where this process is running is checked before anything it was asked to do, before
+    // reading even the command line. A helper in a folder the person can write to answers
+    // `HELPER_PATH_NOT_TRUSTED` whatever the token says.
+    if !trusted_path(&exe, install_dir) {
+        return refuse(&ElevatedError::HelperPathNotTrusted);
+    }
     let context = HelperContext {
-        exe: &std::env::current_exe().unwrap_or_default(),
-        install_dir: std::path::Path::new(INSTALL_DIR),
+        exe: &exe,
+        install_dir,
+        host: host_platform(),
         catalog,
         allowlist: &allowlist,
     };
