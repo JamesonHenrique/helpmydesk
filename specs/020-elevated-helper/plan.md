@@ -95,10 +95,12 @@ Desinstalação: o template do NSIS remove `$INSTDIR` inteiro, então o helper v
 (FR-012). O helper não grava chave de registro nenhuma, e o hook existente continua cobrindo só o
 histórico por usuário (F2-UNINST da spec 008).
 
-Onde o helper entra no pacote: sidecar (`bundle.externalBin`), que o Tauri coloca ao lado do
-executável principal. Isso exige o binário do helper compilado para a plataforma alvo no momento do
-`tauri build`, e fica para a T015: até lá o instalador não traz helper nenhum, o lançador se declara
-indisponível e a elevação responde `ELEVATION_NOT_AVAILABLE`, que é a recusa segura.
+Onde o helper entra no pacote (T015): sidecar (`bundle.externalBin`), que o Tauri coloca ao lado
+do executável principal e apaga na desinstalação (lista `binaries` do template NSIS). O sidecar
+fica em `windows/helper.conf.json`, mesclado com `--config` só no `tauri build` do Windows: o
+`tauri-build` exige o arquivo do sidecar já em `binaries/` (com o sufixo do alvo), e assim o
+`cargo build`/`cargo test` do shell continuam sem depender do helper. O job de instaladores compila
+o helper em release, copia com o nome do alvo e confere com `7z l` que ele está no instalador.
 
 ## Constitution Check
 

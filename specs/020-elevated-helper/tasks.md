@@ -38,8 +38,9 @@
       da janela de aprovação sem prometer um UAC que esta build não tem
 - [ ] T012 Teste manual no Windows (janela de aprovação + UAC) e registro no relatório do spike
 - [ ] T013 Allowlist de produção depois do S-02 (fora desta entrega)
-- [ ] T015 Helper no instalador do Windows (sidecar `bundle.externalBin`), com o CI compilando o
-      helper antes do `tauri build`; até lá o lançador se declara indisponível
+- [x] T015 Helper no instalador do Windows: sidecar em `windows/helper.conf.json` (mesclado com
+      `--config` só no `tauri build` do Windows); o job de instaladores compila o helper, copia com
+      o sufixo do alvo e confere com `7z l` que ele está no instalador; teste em `tests/install.rs`
 - [x] T016 Revisão independente (Opus, 16/10) da spec 020, correções que vêm antes do helper no
       instalador: o token do passo elevado vive no máximo um `ELEVATION_TIMEOUT`
       (`elevation_deadline`; um clique tardio no UAC encontra pedido vencido); o executor lê a
