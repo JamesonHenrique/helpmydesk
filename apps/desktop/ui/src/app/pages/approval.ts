@@ -32,7 +32,11 @@ export const APPROVAL_ARM_MS = 1000;
               ><br />
               <span class="small">Desfazer: {{ s.undo }}</span>
               @if (s.requiresElevation) {
-                <br /><span class="small warn">O sistema vai pedir sua permissão.</span>
+                <br />
+                <span class="small warn">
+                  Depois do seu "Sim", o Windows vai abrir a janela de Controle de Conta de Usuário.
+                  Se você recusar lá, nada acontece.
+                </span>
               }
             </span>
           </label>

@@ -84,6 +84,26 @@ const WHY: Record<string, string> = {
               <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
             </div>
           }
+          @case ('elevation_not_available') {
+            <h1 id="t">Preciso de permissão de administrador</h1>
+            <p>
+              Esta correção só pode ser feita por um auxiliar instalado com permissão de
+              administrador, e esta instalação do HelpMyDesk não tem esse auxiliar.
+              <strong>Nada foi alterado.</strong>
+            </p>
+            <p class="small">
+              Peça a alguém que cuide deste computador para instalar o HelpMyDesk "para todos os
+              usuários". Se preferir, siga as orientações abaixo ou leve o relatório.
+            </p>
+            <ol class="steps">
+              @for (s of session.diagnosis()?.steps ?? []; track $index) {
+                <li>{{ s }}</li>
+              }
+            </ol>
+            <div class="actions">
+              <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
+            </div>
+          }
           @default {
             <h1 id="t">
               {{
