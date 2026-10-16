@@ -76,6 +76,8 @@ chamado; o estado incerto é o pior resultado possível.
 
 1. **Given** o UAC em aberto sem resposta, **When** o prazo duro vence, **Then** o passo vira
    `unknown` no diário, nunca é re-executado sozinho e o app diz o que aconteceu.
+2. **Given** o UAC respondido depois do prazo da aprovação, **Then** o helper recusa com
+   `REQUEST_EXPIRED` e nenhuma ação roda.
 2. **Given** o app fechado no meio, **Then** a execução fica `unknown` e a política bloqueia a
    mesma capacidade até a pessoa decidir (regra da spec 008).
 3. **Given** um passo `unknown`, **Then** a verificação não roda como se nada tivesse acontecido
@@ -105,7 +107,10 @@ chamado; o estado incerto é o pior resultado possível.
   `capability_version`, `variant_id`, `platform`, `step_id`, `plan_hash` e `params`
   (`params_schema` do catálogo já validado). Campo desconhecido é erro.
 - **FR-003**: O pedido viaja na linha de comando da invocação elevada, fixado na criação do
-  processo, em um único token; nada é lido de arquivo, de variável de ambiente ou de stdin.
+  processo, em um único token; nada é lido de arquivo, de variável de ambiente ou de stdin. O
+  token carrega o segundo após o qual está morto (`expires_at`, o prazo da aprovação que o
+  originou); o helper compara com o relógio dele antes de qualquer outra coisa e um pedido vencido
+  é `REQUEST_EXPIRED` — um clique no UAC dado tarde não executa nada.
 - **FR-004**: Limite de tamanho do pedido (4 KiB) e limite de tamanho do resultado; estouro é
   `REQUEST_TOO_LARGE`.
 - **FR-005**: Allowlist compilada no próprio crate: par `(capability, versão, variant_id)` →
@@ -151,6 +156,9 @@ chamado; o estado incerto é o pior resultado possível.
 - **SEC-025**: Resultado em JSON com código de saída; quem grava no diário é o processo de usuário.
 - **SEC-026**: Timeout duro, uma ação por invocação, nenhuma rede.
 - **SEC-027**: O helper é efêmero: termina ao terminar a ação, sem ficar residente.
+- **SEC-028**: O pedido carrega o prazo da aprovação que o originou e o helper o compara com o
+  relógio dele antes de qualquer outro passo; um pedido vencido é `REQUEST_EXPIRED`, sem executar
+  nada. Origem: um diálogo de elevação respondido tarde não pode valer como aprovação.
 
 ### Non-Functional Requirements
 

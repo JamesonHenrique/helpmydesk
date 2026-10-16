@@ -15,6 +15,7 @@ path = "src/main.rs"
 [dependencies]
 hmd-canonical = { path = "../hmd-canonical" }
 hmd-catalog = { path = "../hmd-catalog" }
+hmd-domain = { path = "../hmd-domain" }
 hmd-executor = { path = "../hmd-executor" }
 hmd-policy = { path = "../hmd-policy" }
 serde = { version = "1.0.229", features = ["derive"] }
