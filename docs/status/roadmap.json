@@ -547,11 +547,11 @@
    "phase_name": "Endurecimento e release público",
    "phase_order": 6,
    "title": "Canal beta e primeiro release público",
-   "status": "todo",
+   "status": "doing",
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "Workflow de lançamento pronto (release.yml): tag vX.Y.Z gera os instaladores e um rascunho de pré-lançamento com SHA256SUMS; publicar e assinar o SHA256SUMS com GPG é do mantenedor (docs/ops/release.md)"
   }
  ]
 }
