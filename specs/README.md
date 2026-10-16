@@ -24,6 +24,6 @@ Diretórios `NNN-nome` criados pelo Spec Kit. A numeração do Spec Kit é o ID 
 | [017-ai-client](017-ai-client/spec.md) | SPEC-009 | Implementada (núcleo; falta a chave de quem roda para a avaliação real) |
 | [018-ai-onboarding](018-ai-onboarding/spec.md) | SPEC-015, SPEC-010 (parte) | Implementada ("ligar a ajuda inteligente"; falta o teste com a conta real) |
 | [019-killswitch-download](019-killswitch-download/spec.md) | SPEC-014a | Implementada (download do arquivo assinado; falta a chave e a release) |
-| [020-elevated-helper](020-elevated-helper/spec.md) | SPEC-007 | Parcial (helper, caminho de elevação e lançador UAC por PowerShell prontos; falta o helper no instalador, T015, e a allowlist depois do S-02) |
+| [020-elevated-helper](020-elevated-helper/spec.md) | SPEC-007 | Parcial (helper, caminho de elevação, lançador UAC por PowerShell e helper no instalador do Windows prontos; falta a allowlist depois do S-02 e o teste manual, T012) |
 
 Próximas, na ordem do plano: allowlist de produção do helper e correção real (dependem do spike S-02 em máquinas Windows e Ubuntu/Mint), cliente de IA avaliado de verdade (SPEC-009/010, dependem da consulta Q-01 ao OpenCode) e assinatura dos instaladores (F5-SIGN).

@@ -455,7 +455,7 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "Spec 020: helper elevado com revalidação, allowlist, instalador por máquina, aviso na tela e lançador UAC por PowerShell (sem unsafe, resultado pelo código de saída, testado ponta a ponta no CI Windows; ADR-031). Falta o helper no instalador (T015) e a allowlist de produção depois do S-02"
+   "note": "Spec 020: helper elevado com revalidação, allowlist, instalador por máquina com o helper como sidecar, aviso na tela e lançador UAC por PowerShell (sem unsafe, resultado pelo código de saída, testado ponta a ponta no CI Windows; ADR-031). Falta a allowlist de produção depois do S-02 e o teste manual no Windows (T012)"
   },
   {
    "id": "F4-FIXES",

@@ -69,9 +69,11 @@ terceiros, PowerShell, esperar), o mantenedor escolheu **PowerShell**:
   tratado à parte para não virar `0`.
 - Prazo duro: o lançador espera o PowerShell até o prazo e o encerra depois; o passo vira
   `unknown`. Um helper que já subiu como administrador não pode ser parado daqui.
-- `available()` só é verdade no Windows **e** com o helper em `INSTALL_DIR`. Até o helper entrar
-  no instalador (sidecar, spec 020 T010), toda elevação continua `ELEVATION_NOT_AVAILABLE` antes
-  de qualquer escrita.
+- `available()` só é verdade no Windows **e** com o helper em `INSTALL_DIR`. O instalador do
+  Windows leva o helper como sidecar (spec 020 T015: `windows/helper.conf.json`, mesclado só no
+  `tauri build` do CI, que confere o helper dentro do instalador). Com a allowlist vazia, o
+  executor nem oferece o passo: toda elevação continua `ELEVATION_NOT_AVAILABLE` antes de qualquer
+  escrita.
 - Teste ponta a ponta no CI Windows (`crates/hmd-elevated/tests/uac.rs`, `HMD_UAC_E2E=1`): copia o
   helper para `Program Files`, manda o maior token aceito e recebe `PLAN_HASH_MISMATCH`, o que
   prova que o token cruzou a linha de comando inteiro.

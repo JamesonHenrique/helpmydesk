@@ -90,3 +90,33 @@ fn f2_uninst_history_is_deleted_in_the_person_profile() {
         .expect("context restored");
     assert!(current < delete && delete < back, "{hooks}");
 }
+
+/// Spec 020 T015: the Windows installer build merges the sidecar config, and the sidecar is the
+/// helper with the file name the launcher looks for in the install folder.
+#[test]
+fn t015_the_windows_installer_carries_the_helper() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text =
+        std::fs::read_to_string(root.join("apps/desktop/src-tauri/windows/helper.conf.json"))
+            .expect("helper.conf.json is readable");
+    let config: Value = serde_json::from_str(&text).expect("helper.conf.json is JSON");
+    let bins = config["bundle"]["externalBin"]
+        .as_array()
+        .expect("externalBin is a list");
+    assert_eq!(bins.len(), 1);
+    let name = Path::new(bins[0].as_str().expect("a path"))
+        .file_name()
+        .expect("a file name")
+        .to_string_lossy()
+        .to_string();
+    assert_eq!(
+        format!("{name}.exe"),
+        hmd_elevated::uac::HELPER_EXE,
+        "the sidecar has to land where UacLauncher looks"
+    );
+    let ci = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).expect("ci.yml");
+    assert!(
+        ci.contains("--config src-tauri/windows/helper.conf.json"),
+        "the installer build has to merge the sidecar config"
+    );
+}
