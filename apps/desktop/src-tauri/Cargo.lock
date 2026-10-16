@@ -1799,11 +1799,20 @@ dependencies = [
  "hmd-catalog",
  "hmd-core",
  "hmd-domain",
+ "hmd-elevated",
  "hmd-executor",
  "hmd-killswitch",
  "hmd-policy",
  "hmd-probes",
  "hmd-store",
+]
+
+[[package]]
+name = "hmd-canonical"
+version = "0.1.0"
+dependencies = [
+ "hmd-policy",
+ "sha2 0.11.1",
 ]
 
 [[package]]
@@ -1831,9 +1840,23 @@ name = "hmd-domain"
 version = "0.1.0"
 
 [[package]]
+name = "hmd-elevated"
+version = "0.1.0"
+dependencies = [
+ "hmd-canonical",
+ "hmd-catalog",
+ "hmd-domain",
+ "hmd-executor",
+ "hmd-policy",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "hmd-executor"
 version = "0.1.0"
 dependencies = [
+ "hmd-canonical",
  "hmd-core",
  "hmd-domain",
  "hmd-policy",
