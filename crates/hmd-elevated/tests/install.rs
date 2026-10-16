@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//! Spec 020: the installer and the helper have to agree on where the helper lives. SEC-020 only
+//! holds if the Windows installer is the per-machine one *and* that is the folder `trusted_path`
+//! accepts, so both facts are read from the real files instead of being assumed here.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use std::path::{Path, PathBuf};
+
+use hmd_elevated::{INSTALL_DIR, trusted_path};
+use serde_json::Value;
+
+fn desktop_config() -> Value {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../apps/desktop/src-tauri/tauri.conf.json");
+    let text = std::fs::read_to_string(&path).expect("tauri.conf.json is readable");
+    serde_json::from_str(&text).expect("tauri.conf.json is JSON")
+}
+
+#[test]
+fn sec_020_the_windows_installer_is_per_machine() {
+    let nsis = &desktop_config()["bundle"]["windows"]["nsis"];
+    assert_eq!(
+        nsis["installMode"], "perMachine",
+        "SEC-020: the helper only runs from an admin-only folder, so the installer must be per machine"
+    );
+}
+
+#[test]
+fn fr_011_the_helper_only_runs_from_the_per_machine_folder() {
+    assert!(
+        INSTALL_DIR.starts_with(r"C:\Program Files"),
+        "FR-011: {INSTALL_DIR:?} is not a folder only the administrator can write to"
+    );
+    let install_dir = Path::new(INSTALL_DIR);
+    assert!(trusted_path(
+        &install_dir.join("helpmydesk-elevated.exe"),
+        install_dir
+    ));
+    assert!(!trusted_path(
+        Path::new(r"C:\Users\Pessoa\AppData\Local\HelpMyDesk\helpmydesk-elevated.exe"),
+        install_dir
+    ));
+    assert!(!trusted_path(
+        Path::new("/tmp/helpmydesk-elevated"),
+        install_dir
+    ));
+}
+
+#[test]
+fn fr_012_the_uninstaller_takes_the_install_folder_with_it() {
+    // The helper lives inside $INSTDIR, so the NSIS template that removes that folder removes the
+    // helper with it. Nothing else is ours under Program Files, and the helper writes no registry
+    // key, so the hook only has to cover the per-user history (F2-UNINST).
+    let hooks = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../apps/desktop/src-tauri/windows/hooks.nsh"),
+    )
+    .expect("the installer hook file is readable");
+    assert!(hooks.contains("NSIS_HOOK_POSTUNINSTALL"));
+    assert!(
+        !hooks.contains(r"DeleteRegKey HKLM"),
+        "FR-012: the helper creates no registry key; a key removal here would be unexplained"
+    );
+}

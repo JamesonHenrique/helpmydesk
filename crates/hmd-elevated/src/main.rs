@@ -11,11 +11,9 @@ use std::io::Write as _;
 use std::process::ExitCode;
 
 use hmd_catalog::embedded;
-use hmd_elevated::{Allowlist, ElevatedError, HelperContext, result_json, run_request, system_now};
-
-/// Where the installer puts the helper (per machine, spec 020 FR-011 / SEC-020). The per-user
-/// variant of the app has no elevation path.
-const INSTALL_DIR: &str = r"C:\Program Files\HelpMyDesk";
+use hmd_elevated::{
+    Allowlist, ElevatedError, HelperContext, INSTALL_DIR, result_json, run_request, system_now,
+};
 
 fn main() -> ExitCode {
     let allowlist = Allowlist::production();
