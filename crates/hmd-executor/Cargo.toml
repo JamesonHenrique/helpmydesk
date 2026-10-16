@@ -12,6 +12,7 @@ publish = false
 hmd-domain = { path = "../hmd-domain" }
 hmd-policy = { path = "../hmd-policy" }
 hmd-core = { path = "../hmd-core" }
+hmd-canonical = { path = "../hmd-canonical" }
 sha2 = "0.11.1"
 
 [dev-dependencies]

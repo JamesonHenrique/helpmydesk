@@ -1,0 +1,16 @@
+[package]
+name = "hmd-canonical"
+description = "HelpMyDesk canonical plan encoding and hash (spec 008 format hmd-plan@1, shared with the elevated helper of spec 020)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+hmd-policy = { path = "../hmd-policy" }
+sha2 = "0.11.1"
+
+[lints]
+workspace = true
