@@ -153,7 +153,7 @@ export class MockApi implements CoreApi {
       t.state = 'resolved_pending_confirmation';
       return { kind, stepId: null, trigger: null };
     }
-    if (kind === 'not_available') {
+    if (kind === 'not_available' || kind === 'elevation_not_available') {
       return { kind, stepId: 's1', trigger: null };
     }
     t.state = 'unresolved';

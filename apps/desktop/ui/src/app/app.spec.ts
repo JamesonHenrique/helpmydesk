@@ -150,6 +150,19 @@ describe('ResultPage', () => {
     const { el } = await render(ResultPage, { family: 'connectivity' });
     expect(el.textContent).toContain('Para você também voltou a funcionar?');
   });
+
+  it('says the elevation helper is missing and that nothing was changed (spec 020)', async () => {
+    const net = FAMILIES.find((f) => f.code === 'connectivity');
+    const dnsIndex = net?.diagnoses.findIndex((d) => d.fixes.length > 0) ?? -1;
+    await setup(async () => {
+      TestBed.inject(PrototypeState).mockOutcome.set('elevation_not_available');
+      await diagnosed('connectivity', dnsIndex);
+    });
+    const { el } = await render(ResultPage, { family: 'connectivity' });
+    expect(el.textContent).toContain('Preciso de permissão de administrador');
+    expect(el.textContent).toContain('Nada foi alterado.');
+    expect(el.textContent).toContain('para todos os');
+  });
 });
 
 describe('ApprovalPage', () => {
