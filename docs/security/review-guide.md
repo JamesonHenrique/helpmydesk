@@ -53,9 +53,10 @@ Rodar tudo: `tools/check-all.sh` (o mesmo que o CI).
 - A **allowlist do helper** (`Allowlist::production`) também nasce vazia: enquanto for assim, a
   elevação recusa com `ELEVATION_NOT_AVAILABLE` e nada privilegiado acontece. Ela cresce por
   revisão de segurança, não por conveniência (SEC-021, ADR-031).
-- O **lançador no Windows não existe**: `ShellExecuteExW` exige FFI e o workspace proíbe `unsafe`
-  (`[workspace.lints.rust] unsafe_code = "forbid"`). O desenho está no plano da spec 020 e a
-  decisão é do mantenedor (ADR-031). Revise o desenho antes de ele existir.
+- O **lançador no Windows** (`crates/hmd-elevated/src/uac.rs`) chama o PowerShell com um script
+  fixo e dois buracos validados (ADR-031). Ao mexer nele, confira: os buracos continuam recusando
+  aspas, espaço, `$` e acento; nenhum código fora do contrato vira sucesso; o PowerShell continua
+  pelo caminho absoluto e sem perfil.
 - Ainda não foram revisados: o updater, a assinatura dos binários e o cliente de IA.
 
 ## Histórico

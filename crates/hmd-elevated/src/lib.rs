@@ -31,6 +31,8 @@ use hmd_executor::{
 use hmd_policy::{Platform, ProposedStep, RiskLevel};
 use serde::{Deserialize, Serialize};
 
+pub mod uac;
+
 /// Version of the request/result contract (spec 020 FR-002). Unknown versions are refused.
 pub const PROTOCOL: &str = "hmd-elevated@1";
 /// Where the per-machine installer puts the helper (spec 020 FR-011, SEC-020). A helper found
@@ -902,16 +904,15 @@ fn map_launch_error(error: LaunchError) -> ExecError {
     }
 }
 
-/// The launcher of this build.
-///
-/// There is none yet, on purpose. The UAC launcher needs `ShellExecuteExW`, and the workspace
-/// forbids `unsafe` (`[workspace.lints.rust] unsafe_code = "forbid"`); opening that door is a
-/// constitution decision, not a detail of this crate (spec 020 T007, still open). Until then every
-/// elevated step ends in `ELEVATION_NOT_AVAILABLE`, which is the safe answer, not a missing feature.
+/// The launcher of this build: the UAC launcher on Windows ([`uac`], spec 020 T007), none on Linux
+/// (FR-015: no `pkexec` yet). Without the per-machine helper in place the UAC launcher reports
+/// itself unavailable, so the step still ends in `ELEVATION_NOT_AVAILABLE` before anything is
+/// written.
 pub fn production_launcher() -> Box<dyn Launcher> {
-    Box::new(UnavailableLauncher {
-        platform: host_platform(),
-    })
+    match host_platform() {
+        Platform::Windows => Box::new(uac::UacLauncher::installed()),
+        platform => Box::new(UnavailableLauncher { platform }),
+    }
 }
 
 /// The registry of the real app: no system-changing fix (spike S-02) and the elevation path of this

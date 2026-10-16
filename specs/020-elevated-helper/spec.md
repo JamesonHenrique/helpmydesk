@@ -138,8 +138,9 @@ chamado; o estado incerto é o pior resultado possível.
   `ELEVATION_NOT_AVAILABLE`, que fica reservado para "esta build não tem caminho de elevação" e
   acontece antes de qualquer escrita.
 
-- **FR-008**: Lançador no `hmd-executor` (único outro lugar com `Command::new`): pedido do UAC
-  com o token do pedido e coleta do resultado por stdout; trait de lançador com implementação
+- **FR-008**: Lançador no `hmd-elevated` (único outro lugar com `Command::new`): pedido do UAC
+  com o token do pedido e coleta do resultado pelo código de saída (o UAC não devolve o stdout;
+  ADR-031); trait de lançador com implementação
   falsa nos testes.
 - **FR-009**: Ordem inalterada do executor da spec 008: `started` no diário **antes** de criar o
   processo elevado; `succeeded`/`failed`/`unknown` depois; a verificação continua no processo de

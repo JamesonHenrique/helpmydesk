@@ -30,6 +30,9 @@ jobs:
         env:
           # hmd-vault writes and deletes a test entry in the real system vault (S-08).
           HMD_VAULT_TEST: "1"
+          # hmd-elevated starts the helper through the UAC launcher (spec 020 T007); it copies the
+          # helper to Program Files, so only on the Windows runner.
+          HMD_UAC_E2E: ${{ runner.os == 'Windows' && '1' || '0' }}
       - name: UI texts match the catalog
         if: runner.os == 'Linux'
         run: |
