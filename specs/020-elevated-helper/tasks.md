@@ -13,14 +13,10 @@
       sem shell/rede/stdin/ambiente
 - [x] T006 `hmd-executor`: `Launcher` + `FakeLauncher` + `UnavailableLauncher` (Linux);
       `ELEVATION_NOT_AVAILABLE` antes do `started`; timeout → `unknown`
-- [ ] T007 **bloqueado, decisão de constituição**: o `UacLauncher` precisa de `ShellExecuteExW`, e
-      o workspace tem `[workspace.lints.rust] unsafe_code = "forbid"` (o repositório inteiro é
-      zero-`unsafe`). São três caminhos para o mantenedor decidir: (a) amendamento da constituição
-      permitindo `unsafe` só em `hmd-elevated`, com ADR e revisão de cada chamada; (b) crate
-     Community que embrulha a chamada com API segura (revisão de cadeia de suprimento); (c) manter
-      sem lançador até existir máquina Windows de teste (o estado de hoje: recusa segura).
-      Desenho pronto e anotado no plano; o pedido do `Launcher` passou a levar o `ElevatedRequest`
-      inteiro para o transporte poder entrar no token
+- [x] T007 `UacLauncher` por PowerShell (`Start-Process -Verb RunAs`), escolha do mantenedor em
+      16/10 (ADR-031, "Lançador no Windows"): sem `unsafe` e sem dependência; script fixo em
+      `-EncodedCommand`, resultado pelo código de saída, prazo duro, teste ponta a ponta no CI
+      Windows com o maior token (`tests/uac.rs`)
 - [x] T008 Testes citando IDs (FR-/SEC-): pedido forjado, allowlist furada, hash adulterado,
       caminho não confiável, timeout, recusa sem admin
 - [x] T009 App: aviso pré-elevação na janela de aprovação (UAC e o que acontece se a pessoa
@@ -29,7 +25,7 @@
 - [x] T010 Instalador: NSIS **por máquina** (`installMode: perMachine`) com o helper em pasta
       só-admin; desinstalação limpa leva a pasta (e o helper) junto; `INSTALL_DIR` como fonte
       única, com teste que lê o `tauri.conf.json` real (`crates/hmd-elevated/tests/install.rs`).
-      O helper entra no pacote como sidecar quando o lançador existir (T007, bloqueado)
+      O helper entra no pacote como sidecar (T015)
 - [x] T011 `tools/check-all.sh` verde (o job `rust` do CI já compila e testa o bin do helper nas
       duas plataformas), `specs/README.md`, `docs/status/roadmap.json` e o guia de revisão
       atualizados; `Cargo.lock` do shell regenerado (o `hmd-app` passou a depender do helper, e o
@@ -42,3 +38,5 @@
       da janela de aprovação sem prometer um UAC que esta build não tem
 - [ ] T012 Teste manual no Windows (janela de aprovação + UAC) e registro no relatório do spike
 - [ ] T013 Allowlist de produção depois do S-02 (fora desta entrega)
+- [ ] T015 Helper no instalador do Windows (sidecar `bundle.externalBin`), com o CI compilando o
+      helper antes do `tauri build`; até lá o lançador se declara indisponível
