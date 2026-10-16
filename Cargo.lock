@@ -708,6 +708,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "hmd-canonical"
+version = "0.1.0"
+dependencies = [
+ "hmd-policy",
+ "sha2",
+]
+
+[[package]]
 name = "hmd-catalog"
 version = "0.1.0"
 dependencies = [
@@ -736,6 +744,7 @@ version = "0.1.0"
 name = "hmd-executor"
 version = "0.1.0"
 dependencies = [
+ "hmd-canonical",
  "hmd-catalog",
  "hmd-core",
  "hmd-domain",

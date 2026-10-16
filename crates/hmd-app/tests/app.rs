@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use hmd_app::{App, AppError, ExecutionOutcome};
 use hmd_domain::{DAY, ProblemFamily, ReportTrigger, TicketState, Timestamp};
-use hmd_executor::{FixImpl, FixOutcome, Registry};
+use hmd_executor::{Elevation, EvaluatedPlan, ExecError, FixImpl, FixOutcome, Registry};
 use hmd_policy::{AutonomyMode, Platform, ProposedStep};
 use hmd_probes::{Finding, ProbeError, ProbeOutput, Severity};
 
@@ -73,6 +73,24 @@ impl FixImpl for Fake<'static> {
             f.store(true, SeqCst);
         }
         self.outcome
+    }
+}
+
+/// Spec 020: the only fix in the catalog is elevated, so the fakes run through a fake elevation
+/// path instead of the plain registry.
+struct FakeElevation<T>(T);
+
+impl<T: FixImpl> Elevation for FakeElevation<T> {
+    fn available(&self, _step: &ProposedStep, _platform: Platform) -> bool {
+        true
+    }
+    fn run(
+        &self,
+        step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Result<FixOutcome, ExecError> {
+        Ok(self.0.run(step))
     }
 }
 
@@ -145,7 +163,7 @@ fn us3_nothing_runs_without_approval_and_production_has_no_fix_yet() {
         .unwrap();
     assert_eq!(
         outcome,
-        ExecutionOutcome::NotAvailable {
+        ExecutionOutcome::ElevationNotAvailable {
             step_id: "s1".into()
         }
     );
@@ -167,13 +185,12 @@ fn us3_nothing_runs_without_approval_and_production_has_no_fix_yet() {
 #[test]
 fn us3_verified_fix_needs_the_persons_confirmation() {
     let fixed = leak(false);
-    let mut a = app().with_registry(Registry::default().with(
-        FIX,
-        Box::new(Fake {
+    let mut a = app().with_registry(Registry::default().with_elevation(Box::new(FakeElevation(
+        Fake {
             outcome: FixOutcome::Succeeded,
             fixes: Some(fixed),
-        }),
-    ));
+        },
+    ))));
     let t = a
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
@@ -202,13 +219,12 @@ fn us3_verified_fix_needs_the_persons_confirmation() {
 
 #[test]
 fn us3_fix_that_does_not_help_is_rep03() {
-    let mut a = app().with_registry(Registry::default().with(
-        FIX,
-        Box::new(Fake {
+    let mut a = app().with_registry(Registry::default().with_elevation(Box::new(FakeElevation(
+        Fake {
             outcome: FixOutcome::Succeeded,
             fixes: None,
-        }),
-    ));
+        },
+    ))));
     let t = a
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
@@ -250,13 +266,12 @@ fn us3_fix_that_does_not_help_is_rep03() {
 
 #[test]
 fn us3_unknown_outcome_is_rep04_and_the_verification_probe_clarifies_it() {
-    let mut a = app().with_registry(Registry::default().with(
-        FIX,
-        Box::new(Fake {
+    let mut a = app().with_registry(Registry::default().with_elevation(Box::new(FakeElevation(
+        Fake {
             outcome: FixOutcome::Unknown,
             fixes: None,
-        }),
-    ));
+        },
+    ))));
     let t = a
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()
@@ -294,13 +309,12 @@ fn us3_unknown_outcome_is_rep04_and_the_verification_probe_clarifies_it() {
 
 #[test]
 fn unknown_fix_whose_problem_is_gone_counts_as_applied() {
-    let mut a = app().with_registry(Registry::default().with(
-        FIX,
-        Box::new(Fake {
+    let mut a = app().with_registry(Registry::default().with_elevation(Box::new(FakeElevation(
+        Fake {
             outcome: FixOutcome::Unknown,
             fixes: None,
-        }),
-    ));
+        },
+    ))));
     let t = a
         .start_ticket(ProblemFamily::Connectivity, NOW)
         .unwrap()

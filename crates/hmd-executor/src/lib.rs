@@ -44,6 +44,13 @@ pub enum ExecError {
     StepNotApproved,
     DuplicateExecution,
     NotImplemented,
+    /// This build has no elevated implementation for the step (spec 020 US1.1): nothing ran,
+    /// nothing was written to the journal.
+    ElevationNotAvailable,
+    /// The person refused the system permission dialog (spec 020 US1.3).
+    ElevationDenied,
+    /// The hard deadline expired with the dialog or the action still open (spec 020 FR-010).
+    ElevationTimeout,
     /// The journal refused or failed; nothing was run after it.
     Journal(String),
 }
@@ -56,6 +63,9 @@ impl ExecError {
             ExecError::StepNotApproved => "STEP_NOT_APPROVED",
             ExecError::DuplicateExecution => "DUPLICATE_EXECUTION",
             ExecError::NotImplemented => "NOT_IMPLEMENTED",
+            ExecError::ElevationNotAvailable => "ELEVATION_NOT_AVAILABLE",
+            ExecError::ElevationDenied => "ELEVATION_DENIED",
+            ExecError::ElevationTimeout => "ELEVATION_TIMEOUT",
             ExecError::Journal(_) => "JOURNAL_ERROR",
         }
     }
@@ -71,6 +81,66 @@ impl fmt::Display for ExecError {
 }
 
 impl std::error::Error for ExecError {}
+
+use std::time::Duration;
+
+/// Hard deadline for one elevated invocation, counting the wait in the system permission dialog
+/// (spec 020 FR-010). When it expires the step is `unknown`, never re-run automatically.
+pub const ELEVATION_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// Upper bound for a parameter value, re-checked by the helper (spec 020 FR-007). Same number the
+/// Policy Engine applies to proposals (`max_param_len`), repeated on the other side of the trust
+/// boundary.
+pub const MAX_PARAM_LEN: usize = 256;
+
+/// How a step whose catalog variant declares `requires_elevation` actually gets privileged
+/// execution (spec 020 FR-008). `hmd-elevated` implements this; the executor itself never spawns
+/// a process, which keeps it pure and testable without privileges.
+pub trait Elevation: Send + Sync {
+    /// Whether this build can elevate `step` on `platform`. False means the production allowlist
+    /// has no implementation yet (spike S-02).
+    fn available(&self, step: &ProposedStep, platform: Platform) -> bool;
+    /// Runs one approved step elevated. The implementation revalidates the plan by itself; the
+    /// executor does not assume anything about what happened.
+    fn run(
+        &self,
+        step: &ProposedStep,
+        plan: &EvaluatedPlan<'_>,
+        platform: Platform,
+    ) -> Result<FixOutcome, ExecError>;
+
+    /// Undo of an elevated step, called only when the catalog declares
+    /// `rollback = "implemented"` (spec 008 US3, spec 020 FR-009). `None` means this build has no
+    /// undo for that action, which leaves the execution at `verified_failed`.
+    fn rollback(
+        &self,
+        _step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Option<FixOutcome> {
+        None
+    }
+}
+
+/// The default of this build: no elevation path, so every elevated step is refused before
+/// anything is written to the journal (spec 020 US1.1, `Registry::production` stays empty until
+/// spike S-02 measures the privileges each fix needs).
+pub struct NoElevation;
+
+impl Elevation for NoElevation {
+    fn available(&self, _step: &ProposedStep, _platform: Platform) -> bool {
+        false
+    }
+
+    fn run(
+        &self,
+        _step: &ProposedStep,
+        _plan: &EvaluatedPlan<'_>,
+        _platform: Platform,
+    ) -> Result<FixOutcome, ExecError> {
+        Err(ExecError::ElevationNotAvailable)
+    }
+}
 
 /// What an implementation reports back.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,10 +162,20 @@ pub trait FixImpl: Send + Sync {
     }
 }
 
-/// Implementations compiled into this build, by capability ID.
-#[derive(Default)]
+/// Implementations compiled into this build, by capability ID, plus the elevation path used by
+/// steps whose catalog variant declares `requires_elevation` (spec 020).
 pub struct Registry {
     impls: BTreeMap<String, Box<dyn FixImpl>>,
+    elevation: Box<dyn Elevation>,
+}
+
+impl Default for Registry {
+    fn default() -> Registry {
+        Registry {
+            impls: BTreeMap::new(),
+            elevation: Box::new(NoElevation),
+        }
+    }
 }
 
 impl Registry {
@@ -107,6 +187,16 @@ impl Registry {
     pub fn with(mut self, capability: &str, implementation: Box<dyn FixImpl>) -> Registry {
         self.impls.insert(capability.to_string(), implementation);
         self
+    }
+
+    /// Wires the elevation path (spec 020). Without this, elevated steps are refused.
+    pub fn with_elevation(mut self, elevation: Box<dyn Elevation>) -> Registry {
+        self.elevation = elevation;
+        self
+    }
+
+    pub fn elevation(&self) -> &dyn Elevation {
+        self.elevation.as_ref()
     }
 
     pub fn get(&self, capability: &str) -> Option<&dyn FixImpl> {
@@ -162,6 +252,23 @@ impl EvaluatedPlan<'_> {
     pub fn hash(&self) -> String {
         plan_hash(self.proposal, self.decision, self.catalog_version)
     }
+
+    /// The canonical text itself, so the elevation path can put it in the request and the helper
+    /// can recalculate the hash from what it received (spec 020 FR-006).
+    pub fn canonical(&self) -> String {
+        canonical(self.proposal, self.decision, self.catalog_version)
+    }
+}
+
+/// Whether the Policy Engine accepted this step with `requires_elevation`.
+fn verdict_requires_elevation(verdict: &StepVerdict) -> bool {
+    matches!(
+        verdict,
+        StepVerdict::Accepted {
+            requires_elevation: true,
+            ..
+        }
+    )
 }
 
 impl ActionApproval {
@@ -247,7 +354,7 @@ pub fn execute_step(
     registry: &Registry,
     journal_impl: &mut dyn Journal,
 ) -> Result<StepRun, ExecError> {
-    let (_, step) = check_approval(&input.plan, input.approval, input.step_id, input.now)?;
+    let (verdict, step) = check_approval(&input.plan, input.approval, input.step_id, input.now)?;
     let key = idempotency_key(
         &input.plan.proposal.session_id,
         input.step_id,
@@ -256,9 +363,21 @@ pub fn execute_step(
     if journal_impl.key_used(&key).map_err(journal)? {
         return Err(ExecError::DuplicateExecution);
     }
-    let implementation = registry
-        .get(&step.capability)
-        .ok_or(ExecError::NotImplemented)?;
+    // Spec 020: an elevated step runs only through the elevation path; refusing it happens before
+    // any journal write, so nothing is left half-executed.
+    let elevated = verdict_requires_elevation(verdict);
+    let implementation = if elevated {
+        if !registry.elevation().available(step, input.platform) {
+            return Err(ExecError::ElevationNotAvailable);
+        }
+        None
+    } else {
+        Some(
+            registry
+                .get(&step.capability)
+                .ok_or(ExecError::NotImplemented)?,
+        )
+    };
     // US2.1: write-ahead. If the app dies after this line, startup turns it into `unknown`.
     let execution = journal_impl
         .begin(&ExecutionStart {
@@ -273,12 +392,22 @@ pub fn execute_step(
         .map_err(journal)?;
     // Spec 016: a panic inside a fix must not skip the journal update (the row would stay
     // `started`) nor unwind into the caller, which holds the backend lock.
-    let outcome =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| implementation.run(step)));
+    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match implementation {
+        Some(implementation) => Ok(implementation.run(step)),
+        None => registry.elevation().run(step, &input.plan, input.platform),
+    }));
     let (state, reason) = match outcome {
-        Ok(FixOutcome::Succeeded) => (ExecutionState::Succeeded, None),
-        Ok(FixOutcome::Failed(code)) => (ExecutionState::Failed, Some(code)),
-        Ok(FixOutcome::Unknown) => (ExecutionState::Unknown, None),
+        Ok(Ok(FixOutcome::Succeeded)) => (ExecutionState::Succeeded, None),
+        Ok(Ok(FixOutcome::Failed(code))) => (ExecutionState::Failed, Some(code)),
+        Ok(Ok(FixOutcome::Unknown)) => (ExecutionState::Unknown, None),
+        // After `started` an error is uncertainty, not success: `unknown` with the reason code.
+        Ok(Err(e)) => (
+            match e {
+                ExecError::ElevationDenied => ExecutionState::Failed,
+                _ => ExecutionState::Unknown,
+            },
+            Some(e.reason_code()),
+        ),
         Err(_) => (ExecutionState::Unknown, Some("PANICKED")),
     };
     journal_impl
@@ -300,6 +429,18 @@ pub struct Verification {
     pub reason: Option<&'static str>,
 }
 
+/// Everything [`verify_step`] needs besides the registry and the journal. The plan and the platform
+/// travel with it because the undo of an elevated step goes through the elevation path (spec 020).
+#[derive(Debug, Clone, Copy)]
+pub struct VerifyInput<'a> {
+    pub execution: i64,
+    pub step: &'a ProposedStep,
+    pub variant: &'a PlatformVariant,
+    pub plan: EvaluatedPlan<'a>,
+    pub platform: Platform,
+    pub now: Timestamp,
+}
+
 /// Pure US3 rule: verified when the probe ran and none of the step's `all_of` precondition
 /// findings is still produced.
 pub fn verification_passed(variant: &PlatformVariant, outcome: &ProbeOutcome) -> bool {
@@ -316,14 +457,19 @@ pub fn verification_passed(variant: &PlatformVariant, outcome: &ProbeOutcome) ->
 /// Policy Engine, e.g. [`hmd_core::run_authorized_probe`]), records `verified_ok` or
 /// `verified_failed`, and rolls back when the catalog says the capability can.
 pub fn verify_step(
-    execution: i64,
-    step: &ProposedStep,
-    variant: &PlatformVariant,
+    input: &VerifyInput<'_>,
     registry: &Registry,
     journal_impl: &mut dyn Journal,
     probe: impl FnOnce(&str) -> ProbeOutcome,
-    now: Timestamp,
 ) -> Result<Verification, ExecError> {
+    let VerifyInput {
+        execution,
+        step,
+        variant,
+        plan,
+        platform,
+        now,
+    } = *input;
     let (passed, reason) = match variant.verification.as_deref() {
         Some(probe_id) => {
             let outcome = probe(probe_id);
@@ -349,10 +495,18 @@ pub fn verify_step(
         .advance(execution, ExecutionState::VerifiedFailed, reason, now)
         .map_err(journal)?;
     let mut state = ExecutionState::VerifiedFailed;
-    if variant.rollback == Rollback::Implemented
-        && let Some(implementation) = registry.get(&step.capability)
-        && implementation.rollback(step) == FixOutcome::Succeeded
-    {
+    // Spec 020: an elevated step has no implementation in the plain registry; its undo goes
+    // through the same elevation path that ran it.
+    let rolled_back = if variant.rollback == Rollback::Implemented {
+        if variant.requires_elevation {
+            registry.elevation().rollback(step, &plan, platform)
+        } else {
+            registry.get(&step.capability).map(|i| i.rollback(step))
+        }
+    } else {
+        None
+    };
+    if rolled_back == Some(FixOutcome::Succeeded) {
         journal_impl
             .advance(execution, ExecutionState::RolledBack, None, now)
             .map_err(journal)?;

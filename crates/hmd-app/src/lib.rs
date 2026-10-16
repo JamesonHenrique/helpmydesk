@@ -23,7 +23,7 @@ use hmd_domain::{
     TicketEvent, TicketState, Timestamp, due_event, repeated_reopen_trigger,
 };
 use hmd_executor::{
-    ActionApproval, EvaluatedPlan, ExecError, ExecuteInput, Registry, execute_step,
+    ActionApproval, EvaluatedPlan, ExecError, ExecuteInput, Registry, VerifyInput, execute_step,
     verification_passed, verify_step,
 };
 use hmd_policy::{
@@ -206,6 +206,9 @@ pub enum ExecutionOutcome {
     Verified,
     /// A step has no implementation in this build: the person gets the guidance instead.
     NotAvailable { step_id: String },
+    /// The step needs the system permission dialog and this build has no elevated implementation
+    /// yet (spec 020 FR-013). Nothing ran and nothing was changed.
+    ElevationNotAvailable { step_id: String },
     /// A step failed, was not proven, or ended `unknown`: the ticket goes to the report.
     NotResolved { trigger: ReportTrigger },
 }
@@ -881,6 +884,12 @@ impl App {
                     };
                     break;
                 }
+                Err(ExecError::ElevationNotAvailable) => {
+                    outcome = ExecutionOutcome::ElevationNotAvailable {
+                        step_id: step.step_id.clone(),
+                    };
+                    break;
+                }
                 Err(e) => return Err(e.into()),
             };
             let trigger = match run.state {
@@ -893,13 +902,17 @@ impl App {
                         .ok_or(AppError::InvalidState("no_variant"))?;
                     let catalog = self.catalog;
                     let verification = verify_step(
-                        run.execution,
-                        step,
-                        variant,
+                        &VerifyInput {
+                            execution: run.execution,
+                            step,
+                            variant,
+                            plan,
+                            platform: self.platform,
+                            now,
+                        },
                         &self.registry,
                         &mut self.store,
                         |probe| run_authorized_probe(catalog, &opts, probe, &run_probe),
-                        now,
                     )?;
                     verification.report
                 }
@@ -920,7 +933,8 @@ impl App {
                 self.store
                     .apply(&ticket.id, TicketEvent::CannotResolve(*trigger), now)?;
             }
-            ExecutionOutcome::NotAvailable { .. } => {}
+            ExecutionOutcome::NotAvailable { .. }
+            | ExecutionOutcome::ElevationNotAvailable { .. } => {}
         }
         Ok(outcome)
     }
