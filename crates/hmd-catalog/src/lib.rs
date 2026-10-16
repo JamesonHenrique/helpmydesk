@@ -316,9 +316,12 @@ fn cross_check(
             }
         }
         if let Some(probe) = &v.verification {
-            let ok = catalog.get(probe).is_some_and(|p| {
-                p.kind == CapabilityKind::Probe && p.variants.contains_key(platform)
-            });
+            // `-` is how the canonical plan text writes "no verification"; a probe with that id
+            // would give two plans the same hash.
+            let ok = probe != "-"
+                && catalog.get(probe).is_some_and(|p| {
+                    p.kind == CapabilityKind::Probe && p.variants.contains_key(platform)
+                });
             if !ok {
                 errors.push(err(
                     file,

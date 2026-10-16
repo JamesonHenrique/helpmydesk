@@ -55,6 +55,9 @@ pub const TIMEOUT: std::time::Duration = ELEVATION_TIMEOUT;
 #[serde(deny_unknown_fields)]
 pub struct ElevatedRequest {
     pub protocol: String,
+    /// What the helper is asked to do with the step. Only `run` exists; undoing an elevated fix
+    /// will be its own value, so a rollback can never be read as "run it again".
+    pub operation: Operation,
     /// The canonical text of the plan the person approved (`hmd-plan@1`).
     pub plan: String,
     /// `sha256:<64 hex>` of `plan`, recomputed by the helper (FR-006).
@@ -72,6 +75,13 @@ pub struct ElevatedRequest {
     /// before anything else, so a UAC dialog the person answers late cannot run an old approval
     /// (FR-003).
     pub expires_at: Timestamp,
+}
+
+/// The operation of a request. Closed: an unknown value is a refusal (`BAD_REQUEST`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Operation {
+    Run,
 }
 
 /// What the helper reports back (SEC-025).
@@ -415,6 +425,33 @@ struct PlanStep {
     params: BTreeMap<String, String>,
 }
 
+/// Sections of the canonical text, in the order `hmd-canonical` writes them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Stage {
+    Header,
+    Catalog,
+    Session,
+    Steps,
+    Verdicts,
+}
+
+impl Stage {
+    /// Moves to `next` if it is the following section, or stays in it when the section repeats.
+    fn advance(self, next: Stage, repeats: bool) -> Result<Stage, ElevatedError> {
+        let following = match self {
+            Stage::Header => Stage::Catalog,
+            Stage::Catalog => Stage::Session,
+            Stage::Session => Stage::Steps,
+            Stage::Steps | Stage::Verdicts => Stage::Verdicts,
+        };
+        if next == following || (repeats && next == self) {
+            Ok(next)
+        } else {
+            Err(ElevatedError::PlanMismatch)
+        }
+    }
+}
+
 struct PlanVerdict {
     state: String,
     elevation: bool,
@@ -422,6 +459,13 @@ struct PlanVerdict {
 
 impl PlanText {
     fn parse(text: &str) -> Result<PlanText, ElevatedError> {
+        // Byte for byte what `hmd-canonical` writes: `\n` only, one at the end of every line, and
+        // the sections in order (catalog, session, steps with their params, verdicts). Anything
+        // else is a text the executor never produced.
+        if text.contains('\r') || !text.ends_with('\n') {
+            return Err(ElevatedError::PlanMismatch);
+        }
+        let mut stage = Stage::Header;
         let mut lines = text.lines();
         if lines.next() != Some(PLAN_FORMAT) {
             return Err(ElevatedError::PlanMismatch);
@@ -437,13 +481,12 @@ impl PlanText {
             match (key, fields.as_slice()) {
                 // Written first, before anything else, by `hmd-canonical`.
                 ("catalog", [version]) => {
-                    if !plan.catalog.is_empty() {
-                        return Err(ElevatedError::PlanMismatch);
-                    }
+                    stage = stage.advance(Stage::Catalog, false)?;
                     plan.catalog = version.clone();
                 }
-                ("session", [_]) => {}
+                ("session", [_]) => stage = stage.advance(Stage::Session, false)?,
                 ("step", [step_id, capability, version]) => {
+                    stage = stage.advance(Stage::Steps, true)?;
                     current = Some(step_id.clone());
                     // A step that appears twice is a plan this helper did not read the way the
                     // executor wrote it: no "last one wins".
@@ -463,19 +506,29 @@ impl PlanText {
                     }
                 }
                 ("param", [step_id, name, value]) => {
+                    if stage != Stage::Steps {
+                        return Err(ElevatedError::PlanMismatch);
+                    }
                     let Some(id) = current.as_ref() else {
                         return Err(ElevatedError::PlanMismatch);
                     };
                     if id != step_id {
                         return Err(ElevatedError::PlanMismatch);
                     }
-                    plan.steps
+                    if plan
+                        .steps
                         .get_mut(step_id)
                         .ok_or(ElevatedError::PlanMismatch)?
                         .params
-                        .insert(name.clone(), value.clone());
+                        .insert(name.clone(), value.clone())
+                        .is_some()
+                    {
+                        // The policy refuses duplicate params; only a forged text has them.
+                        return Err(ElevatedError::PlanMismatch);
+                    }
                 }
                 ("verdict", [step_id, state, rest @ ..]) => {
+                    stage = stage.advance(Stage::Verdicts, true)?;
                     // Exactly the arity `hmd-canonical` writes: `accepted` with
                     // `<risk>|<approval>|<elevation>|<verification>|<rollback>` (the elevation flag
                     // is the third field of `rest`), `downgraded` with `<capability>|<reason>`, or
@@ -544,13 +597,15 @@ pub fn decode_token(token: &str) -> Result<ElevatedRequest, ElevatedError> {
 
 /// FR-014: the result goes to the pipe and to stdout; both are small and sanitized. Over the cap,
 /// the reason is replaced by a code that always fits: a journal a person can read beats a detail.
+/// The substitute says `unknown`: the action may already have run, and `failed` would let it be
+/// tried again (FR-010).
 pub fn result_json(result: &ElevatedResult) -> String {
     let json = serde_json::to_string(result).unwrap_or_default();
     if !json.is_empty() && json.len() <= MAX_RESULT_BYTES {
         return json;
     }
     format!(
-        "{{\"protocol\":\"{PROTOCOL}\",\"outcome\":\"failed\",\"reason_code\":\"RESULT_TOO_LARGE\",\"detail\":null}}"
+        "{{\"protocol\":\"{PROTOCOL}\",\"outcome\":\"unknown\",\"reason_code\":\"RESULT_TOO_LARGE\",\"detail\":null}}"
     )
 }
 
@@ -640,11 +695,18 @@ fn base64url_decode_any(token: &str) -> Result<String, ElevatedError> {
 
 /// SEC-020: the helper refuses to run from anywhere but the per-machine install folder. A helper in
 /// a folder the person can write to would be replaceable before the UAC click.
+///
+/// Exactly that folder, not a subfolder, and only plain components: `starts_with` compares
+/// components without normalizing, so `..` would walk out of a prefix that still matches.
 pub fn trusted_path(exe: &std::path::Path, install_dir: &std::path::Path) -> bool {
-    match exe.parent() {
-        Some(parent) => parent.starts_with(install_dir),
-        None => false,
-    }
+    use std::path::Component;
+    let plain = exe.components().all(|c| {
+        matches!(
+            c,
+            Component::Prefix(_) | Component::RootDir | Component::Normal(_)
+        )
+    });
+    plain && exe.parent() == Some(install_dir)
 }
 
 /// Everything the helper needs from the outside, so the security decisions can be tested without
@@ -725,6 +787,7 @@ pub fn build_request(
     let params = step.params.iter().cloned().collect::<BTreeMap<_, _>>();
     Ok(ElevatedRequest {
         protocol: PROTOCOL.to_string(),
+        operation: Operation::Run,
         plan: plan.canonical(),
         plan_hash: plan.hash(),
         step_id: step.step_id.clone(),
