@@ -258,10 +258,7 @@ pub fn parse_answer(content: &str) -> Result<Classification, AiError> {
         None => None,
         Some(q) => {
             let q = q.trim().to_string();
-            let plain = !q.contains(['<', '>', '[', ']', '`', '\n'])
-                && !q.contains("http")
-                && !q.contains("www.");
-            if q.chars().count() > MAX_QUESTION_CHARS || !plain {
+            if q.chars().count() > MAX_QUESTION_CHARS || !plain_question(&q) {
                 return Err(bad("question is not short plain text"));
             }
             (!q.is_empty()).then_some(q)
@@ -272,6 +269,67 @@ pub fn parse_answer(content: &str) -> Result<Classification, AiError> {
         confidence,
         question,
     })
+}
+
+/// Words that make a question ask for a secret (spec 017 FR-007). The answer to the question goes
+/// back to the model, so a question asking for one would carry it out of the computer.
+const SECRET_WORDS: &[&str] = &[
+    "senha", "senhas", "password", "passwd", "pin", "cartão", "cartao", "cpf", "cnpj", "token",
+    "chave", "sms",
+];
+/// "Código" alone is a fair question (an error code); these are the ones that are secrets.
+const SECRET_PHRASES: &[&str] = &[
+    "código de verificação",
+    "codigo de verificacao",
+    "código de segurança",
+    "codigo de seguranca",
+    "código de acesso",
+    "codigo de acesso",
+    "código de confirmação",
+    "codigo de confirmacao",
+];
+
+/// Spec 017 FR-005 and FR-007: a follow-up question is short plain text. No markup, no link in any
+/// spelling (scheme, `www.`, a bare domain, an e-mail), no phone number, no invisible or
+/// direction-changing character, and nothing that asks for a secret.
+fn plain_question(q: &str) -> bool {
+    let invisible = |c: char| {
+        c.is_control()
+            || matches!(
+                c,
+                '\u{00AD}'
+                    | '\u{200B}'..='\u{200F}'
+                    | '\u{2028}'..='\u{202E}'
+                    | '\u{2060}'..='\u{2069}'
+                    | '\u{FEFF}'
+            )
+    };
+    if q.chars().any(invisible) || q.contains(['<', '>', '[', ']', '`', '@']) {
+        return false;
+    }
+    let lower = q.to_lowercase();
+    if lower.contains("://") || lower.contains("www.") || lower.contains("http") {
+        return false;
+    }
+    // A bare domain: a dot right after a letter or digit and right before two or more letters.
+    let chars = lower.chars().collect::<Vec<char>>();
+    let domain = chars.iter().enumerate().any(|(i, c)| {
+        *c == '.'
+            && i > 0
+            && chars[i - 1].is_alphanumeric()
+            && chars[i + 1..]
+                .iter()
+                .take_while(|c| c.is_ascii_alphabetic())
+                .count()
+                >= 2
+    });
+    // A phone number: eight digits or more, however they are grouped.
+    let phone = q.chars().filter(char::is_ascii_digit).count() >= 8;
+    let secret = lower
+        .split(|c: char| !c.is_alphanumeric())
+        .any(|word| SECRET_WORDS.contains(&word))
+        || SECRET_PHRASES.iter().any(|p| lower.contains(p));
+    !domain && !phone && !secret
 }
 
 /// One classification call: the request, the HTTP outcome and the closed-schema answer.
