@@ -34,8 +34,9 @@ export const APPROVAL_ARM_MS = 1000;
               @if (s.requiresElevation) {
                 <br />
                 <span class="small warn">
-                  Depois do seu "Sim", o Windows vai abrir a janela de Controle de Conta de Usuário.
-                  Se você recusar lá, nada acontece.
+                  Se o seu HelpMyDesk tiver o auxiliar de administrador instalado, o Windows vai
+                  abrir a janela de Controle de Conta de Usuário. Recusar lá não muda nada no
+                  computador.
                 </span>
               }
             </span>

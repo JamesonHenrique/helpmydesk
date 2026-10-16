@@ -104,24 +104,40 @@ chamado; o estado incerto é o pior resultado possível.
   resultado) e binário; é um dos dois únicos lugares do código onde `Command::new` é aceito pela
   guarda `tools/check-no-process-spawn.sh`.
 - **FR-002**: Protocolo versionado `hmd-elevated@1`: pedido com `protocol`, `capability`,
-  `capability_version`, `variant_id`, `platform`, `step_id`, `plan_hash` e `params`
-  (`params_schema` do catálogo já validado). Campo desconhecido é erro.
+  `capability_version`, `platform`, `step_id`, `plan`, `plan_hash`, `params` (`params_schema` do
+  catálogo já validado), `result_pipe` opcional e `expires_at`. Campo desconhecido é erro.
+  **Sem `variant_id`**: a variante é a do sistema em que o helper está rodando, e o helper exige
+  que `platform` seja esse mesmo sistema (`PLATFORM_NOT_SUPPORTED` caso contrário) — o par
+  `(capability, versão)` fica inequívoco sem um identificador que o texto canônico do plano não
+  carrega.
 - **FR-003**: O pedido viaja na linha de comando da invocação elevada, fixado na criação do
   processo, em um único token; nada é lido de arquivo, de variável de ambiente ou de stdin. O
   token carrega o segundo após o qual está morto (`expires_at`, o prazo da aprovação que o
   originou); o helper compara com o relógio dele antes de qualquer outra coisa e um pedido vencido
-  é `REQUEST_EXPIRED` — um clique no UAC dado tarde não executa nada.
-- **FR-004**: Limite de tamanho do pedido (4 KiB) e limite de tamanho do resultado; estouro é
-  `REQUEST_TOO_LARGE`.
-- **FR-005**: Allowlist compilada no próprio crate: par `(capability, versão, variant_id)` →
-  implementação nativa. Ação fora da lista é `NOT_IN_ALLOWLIST`. A lista de produção fica
-  **vazia** até o spike S-02.
+  é `REQUEST_EXPIRED` — um clique no UAC dado tarde não executa nada. O próprio token não escolhe
+  o próprio prazo: um `expires_at` mais longe que a validade de uma aprovação (10 min) é
+  `REQUEST_DEADLINE_TOO_LONG`, o que limita a reutilização de um token capturado.
+- **FR-004**: Limite de tamanho do pedido (4 KiB, conferido no token, antes de decodificar) e
+  limite de tamanho do resultado (512 bytes, com código substituto que sempre cabe); estouro do
+  pedido é `REQUEST_TOO_LARGE`. Cada pedido tem uma única grafia em base64url: um token que
+  decodifica para os mesmos bytes sem ser a grafia deste helper é recusado.
+- **FR-005**: Allowlist compilada no próprio crate: par `(capability, versão)` → implementação
+  nativa (a plataforma é a do helper, por FR-007). Ação fora da lista é `NOT_IN_ALLOWLIST`. A
+  lista de produção fica **vazia** até o spike S-02, e a primeira entrada que entrar só entra sem
+  parâmetros, enquanto o valor de um parâmetro não tiver domínio validado pelo catálogo.
 - **FR-006**: O helper recalcula o hash canônico do material que recebeu (passos, decisão,
   versão do catálogo) e exige igualdade com o `plan_hash` do pedido; divergência é
   `PLAN_HASH_MISMATCH`. O helper não confia em nenhum campo recebido sem recalcular.
-- **FR-007**: O helper revalida o pedido contra o catálogo embutido deste build (variante
-  existente, `requires_elevation: true`, plataforma presente, params dentro do esquema) antes de
-  executar.
+- **FR-007**: O helper revalida o pedido contra o catálogo embutido deste build antes de
+  executar: versão do catálogo igual à do plano (`CATALOG_MISMATCH` caso contrário), variante
+  existente **para o sistema em que o helper está rodando** (`PLATFORM_NOT_SUPPORTED` caso o
+  pedido diga outro), `requires_elevation: true`, risco nunca N4 e params dentro do esquema
+  (`INVALID_PARAMS`).
+- **FR-016**: Uma recusa do helper chega ao diário com o código dela (`failed` + `NOT_IN_ALLOWLIST`,
+  `HELPER_PATH_NOT_TRUSTED`, `PLAN_HASH_MISMATCH`, …), nunca derretida em
+  `ELEVATION_NOT_AVAILABLE`, que fica reservado para "esta build não tem caminho de elevação" e
+  acontece antes de qualquer escrita.
+
 - **FR-008**: Lançador no `hmd-executor` (único outro lugar com `Command::new`): pedido do UAC
   com o token do pedido e coleta do resultado por stdout; trait de lançador com implementação
   falsa nos testes.
@@ -159,6 +175,10 @@ chamado; o estado incerto é o pior resultado possível.
 - **SEC-028**: O pedido carrega o prazo da aprovação que o originou e o helper o compara com o
   relógio dele antes de qualquer outro passo; um pedido vencido é `REQUEST_EXPIRED`, sem executar
   nada. Origem: um diálogo de elevação respondido tarde não pode valer como aprovação.
+- **SEC-029**: O token não escolhe o próprio prazo: `expires_at` mais longe que a validade de uma
+  aprovação é recusado (`REQUEST_DEADLINE_TOO_LONG`), e o resultado tem tamanho máximo com código
+  substituto. Origem: um token montado à mão (ou capturado de outra execução) não pode comprar
+  anos de reutilização, e o diário não cresce sem limite.
 
 ### Non-Functional Requirements
 
