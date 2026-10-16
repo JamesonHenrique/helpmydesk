@@ -11,7 +11,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "c47a31e",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "S-01",
@@ -23,7 +24,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Sondas já rodam no CI (Windows e Ubuntu); falta Tauri e as distros/versões reais"
+   "note": "Sondas já rodam no CI (Windows e Ubuntu); falta Tauri e as distros/versões reais",
+   "waiting_on": "teste em máquina real"
   },
   {
    "id": "S-02",
@@ -35,7 +37,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Rodada 1 no CI (docs/spikes/S-02-privilegios.md): limpar o cache de DNS funciona com conta padrão no Windows Server 2025 e sem sudo no Ubuntu 24.04 (sem ação de polkit). Falta a rodada 2 em Windows 10/11 e Ubuntu/Mint com sessão gráfica"
+   "note": "Rodada 1 no CI (docs/spikes/S-02-privilegios.md): limpar o cache de DNS funciona com conta padrão no Windows Server 2025 e sem sudo no Ubuntu 24.04 (sem ação de polkit). Falta a rodada 2 em Windows 10/11 e Ubuntu/Mint com sessão gráfica",
+   "waiting_on": "teste em máquina real"
   },
   {
    "id": "S-03",
@@ -47,7 +50,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Relatório docs/spikes/S-03-elevacao.md: Windows com UAC via PowerShell (testado ponta a ponta no CI); Linux fica em L1 (D-Bus) sem pkexec, pois o catálogo e as candidatas medidas têm API. Falta o diálogo do UAC em Windows 10/11 (T012)"
+   "note": "Relatório docs/spikes/S-03-elevacao.md: Windows com UAC via PowerShell (testado ponta a ponta no CI); Linux fica em L1 (D-Bus) sem pkexec, pois o catálogo e as candidatas medidas têm API. Falta o diálogo do UAC em Windows 10/11 (T012)",
+   "waiting_on": "teste em máquina real"
   },
   {
    "id": "S-04",
@@ -59,7 +63,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Conteúdo vem do núcleo; só a janela de aprovação aprova (ACL testada, inclusive a recusa); nada pré-marcado; Sim espera 1 s ao abrir e ao ganhar foco. Falta testar na mão no Windows"
+   "note": "Conteúdo vem do núcleo; só a janela de aprovação aprova (ACL testada, inclusive a recusa); nada pré-marcado; Sim espera 1 s ao abrir e ao ganhar foco. Falta testar na mão no Windows",
+   "waiting_on": "teste em máquina real"
   },
   {
    "id": "S-06",
@@ -71,7 +76,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Instaladores de teste no CI; relatório do spike (docs/spikes/S-06-updater.md): plugin oficial atualiza NSIS e AppImage, não .deb. Recomendação: Windows com plugin; .deb com aviso de versão nova. Falta a chave do atualizador"
+   "note": "Instaladores de teste no CI; relatório do spike (docs/spikes/S-06-updater.md): plugin oficial atualiza NSIS e AppImage, não .deb. Recomendação: Windows com plugin; .deb com aviso de versão nova. Falta a chave do atualizador",
+   "waiting_on": "chave do atualizador"
   },
   {
    "id": "S-07",
@@ -83,7 +89,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Relatório docs/spikes/S-07-assinatura.md: SignPath Foundation é a única via gratuita possível no Brasil (elegibilidade de projeto de 1 pessoa não confirmada); Azure inelegível. Depende do mantenedor: MFA, política de assinatura e pedido na SignPath"
+   "note": "Relatório docs/spikes/S-07-assinatura.md: SignPath Foundation é a única via gratuita possível no Brasil (elegibilidade de projeto de 1 pessoa não confirmada); Azure inelegível. Depende do mantenedor: MFA, política de assinatura e pedido na SignPath",
+   "waiting_on": "conta e pedido na SignPath"
   },
   {
    "id": "S-08",
@@ -95,7 +102,8 @@
    "weight": 1,
    "delivered_on": "2026-10-15",
    "ref": "hmd-vault",
-   "note": "keyring 4.2.0: gravar/ler/apagar testado no Gerenciador de Credenciais de um Windows real (CI); Linux usa Secret Service, sem ele a chave fica só na memória"
+   "note": "keyring 4.2.0: gravar/ler/apagar testado no Gerenciador de Credenciais de um Windows real (CI); Linux usa Secret Service, sem ele a chave fica só na memória",
+   "waiting_on": ""
   },
   {
    "id": "S-09",
@@ -107,7 +115,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Chamada HTTPS real ao opencode.ai feita com código falso (recusada como esperado); falta a chave real"
+   "note": "Chamada HTTPS real ao opencode.ai feita com código falso (recusada como esperado); falta a chave real",
+   "waiting_on": "chave do OpenCode"
   },
   {
    "id": "E-04",
@@ -119,7 +128,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "38 casos sintéticos (inclui 5 injeções) e executor `--example eval`; falta rodar com a chave real do mantenedor"
+   "note": "38 casos sintéticos (inclui 5 injeções) e executor `--example eval`; falta rodar com a chave real do mantenedor",
+   "waiting_on": "chave do OpenCode"
   },
   {
    "id": "E-06",
@@ -131,7 +141,8 @@
    "weight": 1,
    "delivered_on": "2026-10-15",
    "ref": "",
-   "note": "Enviada pelo mantenedor; resposta: uso liberado (texto da resposta a registrar no ADR)"
+   "note": "Mantenedor relatou em 15/10 que o OpenCode liberou o uso; o texto da resposta ainda não está registrado no plano",
+   "waiting_on": ""
   },
   {
    "id": "F1-01",
@@ -143,7 +154,8 @@
    "weight": 1,
    "delivered_on": "2026-10-14",
    "ref": "c47a31e",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "F1-02",
@@ -155,7 +167,8 @@
    "weight": 1,
    "delivered_on": "2026-10-14",
    "ref": "c47a31e",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "F1-03",
@@ -167,7 +180,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "9f24a26",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "F1-04",
@@ -179,7 +193,8 @@
    "weight": 1,
    "delivered_on": "2026-10-14",
    "ref": "c47a31e",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "F1-05",
@@ -191,7 +206,8 @@
    "weight": 1,
    "delivered_on": "2026-10-15",
    "ref": "",
-   "note": "PR obrigatório com os 8 checks do CI, vale para admin; sem force-push nem apagar a main"
+   "note": "PR obrigatório com os 8 checks do CI, vale para admin; sem force-push nem apagar a main",
+   "waiting_on": ""
   },
   {
    "id": "F1-06",
@@ -202,8 +218,9 @@
    "status": "done",
    "weight": 3,
    "delivered_on": "2026-10-15",
-   "ref": "",
-   "note": "Telas com dados de exemplo e textos gerados do catálogo; falta teste com leigos e revisão visual"
+   "ref": "d4004ec",
+   "note": "Telas com dados de exemplo e textos gerados do catálogo; falta teste com leigos e revisão visual",
+   "waiting_on": ""
   },
   {
    "id": "F1-07",
@@ -215,7 +232,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Textos dos playbooks e do relatório escritos; não testados com leigos"
+   "note": "Textos dos playbooks e do relatório escritos; não testados com leigos",
+   "waiting_on": "teste com leigos"
   },
   {
    "id": "SPEC-016",
@@ -226,8 +244,9 @@
    "status": "done",
    "weight": 1,
    "delivered_on": "2026-10-15",
-   "ref": "",
-   "note": "CODEOWNERS só vale com proteção da branch (configuração do GitHub)"
+   "ref": "5456e8e",
+   "note": "CODEOWNERS só vale com proteção da branch (configuração do GitHub)",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-001a",
@@ -239,7 +258,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "c47a31e",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-001b",
@@ -251,7 +271,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "135ce6d",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-001c",
@@ -263,7 +284,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "135ce6d",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-001d",
@@ -275,7 +297,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "71267f4",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-001e",
@@ -286,8 +309,9 @@
    "status": "done",
    "weight": 2,
    "delivered_on": "2026-10-15",
-   "ref": "",
-   "note": "Leitura do registro do Windows a confirmar no S-01; registros do sistema (logs) ficam para depois"
+   "ref": "0703be4",
+   "note": "Leitura do registro do Windows a confirmar no S-01; registros do sistema (logs) ficam para depois",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-002",
@@ -299,7 +323,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "f935b0e",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-003",
@@ -311,7 +336,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "05d3966",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-011",
@@ -322,8 +348,9 @@
    "status": "done",
    "weight": 2,
    "delivered_on": "2026-10-15",
-   "ref": "",
-   "note": "A tela no app vem com o app desktop"
+   "ref": "97ad296",
+   "note": "A tela no app vem com o app desktop",
+   "waiting_on": ""
   },
   {
    "id": "F2-APP",
@@ -335,7 +362,8 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "App usado de verdade (Xvfb): boas-vindas, diagnóstico real, relatório e ligar a IA (código falso recusado pelo serviço real). Instaladores de teste no CI (.deb e Windows). Falta o mantenedor usar na mão"
+   "note": "App usado de verdade (Xvfb): boas-vindas, diagnóstico real, relatório e ligar a IA (código falso recusado pelo serviço real). Instaladores de teste no CI (.deb e Windows). Falta o mantenedor usar na mão",
+   "waiting_on": "uso na mão"
   },
   {
    "id": "F2-UNINST",
@@ -347,7 +375,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Apagar tudo remove histórico, relatórios, consentimentos e a chave da IA; desinstalador do Windows oferece apagar o histórico. Falta testar a desinstalação num Windows real"
+   "note": "Apagar tudo remove histórico, relatórios, consentimentos e a chave da IA; a caixa \"Remover dados do programa\" do desinstalador do Windows apaga o histórico no perfil de quem desinstala. Falta testar a desinstalação num Windows real",
+   "waiting_on": "teste em máquina real"
   },
   {
    "id": "F2-LAB",
@@ -359,7 +388,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "",
+   "waiting_on": "máquinas virtuais"
   },
   {
    "id": "SPEC-009",
@@ -371,7 +401,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Spec 017: hmd-ai (endpoint oficial, 4 modelos de retenção zero, esquema fechado). Falta a chamada real com chave válida"
+   "note": "Spec 017: hmd-ai (endpoint oficial, 4 modelos de retenção zero, esquema fechado). Falta a chamada real com chave válida",
+   "waiting_on": "chave do OpenCode"
   },
   {
    "id": "SPEC-010",
@@ -383,7 +414,8 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "IA só classifica a família; se em dúvida pergunta, a resposta soma ao relato (prévia mostra o texto inteiro); no máximo 2 rodadas, depois o menu. Falta enviar o resumo das verificações"
+   "note": "IA só classifica a família; se em dúvida pergunta, a resposta soma ao relato (prévia mostra o texto inteiro); no máximo 2 rodadas, depois o menu. Falta enviar o resumo das verificações",
+   "waiting_on": "decisão sobre o que vai para a IA"
   },
   {
    "id": "SPEC-015",
@@ -394,8 +426,9 @@
    "status": "done",
    "weight": 2,
    "delivered_on": "2026-10-15",
-   "ref": "",
-   "note": "Spec 018: abrir o OpenCode, copiar e colar; chave testada e guardada no cofre do sistema; testado no app real com código falso"
+   "ref": "fa6b30c",
+   "note": "Spec 018: abrir o OpenCode, copiar e colar; chave testada e guardada no cofre do sistema; testado no app real com código falso",
+   "waiting_on": ""
   },
   {
    "id": "F3-TRANSP",
@@ -406,8 +439,9 @@
    "status": "done",
    "weight": 1,
    "delivered_on": "2026-10-15",
-   "ref": "",
-   "note": "Prévia ao vivo do texto que vai para a IA (já sem nomes) e lista das chamadas (data, modelo, resultado; nunca o texto) em Configurações"
+   "ref": "879c322",
+   "note": "Prévia ao vivo do texto que vai para a IA (já sem nomes) e lista das chamadas (data, modelo, resultado; nunca o texto) em Configurações",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-004",
@@ -419,7 +453,8 @@
    "weight": 2,
    "delivered_on": "2026-10-14",
    "ref": "9d0348b",
-   "note": ""
+   "note": "",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-006",
@@ -430,8 +465,9 @@
    "status": "done",
    "weight": 3,
    "delivered_on": "2026-10-15",
-   "ref": "",
-   "note": "Mecanismo completo e testado com correções de teste; correções reais esperam o S-02"
+   "ref": "083bc45",
+   "note": "Mecanismo completo e testado com correções de teste; correções reais esperam o S-02",
+   "waiting_on": ""
   },
   {
    "id": "SPEC-005",
@@ -443,7 +479,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Janela separada com permissão exclusiva de aprovar (ACL testada no runtime de teste); falta abrir e usar na mão"
+   "note": "Janela separada com permissão exclusiva de aprovar (ACL testada no runtime de teste); falta abrir e usar na mão",
+   "waiting_on": "teste em máquina real"
   },
   {
    "id": "SPEC-007",
@@ -455,7 +492,8 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "Spec 020: helper elevado com revalidação, allowlist, instalador por máquina com o helper como sidecar, aviso na tela e lançador UAC por PowerShell (sem unsafe, resultado pelo código de saída, testado ponta a ponta no CI Windows; ADR-031). Falta a allowlist de produção depois do S-02 e o teste manual no Windows (T012)"
+   "note": "Spec 020: helper elevado com revalidação, allowlist, instalador por máquina com o helper como sidecar, aviso na tela e lançador UAC por PowerShell (sem unsafe, resultado pelo código de saída, testado ponta a ponta no CI Windows; ADR-031). Falta a allowlist de produção depois do S-02 e o teste manual no Windows (T012)",
+   "waiting_on": "teste em máquina real"
   },
   {
    "id": "F4-FIXES",
@@ -467,7 +505,8 @@
    "weight": 3,
    "delivered_on": "",
    "ref": "",
-   "note": "Depende do S-02"
+   "note": "Depende do S-02",
+   "waiting_on": "teste em máquina real"
   },
   {
    "id": "SPEC-014a",
@@ -478,8 +517,9 @@
    "status": "done",
    "weight": 1,
    "delivered_on": "2026-10-15",
-   "ref": "",
-   "note": "Chave compilada; app baixa da release kill-switch ao abrir, verifica e aplica (testado no app real). Reassinar antes de 13/04/2027"
+   "ref": "fa019ea",
+   "note": "Chave compilada; app baixa da release kill-switch ao abrir, verifica e aplica (testado no app real). Reassinar antes de 13/04/2027",
+   "waiting_on": ""
   },
   {
    "id": "F5-SIGN",
@@ -491,7 +531,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "",
+   "waiting_on": "conta e pedido na SignPath"
   },
   {
    "id": "F5-UPD",
@@ -503,7 +544,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": ""
+   "note": "",
+   "waiting_on": "chave do atualizador"
   },
   {
    "id": "F5-USERS",
@@ -515,7 +557,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Dispensados como gate só até o 1º release (ADR-020)"
+   "note": "Dispensados como gate só até o 1º release (ADR-020)",
+   "waiting_on": "teste com leigos"
   },
   {
    "id": "F5-SEC",
@@ -527,7 +570,8 @@
    "weight": 2,
    "delivered_on": "",
    "ref": "",
-   "note": "Spec 016 (7 rodadas) + revisão independente por outro modelo (15/10 e 16/10): achados corrigidos; 21 ataques com código esperado. Suíte adversarial da IA offline (spec 017 FR-007, 16/10): links em qualquer grafia, telefone, caracteres invisíveis e perguntas que pedem senha são recusados. Falta revisão humana externa"
+   "note": "Spec 016 (7 rodadas) + revisão independente por outro modelo (15/10 e 16/10): achados corrigidos; 21 ataques com código esperado. Suíte adversarial da IA offline (spec 017 FR-007, 16/10): links em qualquer grafia, telefone, caracteres invisíveis e perguntas que pedem senha são recusados. Falta revisão humana externa",
+   "waiting_on": "revisão humana externa"
   },
   {
    "id": "F5-DOCS",
@@ -539,7 +583,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Guia para quem usa (docs/usuario/GUIA.md) e Ajuda do app atualizada (IA). Falta revisar com leigos e publicar junto do release"
+   "note": "Guia para quem usa (docs/usuario/GUIA.md) e Ajuda do app atualizada (IA). Falta revisar com leigos e publicar junto do release",
+   "waiting_on": "teste com leigos"
   },
   {
    "id": "F5-REL",
@@ -551,7 +596,8 @@
    "weight": 1,
    "delivered_on": "",
    "ref": "",
-   "note": "Workflow de lançamento pronto (release.yml): tag vX.Y.Z gera os instaladores e um rascunho de pré-lançamento com SHA256SUMS; publicar e assinar o SHA256SUMS com GPG é do mantenedor (docs/ops/release.md)"
+   "note": "Workflow de lançamento pronto (release.yml): tag vX.Y.Z gera os instaladores e um rascunho de pré-lançamento com SHA256SUMS; publicar e assinar o SHA256SUMS com GPG é do mantenedor (docs/ops/release.md)",
+   "waiting_on": "chave GPG e tag"
   }
  ]
 }
