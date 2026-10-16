@@ -16,6 +16,8 @@ hmd-catalog = { path = "../hmd-catalog" }
 hmd-probes = { path = "../hmd-probes" }
 hmd-core = { path = "../hmd-core" }
 hmd-executor = { path = "../hmd-executor" }
+# Elevation path of the host platform (spec 020); the production allowlist is empty until S-02.
+hmd-elevated = { path = "../hmd-elevated" }
 hmd-killswitch = { path = "../hmd-killswitch" }
 hmd-store = { path = "../hmd-store" }
 hmd-ai = { path = "../hmd-ai" }
