@@ -9,11 +9,23 @@ Crate novo `crates/hmd-elevated` (lib + bin `helpmydesk-elevated`), dependente d
 de `hmd-executor` para que executor e helper calculem o hash **com o mesmo código** (divergir
 seria um furo). `hmd-executor` reexporta, então `hmd-store` e `hmd-app` não mudam.
 
-Lançador em `hmd-executor` (único outro lugar aceito por `tools/check-no-process-spawn.sh`):
+Lançador em `hmd-elevated` (único outro lugar aceito por `tools/check-no-process-spawn.sh`):
 `trait Launcher { fn launch(&self, req: &ElevatedRequest, timeout) -> Result<ElevatedResult,
-ExecError> }`, com `FakeLauncher` nos testes e `UacLauncher` só em `cfg(windows)`. No Linux,
+LaunchError> }`. O pedido inteiro vai para o lançador, não o token: o lançador precisa poder
+acrescentar o transporte dele (`result_pipe`, nome de pipe nomeado do Windows) **antes** de
+serializar. Com `FakeLauncher` nos testes e `UacLauncher` só em `cfg(windows)`. No Linux,
 `UnavailableLauncher` responde `ELEVATION_NOT_AVAILABLE` até o S-02 decidir entre a API D-Bus
 (L1) e `pkexec` (L2).
+
+`UacLauncher` está **bloqueado por uma decisão de constituição**: `ShellExecuteExW` (`runas`) é
+`unsafe` e o workspace é `unsafe_code = "forbid"`. Desenho fechado e revisado aqui para não se
+perder: pipe nomeado com 128 bits de entropia de `BCryptGenRandom` e `PIPE_REJECT_REMOTE_CLIENTS`;
+`ShellExecuteExW` com `SEE_MASK_NOCLOSEPROCESS` e `nShow = SW_HIDE` (sem console na tela da
+pessoa, FR-014); espera em thread de trabalho com o prazo duro (o diálogo do UAC responde a
+nenhuma espera nossa, então o prazo é do chamador e o helper já carrega `expires_at`); a resposta
+só é aceita se `GetNamedPipeClientProcessId` for o PID do processo lançado, senão
+`ELEVATION_RESULT_NOT_TRUSTED`. Como a allowlist de produção está vazia, mesmo que o lançador
+funcionasse hoje nenhuma ação rodaria.
 
 ## Protocolo `hmd-elevated@1`
 
