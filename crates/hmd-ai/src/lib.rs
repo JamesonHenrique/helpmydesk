@@ -151,6 +151,11 @@ impl Transport for UreqTransport {
     }
 }
 
+/// The marker stored in the vault when the person connected through the OpenCode CLI
+/// (device flow). It is not a secret key: it only tells the shell to run classification
+/// calls through [`OpencodeTransport`] (primary pipeline stays HTTP with a pasted key).
+pub const DEVICE_KEY: &str = "opencode-cli-device";
+
 /// Where the OpenCode CLI is looked for, in order: PATH (`opencode`) and the
 /// well-known per-OS install locations used by the OpenCode installer
 /// (Linux: `~/.opencode/bin`; Windows: Program Files; macOS app bundle).
@@ -677,6 +682,14 @@ mod tests {
         assert!(ALLOWED_MODELS.contains(&DEFAULT_MODEL));
         assert!(ALLOWED_MODELS.iter().all(|m| m.ends_with("-free")));
         assert!(ENDPOINT.starts_with("https://opencode.ai/"));
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn opencode_candidates_start_with_path_then_cli_dir() {
+        let c = opencode_candidates();
+        assert_eq!(c[0], PathBuf::from("opencode"));
+        assert!(c[1].to_string_lossy().contains("opencode/bin/opencode"));
     }
 }
 

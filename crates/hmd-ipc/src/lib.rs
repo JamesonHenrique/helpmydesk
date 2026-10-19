@@ -314,6 +314,8 @@ pub struct Backend {
     /// Where the AI key lives (the shell plugs in the system vault).
     vault: Box<dyn KeyVault>,
     transport: Arc<dyn Transport + Send + Sync>,
+    /// True when classification calls go through the person's OpenCode CLI (device flow).
+    device_transport: bool,
 }
 
 /// AI connection state for the screens (spec 018).
@@ -413,6 +415,7 @@ impl Backend {
                 clock,
                 vault: Box::new(MemoryVault::default()),
                 transport: Arc::new(UreqTransport::default()),
+                device_transport: false,
             },
             startup_dto(&startup),
         ))
@@ -428,6 +431,7 @@ impl Backend {
             clock,
             vault: Box::new(MemoryVault::default()),
             transport: Arc::new(UreqTransport::default()),
+            device_transport: false,
         })
     }
 
@@ -444,6 +448,35 @@ impl Backend {
     /// The transport, for a call made outside the backend lock (the shell).
     pub fn ai_transport(&self) -> Arc<dyn Transport + Send + Sync> {
         Arc::clone(&self.transport)
+    }
+
+    /// True when classification calls go through the person's OpenCode CLI.
+    pub fn ai_device_transport(&self) -> bool {
+        self.device_transport
+    }
+
+    /// Switches classification calls to the person's OpenCode CLI (subprocess). Call only
+    /// after a tested device-flow login kept [`hmd_ai::DEVICE_KEY`] in the vault
+    /// ([`Backend::ai_connect_finish`]); [`ai_restore_transport`] undoes it on the next
+    /// startup if the person turned the AI off.
+    pub fn ai_use_device_transport(&mut self) {
+        self.set_transport(Box::new(hmd_ai::OpencodeTransport::default()));
+        self.device_transport = true;
+    }
+
+    /// Matches the transport to the connection mode saved on disk: the device-flow marker
+    /// key means the CLI subprocess; anything else (nothing or a pasted key) means HTTP.
+    /// The shell calls this once right after opening the backend.
+    pub fn ai_restore_transport(&mut self) -> IpcResult<()> {
+        let key = self
+            .vault
+            .get()
+            .map_err(|e| IpcError::new("AI_KEY_STORE_FAILED", e))?;
+        self.device_transport = key.as_deref() == Some(hmd_ai::DEVICE_KEY);
+        if self.device_transport {
+            self.set_transport(Box::new(hmd_ai::OpencodeTransport::default()));
+        }
+        Ok(())
     }
 
     /// F3-TRANSP: what would be sent for `text` (local, nothing leaves the computer).

@@ -215,8 +215,9 @@ export class MockApi implements CoreApi {
 
   /** Device code login: runs opencode auth login --method device. */
   async aiConnectDevice(): Promise<AiStatusDto> {
-    // In prototype, just mark as not connected and return
-    this.state.aiConnected.set(false);
+    // The prototype simulates a finished device login; the real command tests and only
+    // then keeps the marker (spec 018).
+    this.state.aiConnected.set(true);
     return this.aiStatus();
   }
 
