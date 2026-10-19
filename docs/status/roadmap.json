@@ -413,7 +413,7 @@
    "status": "done",
    "weight": 3,
    "delivered_on": "2026-10-19",
-   "ref": "",
+   "ref": "ac73a93",
    "note": "IA só classifica a família; se em dúvida pergunta, a resposta soma ao relato (prévia mostra o texto inteiro); no máximo 2 rodadas, depois o menu. Entrega da spec 021 (ADR-033): se as verificações sugerirem outra família, chamada extra de classify com códigos dos achados e cartão de sugestão na página de diagnóstico (a sugestão só é abraçada com clique explícito)"
   },
   {
