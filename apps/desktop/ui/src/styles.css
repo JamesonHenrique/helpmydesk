@@ -1,60 +1,91 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* HelpMyDesk UI prototype. Calm, high-contrast (WCAG 2.2 AA), keyboard-first.
-   Layout: one centered column of readable width; cards only for things you act on. */
+/* HelpMyDesk UI — identidade visual "Oficina editorial contemporânea" (v1.0).
+   Tokens de referência: branding/tokens.css · tokens.json (manter sincronizado).
+   Calma, alto contraste (WCAG 2.2 AA), teclado primeiro.
+   Layout: uma coluna central legível; cartões só para o que se age.
+   Espaçamentos em rem DE propósito: acompanham o ajuste de texto (--font-size). */
 :root {
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --fg: #16202b;
-  --muted: #4a5868;
-  --line: #d3d9e0;
-  --accent: #0b5cad;
-  --accent-fg: #ffffff;
-  --ok: #1b6e34;
-  --warn: #8a5200;
-  --bad: #a3231b;
-  --focus: #0b5cad;
-  --radius: 10px;
-  --font: 'Segoe UI', 'Noto Sans', Ubuntu, Cantarell, system-ui, sans-serif;
-  --font-size: 1.0625rem;
   color-scheme: light;
+  --bg: #f3f0e6; /* papel quente, fundo principal */
+  --surface: #fffcf5; /* cartões e áreas de conteúdo */
+  --surface-raised: #fffefa; /* campos e superfícies elevadas */
+  --fg: #22282d;
+  --muted: #596267;
+  --line: #c8c5ba;
+  --line-strong: #92968f;
+  --control-border: #6b7066;
+  --accent: #b73825; /* CTA principal no tema claro */
+  --accent-fg: #fffefa;
+  --accent-soft: #f9e1d9;
+  --coral: #ff6c4d; /* detalhe de marca; não usar em texto pequeno sobre papel */
+  --checkpoint: #d8f16a; /* seleção, foco, ponto de verificação */
+  --checkpoint-fg: #22282d; /* texto sobre checkpoint, fixo nos dois temas */
+  --ok: #286542;
+  --warn: #805500;
+  --bad: #a32e25;
+  --focus: #22282d;
+  --texture-dot: #d8d5ca;
+  --radius: 7px;
+  --radius-small: 4px;
+  --font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-size: 1.0625rem;
+  --control-min-height: 42px;
+  --focus-width: 3px;
+  --motion-quick: 120ms;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #11161c;
-    --surface: #1a2129;
-    --fg: #e8edf2;
-    --muted: #a9b6c4;
-    --line: #33404d;
-    --accent: #6fb1f5;
-    --accent-fg: #0b1724;
-    --ok: #6fd18e;
-    --warn: #f0b45c;
-    --bad: #ff8a80;
-    --focus: #9fcbf8;
     color-scheme: dark;
+    --bg: #171c1f;
+    --surface: #22282d;
+    --surface-raised: #282f33;
+    --fg: #f3f0e6;
+    --muted: #c0c4bd;
+    --line: #4b5353;
+    --line-strong: #77807d;
+    --control-border: #9aa39a;
+    --accent: #ff8066;
+    --accent-fg: #22282d;
+    --accent-soft: #4a2b27;
+    --checkpoint: #d8f16a;
+    --ok: #9bd4a7;
+    --warn: #f3d078;
+    --bad: #ff9a85;
+    --focus: #d8f16a;
+    --texture-dot: #343b3a;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #11161c;
-  --surface: #1a2129;
-  --fg: #e8edf2;
-  --muted: #a9b6c4;
-  --line: #33404d;
-  --accent: #6fb1f5;
-  --accent-fg: #0b1724;
-  --ok: #6fd18e;
-  --warn: #f0b45c;
-  --bad: #ff8a80;
-  --focus: #9fcbf8;
   color-scheme: dark;
+  --bg: #171c1f;
+  --surface: #22282d;
+  --surface-raised: #282f33;
+  --fg: #f3f0e6;
+  --muted: #c0c4bd;
+  --line: #4b5353;
+  --line-strong: #77807d;
+  --control-border: #9aa39a;
+  --accent: #ff8066;
+  --accent-fg: #22282d;
+  --accent-soft: #4a2b27;
+  --checkpoint: #d8f16a;
+  --ok: #9bd4a7;
+  --warn: #f3d078;
+  --bad: #ff9a85;
+  --focus: #d8f16a;
+  --texture-dot: #343b3a;
 }
 
 html {
-  font-size: var(--font-size);
+  font-size: var(--font-size, 1.0625rem);
 }
 body {
   margin: 0;
-  background: var(--bg);
+  /* Papel com textura pontilhada sutil, remete à bancada de oficina. */
+  background:
+    radial-gradient(var(--texture-dot) 1px, transparent 1px) 0 0 / 15px 15px,
+    var(--bg);
   color: var(--fg);
   font-family: var(--font);
   line-height: 1.55;
@@ -62,12 +93,13 @@ body {
 h1,
 h2,
 h3 {
-  line-height: 1.25;
+  line-height: 1.2;
   text-wrap: balance;
 }
 h1 {
-  font-size: 1.6rem;
+  font-size: clamp(1.65rem, 3vw, 2.1rem);
   margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
 }
 h2 {
   font-size: 1.25rem;
@@ -80,9 +112,13 @@ a {
   color: var(--accent);
 }
 :focus-visible {
-  outline: 3px solid var(--focus);
+  outline: var(--focus-width) solid var(--focus);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-small);
+}
+::selection {
+  background: var(--checkpoint);
+  color: var(--checkpoint-fg);
 }
 
 .page {
@@ -98,6 +134,8 @@ a {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
+  /* Sombra editorial: dura, discreta, como duas folhas sobrepostas. */
+  box-shadow: 3px 3px 0 var(--line);
 }
 .row {
   display: flex;
@@ -115,8 +153,9 @@ a {
   font: inherit;
   font-weight: 600;
   padding: 0.6rem 1.1rem;
-  border-radius: 8px;
-  border: 1px solid var(--line);
+  min-height: var(--control-min-height);
+  border-radius: var(--radius);
+  border: 1px solid var(--control-border);
   background: var(--surface);
   color: var(--fg);
   cursor: pointer;
@@ -124,14 +163,24 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  transition:
+    border-color var(--motion-quick) ease,
+    box-shadow var(--motion-quick) ease;
 }
 .btn:hover {
   border-color: var(--accent);
+  box-shadow: 3px 3px 0 var(--accent-soft);
+}
+.btn:active {
+  box-shadow: 1px 1px 0 var(--line);
 }
 .btn.primary {
   background: var(--accent);
   color: var(--accent-fg);
   border-color: var(--accent);
+}
+.btn.primary:hover {
+  box-shadow: 3px 3px 0 var(--line);
 }
 .btn.danger {
   color: var(--bad);
@@ -140,6 +189,7 @@ a {
 .btn[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 .tiles {
   display: grid;
@@ -151,22 +201,32 @@ a {
   text-align: left;
   padding: 1rem;
   border-radius: var(--radius);
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-border);
   background: var(--surface);
   color: var(--fg);
   cursor: pointer;
   display: grid;
   gap: 0.25rem;
+  box-shadow: 3px 3px 0 var(--line);
+  transition:
+    border-color var(--motion-quick) ease,
+    background var(--motion-quick) ease,
+    transform var(--motion-quick) ease;
 }
 .tile:hover {
   border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.tile:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
 }
 .tile strong {
   font-size: 1.1rem;
 }
 .tile span {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 .steps {
   padding-left: 1.4rem;
@@ -195,6 +255,7 @@ a {
   display: inline-block;
   text-align: center;
   flex: none;
+  font-family: var(--font-mono);
 }
 .ok {
   color: var(--ok);
@@ -209,41 +270,43 @@ a {
   color: var(--muted);
 }
 .pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   border: 1px solid currentColor;
   border-radius: 999px;
   padding: 0 0.6rem;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 600;
 }
 .notice {
   border-left: 4px solid var(--warn);
   padding: 0.5rem 0.9rem;
   background: var(--surface);
-  border-radius: 6px;
+  border-radius: var(--radius-small);
+  box-shadow: 3px 3px 0 var(--line);
 }
 .small {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 textarea,
 input[type='text'],
 input[type='password'] {
   font: inherit;
   color: var(--fg);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  background: var(--surface-raised);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
   padding: 0.6rem 0.75rem;
   width: 100%;
   box-sizing: border-box;
 }
 textarea {
   min-height: 18rem;
-  font-family: ui-monospace, 'Cascadia Mono', 'DejaVu Sans Mono', monospace;
-  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
 }
 fieldset {
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius);
   padding: 0.75rem 1rem;
   display: grid;
@@ -270,14 +333,20 @@ dl.facts {
 }
 dl.facts dt {
   color: var(--muted);
+  font-size: 0.88rem;
 }
 dl.facts dd {
   margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.94rem;
 }
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
     transition: none !important;
+  }
+  .tile:active {
+    transform: none;
   }
 }
 
@@ -286,6 +355,6 @@ input[type='checkbox'],
 input[type='radio'] {
   width: 1.25rem;
   height: 1.25rem;
-  accent-color: var(--accent, #0b5cad);
+  accent-color: var(--accent, #b73825);
   flex: none;
 }

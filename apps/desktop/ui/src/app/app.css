@@ -1,3 +1,6 @@
+/* Shell da UI — identidade "Oficina editorial contemporânea" (compacto; o
+   restante dos tokens vive em styles.css). */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 .inner {
   max-width: 52rem;
   margin: 0 auto;
@@ -6,7 +9,8 @@
 }
 .bar {
   background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  /* Fita de verificação: assinatura da identidade no topo do app. */
+  border-bottom: 3px solid var(--checkpoint);
 }
 .bar .inner {
   display: flex;
@@ -16,11 +20,20 @@
   padding-block: 0.6rem;
 }
 .brand {
-  font-weight: 700;
-  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
   color: var(--fg);
   text-decoration: none;
   margin-right: auto;
+}
+.brand svg {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: none;
 }
 nav {
   display: flex;
@@ -30,8 +43,13 @@ nav {
 nav a {
   color: var(--fg);
   text-decoration: none;
-  padding: 0.2rem 0;
+  padding: 0.2rem 0.3rem;
+  border-radius: var(--radius-small, 4px);
   border-bottom: 2px solid transparent;
+  transition: background var(--motion-quick, 120ms) ease;
+}
+nav a:hover {
+  background: var(--accent-soft);
 }
 nav a.active {
   border-bottom-color: var(--accent);
@@ -42,12 +60,13 @@ nav a.active {
   gap: 0.35rem;
 }
 .size .btn {
+  min-height: 2rem;
   padding: 0.25rem 0.6rem;
 }
 .proto {
   margin: 0;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   padding: 0.35rem 16px;
   background: var(--bg);
   color: var(--muted);
@@ -58,16 +77,22 @@ main {
   padding-block: 1.5rem 3rem;
   outline: none;
 }
+/* Skip-link usa o ponto de verificação da marca (lime). O texto é fixo
+   escuro (--checkpoint-fg) para funcionar nos dois temas. */
 .skip {
   position: absolute;
   left: -999px;
   top: 0;
-  background: var(--accent);
-  color: var(--accent-fg);
+  background: var(--checkpoint);
+  color: var(--checkpoint-fg);
+  font-weight: 600;
   padding: 0.5rem 1rem;
   z-index: 10;
 }
 .skip:focus {
   left: 8px;
   top: 8px;
+}
+.skip:focus-visible {
+  outline-color: var(--accent);
 }
