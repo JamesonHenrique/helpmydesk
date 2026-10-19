@@ -5,9 +5,9 @@
 ## Por quê
 
 O mantenedor quer que a pessoa ligue a IA sem precisar entender o que é uma "chave de API".
-Criar a conta e a chave automaticamente em nome da pessoa não é possível pelo caminho oficial: a
-documentação do OpenCode Zen (15/10) só descreve entrar no console e copiar a chave; não há OAuth,
-código de dispositivo nem API de criação. Este é o caminho mais curto dentro disso.
+A documentação do OpenCode Zen (15/10) descreve o console com copiar/colar; a partir de
+19/10/2026 o CLI do OpenCode também oferece login por device code (`opencode auth login
+--method device`), que salva a sessão no próprio CLI e dispensa colar chave nenhuma.
 
 ## Fluxo
 
@@ -20,6 +20,20 @@ código de dispositivo nem API de criação. Este é o caminho mais curto dentro
 5. Com a IA ligada, a tela inicial aceita texto livre: a IA só escolhe a família; com confiança
    baixa ou família desconhecida, o app pergunta ou mostra o menu. O resto do fluxo é o mesmo.
 
+## Fluxo alternativo: device-flow (ADR-032, 19/10/2026)
+
+1. "Entrar com sua conta" roda `opencode auth login --method device` pelo único helper
+   `hmd_ai::opencode_command()` (só `hmd-ai` cria processos). O app drena o stdout/stderr do CLI
+   e **abre a URL de verificação no navegador** assim que um linha dela aparece.
+2. O CLI espera a pessoa concluir; terminado com sucesso, uma chamada curta de teste de conexão
+   roda **fora do lock** (thread de bloqueio, como nas outras chamadas de rede).
+3. Só com o teste verde o marcador `hmd_ai::DEVICE_KEY` entra no cofre e o consentimento
+   `ai_opencode` é ligado; as chamadas seguintes passam pelo transporte subprocesso.
+4. No próximo start, `Backend::ai_restore_transport` recompõe o modo a partir do cofre; "Desligar
+   e apagar o código" apaga o marcador e o consentimento (sem logout do CLI).
+5. Erros em palavras simples: o CLI não abriu ou falhou (`OPENCODE_FAILED`), URL não abriu
+   (`OPEN_URL_FAILED`), teste recusado (`AI_KEY_REFUSED`/`AI_RATE_LIMITED`).
+
 ## Requisitos
 
 - **FR-001** A chave só existe no cofre do sistema (Secret Service no Linux, Gerenciador de
@@ -31,11 +45,18 @@ código de dispositivo nem API de criação. Este é o caminho mais curto dentro
 - **FR-004** O texto da pessoa é redigido (nome de usuário e do computador) antes de sair.
 - **FR-005** O kill switch também desliga modelos (`disabled_models`).
 - **FR-006** "Desligar e apagar o código" remove a chave e o consentimento.
+- **FR-007** O caminho alternativo de device-flow (ADR-032): login só por `hmd_ai::opencode_command`
+  (spawn único de processo), teste de conexão real fora do lock, marcador `DEVICE_KEY` no cofre e o
+  mesmo consentimento e auditoria do fluxo por chave.
 
 ## Verificado no app real (Xvfb, 15/10)
 
 Com um código falso: a chamada HTTPS real ao `opencode.ai` foi feita e recusada, e a tela disse
 "Esse código não funcionou". Falta o caso de sucesso, que exige a chave real de uma pessoa.
+
+Device-flow (19/10/2026): testes unitários e de shell verdes (login bloqueante, guardas de erro,
+restauração do transporte no start). Falta a verificação em máquina real com conta real (o CLI
+espera a pessoa no navegador); registrada em `waiting_on` do SPEC-015.
 
 ## Fora do escopo
 

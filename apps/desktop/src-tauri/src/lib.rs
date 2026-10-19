@@ -280,6 +280,112 @@ async fn ai_connect_from_clipboard<R: Runtime>(
     Ok(status)
 }
 
+/// Device code login: runs `opencode auth login --method device`, opens the verification
+/// URL in the browser as soon as the CLI prints it, waits for the person to complete the
+/// login, tests one real classification call through the CLI subprocess and only then
+/// keeps the device marker in the vault (spec 018; pasted keys stay on the HTTP pipeline).
+#[tauri::command]
+async fn ai_connect_device<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, Shared>,
+) -> IpcResult<AiStatusDto> {
+    use std::io::BufRead;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let login = tauri::async_runtime::spawn_blocking(move || -> Result<(), IpcError> {
+        let mut child = hmd_ai::opencode_command()
+            .args(["auth", "login", "--method", "device"])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| IpcError {
+                code: "OPENCODE_FAILED".into(),
+                message: format!("failed to run opencode: {e}"),
+            })?;
+        let streams: Vec<Box<dyn std::io::Read + Send>> = {
+            let stdout = child.stdout.take();
+            let stderr = child.stderr.take();
+            stdout
+                .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>)
+                .into_iter()
+                .chain(stderr.map(|s| Box::new(s) as Box<dyn std::io::Read + Send>))
+                .collect()
+        };
+        let opened = Arc::new(AtomicBool::new(false));
+        let mut readers = Vec::new();
+        for stream in streams {
+            let app = app.clone();
+            let opened = Arc::clone(&opened);
+            readers.push(std::thread::spawn(move || {
+                // Drain the pipe completely so the CLI never blocks; on the first line
+                // that carries a verification URL, open it in the person's browser.
+                let mut open_error: Option<IpcError> = None;
+                for line in std::io::BufReader::new(stream)
+                    .lines()
+                    .map_while(Result::ok)
+                {
+                    if opened.load(Ordering::Relaxed) || line.find("https://").is_none() {
+                        continue;
+                    }
+                    opened.store(true, Ordering::Relaxed);
+                    let rest = &line[line.find("https://").unwrap_or(0)..];
+                    let candidate = rest.split_whitespace().next().unwrap_or(rest);
+                    use tauri_plugin_opener::OpenerExt;
+                    if let Err(e) = app.opener().open_url(candidate, None::<&str>) {
+                        open_error = Some(IpcError {
+                            code: "OPEN_URL_FAILED".into(),
+                            message: e.to_string(),
+                        });
+                    }
+                }
+                match open_error {
+                    Some(e) => Err(e),
+                    None => Ok(()),
+                }
+            }));
+        }
+        let status = child.wait().map_err(|e| IpcError {
+            code: "OPENCODE_FAILED".into(),
+            message: format!("failed to run opencode: {e}"),
+        })?;
+        for reader in readers {
+            reader.join().map_err(|e| IpcError {
+                code: "OPENCODE_FAILED".into(),
+                message: format!("reader thread: {e:?}"),
+            })??;
+        }
+        if !status.success() {
+            return Err(IpcError {
+                code: "OPENCODE_FAILED".into(),
+                message: "opencode auth login was not completed".into(),
+            });
+        }
+        Ok(())
+    })
+    .await
+    .map_err(join_error)?;
+    login?;
+
+    // Connection test: one short classification call through the CLI subprocess, made
+    // outside the backend lock like every other network call.
+    let transport = hmd_ai::OpencodeTransport::default();
+    let test = hmd_ipc::Backend::ai_test_key(&transport, hmd_ai::DEVICE_KEY);
+    let test = tauri::async_runtime::spawn_blocking(move || test)
+        .await
+        .map_err(join_error)?;
+    // Only a tested login keeps the device marker; on success the classification calls
+    // switch to the CLI subprocess transport.
+    let status = with(&state, |b| {
+        let status = b.ai_connect_finish(hmd_ai::DEVICE_KEY, test)?;
+        if status.connected {
+            b.ai_use_device_transport();
+        }
+        Ok(status)
+    })?;
+    Ok(status)
+}
+
 /// F3-TRANSP: the text exactly as it would be sent (local only).
 #[tauri::command]
 async fn ai_preview(state: State<'_, Shared>, text: String) -> IpcResult<String> {
@@ -331,6 +437,7 @@ fn commands<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         ai_classify,
         open_ai_console,
         ai_connect_from_clipboard,
+        ai_connect_device,
         ai_preview,
         ai_log,
     ])
@@ -359,6 +466,15 @@ pub fn run() {
                 Err(e) => {
                     eprintln!("helpmydesk: system vault unavailable ({e}); AI key kept in memory")
                 }
+            }
+            if let Err(e) = backend.ai_restore_transport() {
+                eprintln!(
+                    "helpmydesk: device transport restore failed: {} {}",
+                    e.code, e.message
+                );
+            }
+            if backend.ai_device_transport() {
+                eprintln!("helpmydesk: AI calls use the opencode CLI (device mode)");
             }
             app.manage(Shared {
                 backend: Mutex::new(backend),
