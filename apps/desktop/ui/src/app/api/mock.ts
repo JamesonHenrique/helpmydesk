@@ -213,6 +213,13 @@ export class MockApi implements CoreApi {
     throw { code: 'CLIPBOARD_UNAVAILABLE', message: 'prototype' } as IpcError;
   }
 
+  /** Device code login: runs opencode auth login --method device. */
+  async aiConnectDevice(): Promise<AiStatusDto> {
+    // In prototype, just mark as not connected and return
+    this.state.aiConnected.set(false);
+    return this.aiStatus();
+  }
+
   async aiDisconnect(): Promise<AiStatusDto> {
     this.state.aiConnected.set(false);
     return this.aiStatus();

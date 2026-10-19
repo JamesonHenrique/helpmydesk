@@ -127,6 +127,9 @@ export class TauriApi implements CoreApi {
   aiConnectFromClipboard(): Promise<AiStatusDto> {
     return invoke('ai_connect_from_clipboard');
   }
+  aiConnectDevice(): Promise<AiStatusDto> {
+    return invoke('ai_connect_device');
+  }
   aiDisconnect(): Promise<AiStatusDto> {
     return invoke('ai_disconnect');
   }

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ai-connect-device"
+description = "Enables the ai_connect_device command without any pre-configured scope."
+commands.allow = ["ai_connect_device"]
+
+[[permission]]
+identifier = "deny-ai-connect-device"
+description = "Denies the ai_connect_device command without any pre-configured scope."
+commands.deny = ["ai_connect_device"]

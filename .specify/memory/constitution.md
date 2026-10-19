@@ -87,8 +87,9 @@ Rationale: a small team must be able to maintain and audit the whole system.
 - No secrets in the repository: secret scanning runs in pre-commit and CI.
 - Dependencies are justified in the PR (license, maintenance, alternative); high-severity
   advisories block merge.
-- Process spawning is allowed only inside `hmd-executor` and `hmd-elevated` (enforced by
-  static analysis).
+- Process spawning is allowed only inside `hmd-executor`, `hmd-elevated` and `hmd-ai`
+  (the OpenCode transport runs the person's own CLI, consented by the `ai_opencode`
+  consent; enforced by static analysis via a single helper, `hmd-ai::opencode_command`).
 - Logs are structured and redacted; no personal content.
 - Contracts (catalog, plan, approval, kill switch, AI task schemas) are versioned; unknown
   protocol versions are rejected.

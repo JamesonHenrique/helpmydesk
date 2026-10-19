@@ -56,7 +56,9 @@ App desktop (Tauri, `apps/desktop/src-tauri`, workspace próprio): no Linux prec
 (`tools/check-all.sh`).
 
 Rodar as sondas na sua máquina: `cargo run -p hmd-probes --example probe_all`.
-Guarda da constituição: `tools/check-no-process-spawn.sh`. Tudo o que o CI roda, localmente:
+Guarda da constituição: `tools/check-no-process-spawn.sh` (processos só em
+`hmd-executor`, `hmd-elevated` e `hmd-ai`, o transporte OpenCode com consentimento
+`ai_opencode`, helper único `hmd-ai::opencode_command`). Tudo o que o CI roda, localmente:
 `tools/check-all.sh` (inclui `cargo deny`, se instalado: `cargo install --locked cargo-deny@0.20.2`).
 
 Checar o código Windows a partir do Linux: `rustup target add x86_64-pc-windows-gnu` e
