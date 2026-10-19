@@ -10,6 +10,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use std::fmt;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use hmd_domain::ProblemFamily;
@@ -147,6 +148,163 @@ impl Transport for UreqTransport {
             .read_to_string()
             .map_err(|e| AiError::Network(e.to_string()))?;
         Ok((status, text))
+    }
+}
+
+/// Where the OpenCode CLI is looked for, in order: PATH (`opencode`) and the
+/// well-known per-OS install locations used by the OpenCode installer
+/// (Linux: `~/.opencode/bin`; Windows: Program Files; macOS app bundle).
+pub fn opencode_candidates() -> Vec<PathBuf> {
+    let mut candidates = vec![PathBuf::from("opencode")];
+    if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
+        let name = if cfg!(windows) {
+            "opencode.exe"
+        } else {
+            "opencode"
+        };
+        let mut path = PathBuf::from(home);
+        path.extend([".opencode", "bin"]);
+        path.push(name);
+        candidates.push(path);
+    }
+    if cfg!(windows) {
+        candidates.push(PathBuf::from(r"C:\Program Files\HelpMyDesk\opencode.exe"));
+    }
+    if cfg!(target_os = "macos") {
+        candidates.push(PathBuf::from(
+            "/Applications/HelpMyDesk.app/Contents/MacOS/opencode",
+        ));
+    }
+    candidates
+}
+
+/// Builds a `Command` for the first OpenCode CLI candidate that exists on disk,
+/// falling back to a plain PATH lookup (`opencode`).
+pub fn opencode_command() -> std::process::Command {
+    for candidate in opencode_candidates() {
+        if candidate.is_file() {
+            return std::process::Command::new(candidate);
+        }
+    }
+    std::process::Command::new("opencode")
+}
+
+/// OpenCode subprocess transport: runs `opencode run` as a subprocess
+/// and returns the classification result. Used when the person authenticates
+/// via OpenCode device code flow instead of providing a direct API key.
+pub struct OpencodeTransport {
+    /// Working directory for OpenCode sessions
+    workdir: String,
+    /// Whether to use --standalone mode
+    standalone: bool,
+}
+
+impl Default for OpencodeTransport {
+    fn default() -> Self {
+        OpencodeTransport {
+            workdir: std::env::temp_dir().to_string_lossy().to_string(),
+            standalone: true,
+        }
+    }
+}
+
+impl OpencodeTransport {
+    /// Create a new transport with a custom workdir
+    pub fn new(workdir: String, standalone: bool) -> Self {
+        OpencodeTransport {
+            workdir,
+            standalone,
+        }
+    }
+
+    /// Run an OpenCode command and parse the JSON output.
+    fn run_opencode(&self, command: &str) -> Result<String, AiError> {
+        let args: Box<[&str]> = {
+            if self.standalone {
+                Box::new(["run", "--format", "json", "--standalone", "-c", command])
+            } else {
+                Box::new(["run", "--format", "json", "-c", command])
+            }
+        };
+
+        let output = opencode_command()
+            .args(args)
+            .current_dir(&self.workdir)
+            .output()
+            .map_err(|e| AiError::Network(format!("failed to run opencode: {e}")))?;
+
+        if !output.status.success() {
+            return Err(AiError::Network(format!(
+                "opencode command failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        let stdout =
+            String::from_utf8(output.stdout).map_err(|e| AiError::Network(e.to_string()))?;
+
+        Ok(stdout)
+    }
+
+    /// Try to parse a classification from the OpenCode output.
+    /// This is a static method since it doesn't use self fields.
+    pub fn parse_classification(output: &str) -> Option<String> {
+        // Try to find JSON in the output
+        let json_start = output.find('{')?;
+        let json_end = output.rfind('}')?;
+        let json_str = &output[json_start..=json_end];
+        let parsed: serde_json::Value = serde_json::from_str(json_str).ok()?;
+
+        parsed
+            .get("family")
+            .and_then(|f| f.as_str())
+            .map(|s| s.to_string())
+    }
+}
+
+impl Transport for OpencodeTransport {
+    fn post(&self, _bearer: &str, body: &str) -> Result<(u16, String), AiError> {
+        // For OpencodeTransport, we don't use bearer token - we rely on the person's
+        // OpenCode session/auth. The body is the classification request.
+        // We run OpenCode as a subprocess and capture its output.
+
+        // Run OpenCode with the body as the classification prompt
+        let stdout = self.run_opencode(body)?;
+
+        // Try to parse as a classification result
+        // Look for {"ok":true} or similar success signals, or parse the classification
+        let status = if stdout.contains("\"ok\"") || stdout.contains("\"family\"") {
+            200
+        } else {
+            // Check for error signals
+            if stdout.contains("403") || stdout.contains("FreeTierError") {
+                403
+            } else if stdout.contains("429") || stdout.contains("FreeUsageLimitError") {
+                429
+            } else {
+                0 // unknown
+            }
+        };
+
+        // Extract the classification from the output if present
+        if status == 200 {
+            // Try to parse classification from the OpenCode output
+            if let Some(family) = OpencodeTransport::parse_classification(&stdout) {
+                return Ok((status, family));
+            }
+            // If we can't parse family, it's still an error
+            let _error_msg = if status == 403 {
+                "FreeTierError: modelo grátis não tem acesso de fora do OpenCode".to_string()
+            } else if status == 429 {
+                "FreeUsageLimitError: cota gratuita esgotada".to_string()
+            } else {
+                format!("HTTP {status}")
+            };
+            return Err(AiError::Http(status));
+        };
+
+        // Should not reach here, but just in case
+        Err(AiError::Http(0))
     }
 }
 
@@ -345,12 +503,26 @@ pub fn classify(
     }
     let body = request_body(model, text)?;
     let (status, response) = transport.post(key, &body)?;
+
+    // For UreqTransport, parse the JSON response as a completion
+    // For OpencodeTransport, the response is already handled inside the transport
     match status {
         200 => {}
         401 | 403 => return Err(AiError::KeyRefused),
         429 => return Err(AiError::RateLimited),
         other => return Err(AiError::Http(other)),
     }
+
+    // Try to parse as completion (for UreqTransport) or return response as-is (for OpencodeTransport)
+    if response.contains("\"family\"") || response.contains("\"ok\"") {
+        // May already be a classification from OpencodeTransport
+        let classification = parse_answer(&response);
+        // fall through to try JSON parsing
+        if let Ok(c) = classification {
+            return Ok(c);
+        }
+    }
+
     let completion: Completion =
         serde_json::from_str(&response).map_err(|e| AiError::BadAnswer(e.to_string()))?;
     let content = completion

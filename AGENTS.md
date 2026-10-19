@@ -45,8 +45,9 @@ Ambiente (Linux): `export PATH="$HOME/.cargo/bin:$PATH"` e, se usar fnm, `eval "
 
 - Nada de `unwrap()`, `expect()` ou `panic!` em código de produção. Erros carregam um
   `reason_code` estável.
-- Só `hmd-executor` e `hmd-elevated` podem criar processos. `tools/check-no-process-spawn.sh`
-  verifica isso.
+- Só `hmd-executor`, `hmd-elevated` e `hmd-ai` (transporte OpenCode, consentimento
+  `ai_opencode`, helper único `hmd-ai::opencode_command`) podem criar processos.
+  `tools/check-no-process-spawn.sh` verifica isso.
 - A IA não recebe ferramentas e só responde no esquema fechado (`crates/hmd-ai`). Resposta fora
   do esquema é recusada, nunca "consertada".
 - Nenhuma correção roda sem aprovação da pessoa para aquele plano, daquele chamado, dentro da

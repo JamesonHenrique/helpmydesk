@@ -15,6 +15,12 @@ const WHY: Record<string, string> = {
   AI_NETWORK: 'Não consegui falar com o OpenCode agora. Confira a internet e tente de novo.',
   AI_RATE_LIMITED: 'O OpenCode pediu para esperar um pouco. Tente de novo em alguns minutos.',
   AI_KEY_STORE_FAILED: 'Não consegui guardar o código com segurança neste computador.',
+  DEVICE_CODE_PENDING:
+    'Um código de dispositivo foi gerado. Por favor, abra o navegador e complete o login.',
+  DEVICE_CODE_TIMEOUT: 'O código de dispositivo expirou. Tente novamente.',
+  FREE_TIER_ERROR:
+    'Conta gratuita não tem acesso de fora do OpenCode. Por favor, use uma chave paga ou atualize sua conta.',
+  FREE_USAGE_LIMIT_ERROR: 'Cota gratuita esgotada. Por favor, aguarde ou use uma conta paga.',
 };
 
 @Component({
@@ -51,8 +57,17 @@ const WHY: Record<string, string> = {
       <p class="small">{{ consent }}</p>
       <ol class="steps">
         <li>
-          <button type="button" class="btn primary" (click)="open()">Abrir o OpenCode</button>
-          <span class="small">Entre com sua conta (ou crie uma, de graça).</span>
+          @if (deviceCodePending()) {
+            <span class="small"
+              >Um código de dispositivo foi gerado. Por favor, abra o navegador e complete o
+              login.</span
+            >
+          } @else {
+            <button type="button" class="btn primary" (click)="deviceLogin()">
+              Entrar com sua conta
+            </button>
+            <span class="small">Usa o OpenCode com a sua conta. Sem plugins, sem MCP.</span>
+          }
         </li>
         <li>Lá, clique em <strong>Copiar</strong> no seu código de acesso.</li>
         <li>
@@ -92,6 +107,7 @@ export class AiConnectComponent implements OnInit {
   protected readonly manual = signal(false);
   protected readonly error = signal('');
   protected readonly log = signal<AiLogDto[]>([]);
+  protected readonly deviceCodePending = signal(false);
 
   async ngOnInit(): Promise<void> {
     try {
@@ -132,6 +148,33 @@ export class AiConnectComponent implements OnInit {
       await this.api.openAiConsole();
     } catch {
       this.error.set('Não consegui abrir o navegador. Abra opencode.ai/auth no seu navegador.');
+    }
+  }
+
+  /** Device code login: runs opencode auth login --method device. */
+  protected async deviceLogin(): Promise<void> {
+    this.deviceCodePending.set(true);
+    this.error.set('');
+    this.busy.set(true);
+    try {
+      const s = await this.api.aiConnectDevice();
+      this.connected.set(s.connected);
+      this.changed.emit(s.connected);
+      this.deviceCodePending.set(false);
+    } catch (e) {
+      this.deviceCodePending.set(false);
+      const code = (e as IpcError).code;
+      if (code === 'OPEN_URL_FAILED' || code === 'OPENCODE_FAILED') {
+        this.error.set('Não consegui abrir o OpenCode. Verifique sua internet e tente novamente.');
+      } else if (code === 'AI_KEY_REFUSED') {
+        this.error.set(WHY['AI_KEY_REFUSED']);
+      } else if (code === 'AI_RATE_LIMITED') {
+        this.error.set(WHY['AI_RATE_LIMITED']);
+      } else {
+        this.error.set(`Algo deu errado do meu lado (${code}).`);
+      }
+    } finally {
+      this.busy.set(false);
     }
   }
 
