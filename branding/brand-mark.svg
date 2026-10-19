@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Símbolo Help My Desk">
+  <rect width="64" height="64" rx="13" fill="#22282D"/>
+  <path d="M19 46V17.5C19 15.6 20.1 14.5 22 14.5H29.5C37 14.5 40 19.1 40 27V30H46" fill="none" stroke="#FF6C4D" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="49" cy="30" r="4.6" fill="#D8F16A"/>
+  <path d="M13.5 49.5H28" fill="none" stroke="#F3F0E6" stroke-width="2.6" stroke-linecap="round" opacity=".92"/>
+</svg>

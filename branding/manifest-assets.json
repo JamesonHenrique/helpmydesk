@@ -1,0 +1,28 @@
+{
+  "brand": "Help My Desk",
+  "identity_version": "1.0",
+  "direction": "Oficina editorial contemporânea",
+  "tagline": "Seu computador, sem mistério.",
+  "principles": ["Entender primeiro", "Corrigir com cuidado", "Explicar antes de agir", "Pedir autorização", "Verificar o resultado"],
+  "assets": [
+    { "file": "board.png", "type": "image/png", "purpose": "Prancha principal de referência visual", "status": "not-provided" },
+    { "file": "board.svg", "type": "image/svg+xml", "purpose": "Prancha vetorial de referência", "status": "not-provided" },
+    { "file": "logo-horizontal.svg", "type": "image/svg+xml", "purpose": "Assinatura horizontal", "status": "provided" },
+    { "file": "logo-monochrome.svg", "type": "image/svg+xml", "purpose": "Assinatura monocromática", "status": "provided" },
+    { "file": "brand-mark.svg", "type": "image/svg+xml", "purpose": "Símbolo compacto para app/favicons", "status": "provided", "note": "Cópia em uso pela UI: apps/desktop/ui/public/favicon.svg" },
+    { "file": "tokens.css", "type": "text/css", "purpose": "Tokens de referência para CSS", "status": "provided", "note": "Referência; a fonte operacional é apps/desktop/ui/src/styles.css" },
+    { "file": "tokens.json", "type": "application/json", "purpose": "Tokens estruturados", "status": "provided" },
+    { "file": "IDENTIDADE-VISUAL.md", "type": "text/markdown", "purpose": "Manual de marca", "status": "not-provided" },
+    { "file": "HANDOFF-COMPLETO.md", "type": "text/markdown", "purpose": "Resumo para implementação", "status": "not-provided" },
+    { "file": "COMPONENTES-E-TELAS.md", "type": "text/markdown", "purpose": "Especificação de UI", "status": "not-provided" },
+    { "file": "PROMPT-IMPLEMENTACAO.md", "type": "text/markdown", "purpose": "Prompt pronto para agente de desenvolvimento", "status": "not-provided" }
+  ],
+  "operational_source_of_truth": "apps/desktop/ui/src/styles.css",
+  "notes": [
+    "Usar essa direção como identidade aprovada; imagens roxas de exploração anteriores não fazem parte do sistema oficial.",
+    "A marca não substitui verificação de build, testes de acessibilidade e revisão visual do aplicativo em execução.",
+    "Os bens de referência visual (board.png/board.svg) e os documentos de handoff listados não foram fornecidos nesta entrega; registrados como not-provided em vez de inventados.",
+    "Unidade de espaçamento: tokens.json/tokens.css definem a escala em px como referência; a UI opera em rem (mesma proporção) para que o espaçamento acompanhe o ajuste de texto (A−/A+, --font-size).",
+    "Assinatura dos SVGs usa a forma curta \"suporte sem mistério\"; a tagline completa \"Seu computador, sem mistério.\" fica reservada a caption/meta e à voz da marca."
+  ]
+}

@@ -1,0 +1,88 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later
+   Help My Desk — Oficina editorial, tokens de referência v1.0.
+   Fonte operacional da UI: apps/desktop/ui/src/styles.css. Manter sincronizado. */
+:root {
+  color-scheme: light;
+  --hmd-bg: #f3f0e6;
+  --hmd-surface: #fffcf5;
+  --hmd-surface-raised: #fffeFA;
+  --hmd-fg: #22282d;
+  --hmd-muted: #596267;
+  --hmd-line: #c8c5ba;
+  --hmd-line-strong: #92968f;
+  --hmd-control-border: #6b7066;
+  --hmd-accent: #b73825;
+  --hmd-accent-fg: #fffefa;
+  --hmd-accent-soft: #f9e1d9;
+  --hmd-coral: #ff6c4d;
+  --hmd-checkpoint: #d8f16a;
+  --hmd-checkpoint-fg: #22282d;
+  --hmd-ok: #286542;
+  --hmd-warn: #805500;
+  --hmd-error: #a32e25;
+  --hmd-focus: #22282d;
+  --hmd-texture-dot: #d8d5ca;
+  --hmd-radius: 7px;
+  --hmd-radius-small: 4px;
+  --hmd-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --hmd-font-mono: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
+  --hmd-font-size: 1.0625rem;
+  --hmd-space-1: 4px;
+  --hmd-space-2: 8px;
+  --hmd-space-3: 12px;
+  --hmd-space-4: 16px;
+  --hmd-space-5: 20px;
+  --hmd-space-6: 24px;
+  --hmd-space-8: 32px;
+  --hmd-space-10: 40px;
+  --hmd-space-12: 48px;
+  --hmd-control-min-height: 42px;
+  --hmd-focus-width: 3px;
+  --hmd-motion-quick: 120ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --hmd-bg: #171c1f;
+    --hmd-surface: #22282d;
+    --hmd-surface-raised: #282f33;
+    --hmd-fg: #f3f0e6;
+    --hmd-muted: #c0c4bd;
+    --hmd-line: #4b5353;
+    --hmd-line-strong: #77807d;
+    --hmd-control-border: #9aa39a;
+    --hmd-accent: #ff8066;
+    --hmd-accent-fg: #22282d;
+    --hmd-accent-soft: #4a2b27;
+    --hmd-ok: #9bd4a7;
+    --hmd-warn: #f3d078;
+    --hmd-error: #ff9a85;
+    --hmd-focus: #d8f16a;
+    --hmd-texture-dot: #343b3a;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --hmd-bg: #171c1f;
+  --hmd-surface: #22282d;
+  --hmd-surface-raised: #282f33;
+  --hmd-fg: #f3f0e6;
+  --hmd-muted: #c0c4bd;
+  --hmd-line: #4b5353;
+  --hmd-line-strong: #77807d;
+  --hmd-control-border: #9aa39a;
+  --hmd-accent: #ff8066;
+  --hmd-accent-fg: #22282d;
+  --hmd-accent-soft: #4a2b27;
+  --hmd-ok: #9bd4a7;
+  --hmd-warn: #f3d078;
+  --hmd-error: #ff9a85;
+  --hmd-focus: #d8f16a;
+  --hmd-texture-dot: #343b3a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --hmd-motion-quick: 0ms; }
+}

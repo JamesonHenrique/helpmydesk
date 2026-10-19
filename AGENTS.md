@@ -67,3 +67,17 @@ Ambiente (Linux): `export PATH="$HOME/.cargo/bin:$PATH"` e, se usar fnm, `eval "
   (`cargo run -p hmd-ai --example eval`) usa a chave de quem roda e não vai para o CI.
 
 Onde cada garantia é testada: [docs/security/review-guide.md](docs/security/review-guide.md).
+
+## Identidade visual e interface
+
+- A identidade visual aprovada é a "Oficina editorial contemporânea" (v1.0), em
+  `branding/` (`tokens.json`, `tokens.css`, `manifest-assets.json` e os 3 SVGs de logo).
+- A fonte operacional da UI é `apps/desktop/ui/src/styles.css`: `branding/tokens.css`
+  e `tokens.json` são referência e devem ser mantidos sincronizados — novas cores
+  passam pelos três arquivos na mesma mudança.
+- `--font-size` é runtime (A−/A+ em `app.ts`); nunca quebre a escalada de texto.
+- Estilos de shell ficam compactos em `app.css` (orçamento `anyComponentStyle` w4kB/e8kB).
+- Revisores read-only: `.opencode/agents/{brand-reviewer,accessibility-reviewer,safety-boundary-reviewer}.md`;
+  comandos `/brand-audit` e `/ui-verify`. Zero de cor inventada fora dos tokens.
+- Prettier sempre dentro de `apps/desktop/ui/`: o npx na raiz resolve outra versão
+  (3.9.10 vs 3.9.9 do projeto) e acusa falsos erros de formato.
