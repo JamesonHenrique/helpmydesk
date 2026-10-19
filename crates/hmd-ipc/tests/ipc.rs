@@ -383,6 +383,47 @@ fn ai_call_in_three_steps_never_prints_the_key() {
     assert_eq!(dto.family.as_deref(), Some("connectivity"));
 }
 
+/// Device flow (ADR-032): the vault marker (the "key" is not a secret, it only selects the
+/// mode) keeps the CLI transport across a restart; a pasted key or nothing there stays HTTP.
+#[test]
+fn device_marker_restores_the_cli_transport() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let (c, _t) = clock();
+    let dir = std::env::temp_dir().join(format!("hmd-ipc-device-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    // A completed device login: marker in the vault, transport switched under the lock.
+    let mut b = backend(&fixed, false);
+    let test = Backend::ai_test_key(&NetAnswer, hmd_ai::DEVICE_KEY);
+    assert!(
+        b.ai_connect_finish(hmd_ai::DEVICE_KEY, test)
+            .unwrap()
+            .connected
+    );
+    b.ai_use_device_transport();
+    assert!(b.ai_device_transport());
+
+    // A new startup rebuilds a fresh backend; restoring from the marker vault switches it.
+    let (mut fresh, _) =
+        Backend::open(dir.join("history.sqlite3"), runner(fixed.clone()), c).unwrap();
+    let vault = hmd_app::ai::MemoryVault::default();
+    use hmd_app::ai::KeyVault;
+    vault.set(hmd_ai::DEVICE_KEY).unwrap();
+    fresh.set_vault(Box::new(vault));
+    fresh.ai_restore_transport().unwrap();
+    assert!(
+        fresh.ai_device_transport(),
+        "device marker selects the CLI transport"
+    );
+
+    // Nothing in the vault (or a pasted key) keeps the HTTP transport.
+    let (c2, _t2) = clock();
+    let (mut plain, _) = Backend::open(dir.join("plain.sqlite3"), runner(fixed), c2).unwrap();
+    plain.ai_restore_transport().unwrap();
+    assert!(!plain.ai_device_transport());
+}
+
 /// "Apagar tudo" also removes the AI key from the vault (it is personal data too).
 #[test]
 fn erase_all_also_removes_the_ai_key() {

@@ -26,6 +26,7 @@ custom-protocol = ["tauri/custom-protocol"]
 tauri-build = { version = "=2.7.1", features = [] }
 
 [dependencies]
+hmd-ai = { path = "../../../crates/hmd-ai" }
 hmd-ipc = { path = "../../../crates/hmd-ipc" }
 hmd-probes = { path = "../../../crates/hmd-probes" }
 hmd-vault = { path = "../../../crates/hmd-vault" }

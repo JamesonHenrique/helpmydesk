@@ -35,3 +35,4 @@ Formato: MADR simplificado. Os ADRs ainda sem arquivo próprio estão resumidos 
 | [029](ADR-029-test-installers.md) | Instaladores de teste pelo CI (`.deb` + NSIS) | Aceita |
 | [030](ADR-030-kill-switch-download.md) | Download do kill switch assinado | Aceita |
 | [031](ADR-031-elevated-helper.md) | Helper elevado em processo separado (UAC, instalação por máquina) | Aceita (sem lançador, ver ADR) |
+| [032](ADR-032-opencode-device-flow.md) | Conectar a IA pelo CLI do OpenCode (device-flow, transporte subprocesso) | Aceita |

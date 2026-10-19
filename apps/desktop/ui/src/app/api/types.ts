@@ -154,6 +154,8 @@ export interface CoreApi {
   aiLog(): Promise<AiLogDto[]>;
   /** Opens the OpenCode console (fixed URL, chosen by the core). */
   openAiConsole(): Promise<void>;
+  /** Device code login: runs opencode auth login --method device. */
+  aiConnectDevice(): Promise<AiStatusDto>;
   setAutonomy(mode: SettingsDto['autonomy']): Promise<void>;
   setConsent(scope: string, granted: boolean): Promise<void>;
   exportAll(): Promise<string>;

@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-16",
+ "updated": "2026-10-19",
  "rows": [
   {
    "id": "F0-01",
@@ -427,8 +427,8 @@
    "weight": 2,
    "delivered_on": "2026-10-15",
    "ref": "fa6b30c",
-   "note": "Spec 018: abrir o OpenCode, copiar e colar; chave testada e guardada no cofre do sistema; testado no app real com código falso",
-   "waiting_on": ""
+   "note": "Spec 018: copiar/colar (2026-10-15) + modo device-flow pelo CLI (2026-10-19, ADR-032); falta teste em máquina real com conta real",
+   "waiting_on": "teste em máquina real (device-flow)"
   },
   {
    "id": "F3-TRANSP",
