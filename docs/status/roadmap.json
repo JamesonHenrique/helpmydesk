@@ -410,12 +410,11 @@
    "phase_name": "IA via OpenCode",
    "phase_order": 4,
    "title": "Orquestração da conversa com a IA",
-   "status": "doing",
+   "status": "done",
    "weight": 3,
-   "delivered_on": "",
+   "delivered_on": "2026-10-19",
    "ref": "",
-   "note": "IA só classifica a família; se em dúvida pergunta, a resposta soma ao relato (prévia mostra o texto inteiro); no máximo 2 rodadas, depois o menu. Falta enviar o resumo das verificações",
-   "waiting_on": "decisão sobre o que vai para a IA"
+   "note": "IA só classifica a família; se em dúvida pergunta, a resposta soma ao relato (prévia mostra o texto inteiro); no máximo 2 rodadas, depois o menu. Entrega da spec 021 (ADR-033): se as verificações sugerirem outra família, chamada extra de classify com códigos dos achados e cartão de sugestão na página de diagnóstico (a sugestão só é abraçada com clique explícito)"
   },
   {
    "id": "SPEC-015",

@@ -5,10 +5,19 @@ import { Component, OnInit, computed, inject, input, signal } from '@angular/cor
 import { Router, RouterLink } from '@angular/router';
 
 import { CORE_API } from '../api/core-api';
-import { IpcError, ProbeRunDto } from '../api/types';
+import { DiagnosisDto, IpcError, ProbeRunDto } from '../api/types';
 import { family, probe } from '../data/catalog';
 import { Session } from '../state/session';
 import { PrototypeState } from '../state/prototype';
+
+/** Spec 021: one suggestion of another family, from an AI call the person already knows
+ * about (the card shows exactly what went out). */
+interface AiSuggestion {
+  family: string;
+  title: string;
+  preview: string;
+  codes: string;
+}
 
 @Component({
   selector: 'app-diagnosis',
@@ -45,6 +54,24 @@ import { PrototypeState } from '../state/prototype';
               </li>
             }
           </ul>
+          @if (suggestion(); as s) {
+            <div class="card" aria-live="polite">
+              <p>
+                As verificações não confirmaram isso. Elas sugerem outro tipo de problema:
+                <strong>{{ s.title }}</strong
+                >.
+              </p>
+              <div class="actions">
+                <button type="button" class="btn primary" (click)="go(s.family)">
+                  Verificar isso
+                </button>
+              </div>
+              <p class="small muted">
+                Para isso, a ajuda inteligente recebeu o seu relato redigido («{{ s.preview }}») e
+                os códigos das verificações ({{ s.codes }}) — nada mais.
+              </p>
+            </div>
+          }
           <div class="card" aria-live="polite">
             <p>
               <strong>{{ d.confidencePhrase }}:</strong> {{ d.title }}
@@ -103,6 +130,7 @@ export class DiagnosisPage implements OnInit {
   protected readonly fam = computed(() => family(this.code()));
   protected readonly running = signal(true);
   protected readonly error = signal<IpcError | null>(null);
+  protected readonly suggestion = signal<AiSuggestion | null>(null);
   private stopped = false;
 
   ngOnInit(): void {
@@ -122,6 +150,7 @@ export class DiagnosisPage implements OnInit {
       const d = await this.api.diagnose(started.ticket.id);
       if (!this.stopped) {
         this.session.diagnosis.set(d);
+        void this.suggest(f.code, d);
       }
     } catch (e) {
       this.error.set(e as IpcError);
@@ -134,6 +163,44 @@ export class DiagnosisPage implements OnInit {
     // The checks only read; the result is ignored and nothing was changed.
     this.stopped = true;
     void this.router.navigate(['/']);
+  }
+
+  /** Spec 021: the checks contradicted the AI's first pick — one extra classification with
+   * the finding codes (never values or log lines). Silent on any error. */
+  private async suggest(current: string, d: DiagnosisDto): Promise<void> {
+    if (!d.isFallback) {
+      return;
+    }
+    const codes = [...new Set(d.probes.flatMap((p: ProbeRunDto) => p.findings))];
+    const story = this.session.story();
+    if (codes.length === 0 || !story || this.session.extraClassify()) {
+      return;
+    }
+    try {
+      if (!(await this.api.aiStatus()).connected) {
+        return;
+      }
+      const c = await this.api.aiClassify(story, codes);
+      if (!c.family || c.family === current || c.confidence === 'low') {
+        this.session.extraClassify.set(true);
+        return;
+      }
+      this.session.extraClassify.set(true);
+      this.suggestion.set({
+        family: c.family,
+        title: family(c.family)?.title ?? c.family,
+        preview: await this.api.aiPreview(story),
+        codes: codes.join(', '),
+      });
+    } catch {
+      // Best effort only: the deterministic diagnosis of this family stands.
+    }
+  }
+
+  /** Navigating to the suggestion is the person's decision; the AI never changes the page. */
+  protected go(code: string): void {
+    this.suggestion.set(null);
+    void this.router.navigate(['/diagnostico', code]);
   }
 
   protected title(id: string): string {
