@@ -5,6 +5,13 @@
 
 **Status: em desenvolvimento inicial (pré-alfa). Ainda não há versão para instalar.**
 
+![Demo: a pessoa conta o problema, a ajuda inteligente escolhe a família, o app verifica,
+propõe a correção, executa com aprovação e confirma que resolveu](docs/assets/demo.gif)
+
+*Demo do protótipo da interface (dados de exemplo; nada é verificado nem alterado no seu
+computador). Da esquerda para a direita: relato escrito com as próprias palavras → verificação
+somente leitura → o que eu proponho fazer → correção aprovada e verificada → "resolveu" → histórico.)*
+
 O HelpMyDesk é um aplicativo de desktop para pessoas sem conhecimento técnico. A pessoa
 descreve o problema com as próprias palavras ("minha internet parou", "o computador está
 lento", "o som não sai") e o app:
@@ -25,6 +32,12 @@ lento", "o som não sai") e o app:
   real está liberada ainda: elas esperam a medição de privilégios em Windows e Linux (spike S-02).
 - **Histórico local** (SQLite) com auditoria encadeada, retenção automática, exportar e apagar
   tudo, e o **relatório "não consegui"**.
+- **Ajuda inteligente (opcional):** a pessoa escreve o problema com as próprias palavras, vê
+  exatamente o que sai do computador, e a IA do [OpenCode](https://opencode.ai/docs/zen/) —
+  na conta da própria pessoa, com modelos de retenção zero — escolhe a família do problema.
+  Se as verificações apontarem outra coisa, o app mostra o cartão *"As verificações sugerem
+  outro problema"* e só muda de caminho se a pessoa clicar (SPEC-010/021,
+  [ADR-033](docs/architecture/adr/ADR-033-ai-verification-codes.md)).
 - **App desktop (Tauri)** ligado ao núcleo: compila e abre no CI em Linux e Windows. Ainda não
   há instalador.
 - **Kill switch assinado** para desligar uma capacidade sem lançar versão (falta a chave do
@@ -36,6 +49,12 @@ Experimente no terminal, sem instalar nada:
 cargo run -p hmd-core --example basic_mode            # menu
 cargo run -p hmd-core --example basic_mode -- 1       # verifica a internet
 cargo run -p hmd-core --example basic_mode -- --o-que-eu-olho
+```
+
+Ou o protótipo da interface no navegador (dados de exemplo; sem precisar do Rust):
+
+```sh
+(cd apps/desktop/ui && npm ci --ignore-scripts && npx ng serve)   # http://localhost:4200
 ```
 
 **Para quem usa:** [guia em português simples](docs/usuario/GUIA.md).
