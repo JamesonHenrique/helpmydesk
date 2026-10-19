@@ -6,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CORE_API } from '../api/core-api';
 import { IpcError } from '../api/types';
 import { FAMILIES, FAMILY_HINTS } from '../data/catalog';
+import { Session } from '../state/session';
 import { PrototypeState } from '../state/prototype';
 
 /** Questions the AI may ask before the app falls back to the menu. */
@@ -79,6 +80,7 @@ const MAX_ROUNDS = 2;
 })
 export class HomePage implements OnInit {
   protected readonly state = inject(PrototypeState);
+  protected readonly session = inject(Session);
   private readonly api = inject(CORE_API);
   private readonly router = inject(Router);
   protected readonly families = FAMILIES;
@@ -112,7 +114,8 @@ export class HomePage implements OnInit {
     }
   }
 
-  protected start(code: string): void {
+  protected start(code: string, said = ''): void {
+    this.session.beginAttendance(said);
     this.state.scenario.set(0);
     void this.router.navigate(['/diagnostico', code]);
   }
@@ -127,7 +130,9 @@ export class HomePage implements OnInit {
     try {
       const c = await this.api.aiClassify(said);
       if (c.family && c.confidence !== 'low') {
-        this.start(c.family);
+        // Spec 021: the story goes with the attendance; the diagnosis page may use it for
+        // one re-classification if the checks contradict the AI's pick.
+        this.start(c.family, said);
         return;
       }
       this.rounds += 1;

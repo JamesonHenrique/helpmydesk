@@ -109,3 +109,46 @@ fn a_bad_answer_is_an_error_not_a_family() {
         "AI_BAD_ANSWER"
     );
 }
+
+/// Spec 021: the extra classification carries only the sanitized finding codes.
+#[test]
+fn fr021_sc004_codes_leave_only_sanitized() {
+    let mut a = app();
+    let vault = MemoryVault::default();
+    let fake = Fake::ok(NET);
+    // Not connected: the extra call is refused like any other.
+    let bad = vec!["<script>alert(1)</script>".to_string(), "x".repeat(65)];
+    assert_eq!(
+        a.ai_classify_with_findings(&vault, &fake, "a internet caiu", &bad, NOW)
+            .unwrap_err()
+            .reason_code(),
+        "AI_NOT_CONNECTED"
+    );
+    assert!(fake.sent.borrow().is_empty());
+
+    a.ai_connect(&vault, &fake, "k", NOW).unwrap();
+    let codes = vec![
+        "net.dns.resolution_failing".to_string(),
+        "Storage.low_space".to_string(),
+        "<script>alert(1)</script>".to_string(),
+        "net.dns.resolution_failing".to_string(),
+    ];
+    a.ai_classify_with_findings(&vault, &fake, "a internet caiu", &codes, NOW)
+        .unwrap();
+    let sent = fake.sent.borrow().last().unwrap().clone();
+    let user = serde_json::from_str::<serde_json::Value>(&sent).unwrap()["messages"][1]["content"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&user).unwrap()["verification_codes"],
+        serde_json::json!(["net.dns.resolution_failing"])
+    );
+    assert!(!user.contains("Storage"), "uppercase code dropped");
+    assert!(!user.contains("script"), "injected content dropped");
+
+    // Same audit discipline: codes only, never the text.
+    let audit = a.export_all(NOW + 1).unwrap();
+    assert!(audit.contains("ai.classify"));
+    assert!(!audit.contains("internet caiu"));
+}

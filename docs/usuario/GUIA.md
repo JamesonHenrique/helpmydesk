@@ -36,6 +36,9 @@ Com ela, você escreve o problema com as suas palavras ("a internet caiu desde o
   **Copiar** e volte em **Colar o código e ligar**.
 - O que vai para a IA aparece embaixo do campo antes de enviar, sem seu nome nem o nome do
   computador. A IA só escolhe o tipo de problema; ela não executa nada.
+- Se as verificações do diagnóstico não confirmarem o tipo escolhido, a IA pode olhar de novo
+  com os **códigos** do que elas encontraram (nunca o conteúdo). Se ela sugerir outro tipo,
+  aparece um cartão e você decide se quer verificar aquilo: a IA nunca muda o app sozinha.
 - Para desligar e apagar o código: **Configurações → Desligar e apagar o código**.
 
 ## Privacidade

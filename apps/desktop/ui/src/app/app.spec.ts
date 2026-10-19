@@ -103,6 +103,108 @@ describe('DiagnosisPage', () => {
   });
 });
 
+describe('DiagnosisPage re-classification (spec 021)', () => {
+  const fallback = (family: string): DiagnosisDto => ({
+    ticket: {
+      id: 't1',
+      family,
+      familyTitle: family,
+      state: 'in_progress',
+      reopenCount: 1,
+      lastTrigger: null,
+      createdAt: 1_760_400_000,
+      lastChangedAt: 1_760_400_000,
+    },
+    sessionId: 1,
+    diagnosisId: 'fallback',
+    confidence: 'low',
+    confidencePhrase: 'Não posso dizer com segurança',
+    title: 'Não encontrei nada conclusivo',
+    explanation: 'As verificações não casaram com nenhum problema conhecido.',
+    steps: [],
+    isFallback: true,
+    trigger: null,
+    probes: [
+      {
+        probeId: 'net.dns.resolve',
+        title: 'Endereços da internet',
+        status: 'found',
+        findings: ['net.dns.resolution_failing'],
+        reason: null,
+      },
+    ],
+    plan: null,
+  });
+
+  function aiSuggestStub(over: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      startTicket: async (family: string) => ({
+        reused: false,
+        reopened: false,
+        ticket: {
+          id: 't1',
+          family,
+          familyTitle: family,
+          state: 'in_progress',
+          reopenCount: 1,
+          lastTrigger: null,
+          createdAt: 1_760_400_000,
+          lastChangedAt: 1_760_400_000,
+        },
+      }),
+      diagnose: async () => fallback('connectivity'),
+      aiStatus: async () => ({ connected: true, consoleUrl: '' }),
+      aiClassify: async () => {
+        return { family: 'audio_video', confidence: 'high', question: null };
+      },
+      aiPreview: async (text: string) => text,
+      ...over,
+    };
+  }
+
+  it('fr021: suggests another family when the checks found nothing conclusive', async () => {
+    await setupWith(aiSuggestStub());
+    const router = TestBed.inject(Router);
+    const go: unknown[] = [];
+    router.navigate = (async (commands: unknown[]) => {
+      go.push(commands);
+      return true;
+    }) as typeof router.navigate;
+    TestBed.inject(Session).beginAttendance('a internet caiu');
+    const { fixture, el } = await render(DiagnosisPage, { family: 'connectivity' });
+    expect(el.textContent).toContain('Elas sugerem outro tipo de problema');
+    expect(el.textContent).toContain('Som, microfone ou câmera');
+    const codes = [...el.querySelectorAll('.card .small.muted')].map((x) => x.textContent).join('');
+    expect(codes).toContain('net.dns.resolution_failing');
+    const btn = [...el.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Verificar isso'),
+    ) as HTMLButtonElement;
+    btn.click();
+    await fixture.whenStable();
+    expect(go).toEqual([['/diagnostico', 'audio_video']]);
+  });
+
+  it('fr021: one extra classification per attendance, even for another check run', async () => {
+    await setupWith(aiSuggestStub());
+    TestBed.inject(Session).beginAttendance('a internet caiu');
+    await render(DiagnosisPage, { family: 'connectivity' });
+    expect(TestBed.inject(Session).extraClassify()).toBe(true);
+    // A second run of this same attendance (any family) does not call the AI again.
+    const { el } = await render(DiagnosisPage, { family: 'storage' });
+    expect(el.textContent).not.toContain('Elas sugerem outro');
+  });
+
+  it('fr021: silent when the AI is off or the person came from the menu', async () => {
+    await setupWith(
+      aiSuggestStub({
+        aiStatus: async () => ({ connected: false, consoleUrl: '' }),
+      }),
+    );
+    const { el } = await render(DiagnosisPage, { family: 'connectivity' });
+    expect(el.textContent).not.toContain('Elas sugerem outro');
+  });
+});
+
 describe('PlanPage', () => {
   it('shows catalog risk and undo texts and warns about the system prompt', async () => {
     const net = FAMILIES.find((f) => f.code === 'connectivity');

@@ -60,7 +60,8 @@ espera a pessoa no navegador); registrada em `waiting_on` do SPEC-015.
 
 ## Fora do escopo
 
-Enviar o resumo das verificações para a IA (só o texto vai hoje); suíte de avaliação (E-04).
+Suíte de avaliação (E-04). O resumo das verificações saiu deste escopo: feito na spec 021
+(códigos dos achados e re-classificação pós-diagnóstico, ADR-033).
 A chamada à IA roda fora do lock do backend (preparar → rede em thread de bloqueio → registrar),
 então uma resposta lenta não trava as outras telas.
 

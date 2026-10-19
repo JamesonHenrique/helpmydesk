@@ -148,7 +148,8 @@ export interface CoreApi {
   aiDisconnect(): Promise<AiStatusDto>;
   /** Desktop: reads the key from the clipboard in the core (it never reaches the screen). */
   aiConnectFromClipboard(): Promise<AiStatusDto>;
-  aiClassify(text: string): Promise<AiClassificationDto>;
+  /** The codes are the checks' findings (spec 021); empty for the plain free-text flow. */
+  aiClassify(text: string, findings?: string[]): Promise<AiClassificationDto>;
   /** The text exactly as it would leave the computer (local; nothing is sent). */
   aiPreview(text: string): Promise<string>;
   aiLog(): Promise<AiLogDto[]>;
