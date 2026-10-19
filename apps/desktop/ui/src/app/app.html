@@ -1,15 +1,47 @@
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
 <header class="bar">
   <div class="inner">
-    <a class="brand" routerLink="/">HelpMyDesk</a>
+    <a class="brand" routerLink="/"
+      ><svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="13" fill="var(--fg, #22282D)" />
+        <path
+          d="M19 46V17.5C19 15.6 20.1 14.5 22 14.5H29.5C37 14.5 40 19.1 40 27V30H46"
+          fill="none"
+          stroke="var(--coral, #FF6C4D)"
+          stroke-width="5.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <circle cx="49" cy="30" r="4.6" fill="var(--checkpoint, #D8F16A)" />
+        <path
+          d="M13.5 49.5H28"
+          fill="none"
+          stroke="var(--surface, #F3F0E6)"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          opacity=".92"
+        />
+      </svg>
+      <span>HelpMyDesk</span>
+    </a>
     <nav aria-label="Principal">
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+      <a
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        ariaCurrentWhenActive="page"
         >Início</a
       >
-      <a routerLink="/historico" routerLinkActive="active">Histórico</a>
-      <a routerLink="/meu-computador" routerLinkActive="active">Meu computador</a>
-      <a routerLink="/configuracoes" routerLinkActive="active">Configurações</a>
-      <a routerLink="/ajuda" routerLinkActive="active">Ajuda</a>
+      <a routerLink="/historico" routerLinkActive="active" ariaCurrentWhenActive="page"
+        >Histórico</a
+      >
+      <a routerLink="/meu-computador" routerLinkActive="active" ariaCurrentWhenActive="page"
+        >Meu computador</a
+      >
+      <a routerLink="/configuracoes" routerLinkActive="active" ariaCurrentWhenActive="page"
+        >Configurações</a
+      >
+      <a routerLink="/ajuda" routerLinkActive="active" ariaCurrentWhenActive="page">Ajuda</a>
     </nav>
     <div class="size" role="group" aria-label="Tamanho do texto">
       <button

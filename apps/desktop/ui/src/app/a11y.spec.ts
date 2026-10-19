@@ -10,6 +10,7 @@ import { App } from './app';
 import { routes } from './app.routes';
 import { CORE_API } from './api/core-api';
 import { FAMILIES } from './data/catalog';
+import { ApprovalPage } from './pages/approval';
 import { ComputerPage } from './pages/computer';
 import { DiagnosisPage } from './pages/diagnosis';
 import { HelpPage } from './pages/help';
@@ -83,6 +84,31 @@ describe('accessibility (axe-core)', () => {
   it('result', async () => {
     await diagnosed();
     expect(await violations(ResultPage, { family: 'connectivity' })).toEqual([]);
+  });
+  it('approval', async () => {
+    // Same minimal plan mock used by app.spec.ts so the window renders fully.
+    const plan = {
+      planId: 1,
+      planHash: 'sha256:0000000000000000000000',
+      steps: [
+        {
+          stepId: 's1',
+          capability: 'net.dns.flush_cache',
+          title: 'Limpar a memória de endereços da internet',
+          risk: 'Muito baixo. Não apaga nada seu. O sistema vai pedir sua permissão.',
+          undo: 'Não é necessário desfazer.',
+          requiresElevation: true,
+          perActionApproval: true,
+        },
+      ],
+    };
+    await TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes, withComponentInputBinding()),
+        { provide: CORE_API, useValue: { real: false, plan: async () => plan } },
+      ],
+    }).compileComponents();
+    expect(await violations(ApprovalPage, { ticket: '1', plan: '1' })).toEqual([]);
   });
   it('report', async () => expect(await violations(ReportPage)).toEqual([]));
   it('history', async () => expect(await violations(HistoryPage)).toEqual([]));
