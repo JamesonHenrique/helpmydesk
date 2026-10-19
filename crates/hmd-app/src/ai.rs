@@ -114,7 +114,20 @@ impl App {
         text: &str,
         now: Timestamp,
     ) -> Result<Classification> {
-        let call = self.ai_prepare(vault, text)?;
+        self.ai_classify_with_findings(vault, transport, text, &[], now)
+    }
+
+    /// Spec 021: the same pipeline with the codes of the checks' findings (`&[]` keeps the
+    /// plain call). The codes are sanitized here and again in [`hmd_ai`].
+    pub fn ai_classify_with_findings(
+        &mut self,
+        vault: &dyn KeyVault,
+        transport: &dyn Transport,
+        text: &str,
+        findings: &[String],
+        now: Timestamp,
+    ) -> Result<Classification> {
+        let call = self.ai_prepare_with_findings(vault, text, findings)?;
         let result = call.run(transport);
         self.ai_finish(call.model, result, now)
     }
@@ -122,6 +135,16 @@ impl App {
     /// Everything checked before anything leaves the computer: consent, key, kill switch, and
     /// the text redacted (user and host names). Only a session the person started calls this.
     pub fn ai_prepare(&self, vault: &dyn KeyVault, text: &str) -> Result<AiCall> {
+        self.ai_prepare_with_findings(vault, text, &[])
+    }
+
+    /// Spec 021: consent, key, kill switch, redaction and the sanitized codes (FR-002).
+    pub fn ai_prepare_with_findings(
+        &self,
+        vault: &dyn KeyVault,
+        text: &str,
+        findings: &[String],
+    ) -> Result<AiCall> {
         if !self.consents()?.contains(AI_CONSENT) {
             return Err(AppError::AiNotConnected);
         }
@@ -136,6 +159,7 @@ impl App {
             key,
             model: DEFAULT_MODEL,
             text: hmd_core::report::redact_free_text(text),
+            findings: hmd_ai::sanitize_codes(findings),
         })
     }
 
@@ -193,11 +217,14 @@ pub struct AiCall {
     key: String,
     pub model: &'static str,
     pub text: String,
+    /// Spec 021: the finding codes sent beside the text (already sanitized; empty for the
+    /// plain free-text call). Catalog codes only; they never identify a person.
+    pub findings: Vec<String>,
 }
 
 impl AiCall {
     pub fn run(&self, transport: &dyn Transport) -> std::result::Result<Classification, AiError> {
-        hmd_ai::classify(transport, &self.key, self.model, &self.text)
+        hmd_ai::classify_with_findings(transport, &self.key, self.model, &self.text, &self.findings)
     }
 }
 
@@ -207,6 +234,7 @@ impl std::fmt::Debug for AiCall {
         f.debug_struct("AiCall")
             .field("model", &self.model)
             .field("text", &self.text)
+            .field("findings", &self.findings)
             .finish_non_exhaustive()
     }
 }

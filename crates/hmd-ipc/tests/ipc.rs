@@ -342,6 +342,54 @@ impl hmd_ai::Transport for NetAnswer {
     }
 }
 
+/// Spec 021: the answer is the same closed schema; what changes is only the request body.
+struct FindingsTap(Arc<std::sync::Mutex<Vec<String>>>);
+impl hmd_ai::Transport for FindingsTap {
+    fn post(&self, _bearer: &str, body: &str) -> Result<(u16, String), hmd_ai::AiError> {
+        let mut seen = self.0.lock().unwrap();
+        seen.push(body.to_string());
+        Ok((
+            200,
+            serde_json::json!({"choices": [{"message": {"content": r#"
+                {"family": "audio_video", "confidence": "high", "question": null}"#}}]})
+            .to_string(),
+        ))
+    }
+}
+
+/// Spec 021: the extra classification with the checks' codes (audit and DTO are unchanged).
+#[test]
+fn ai_classify_sends_only_codes_of_the_findings() {
+    let fixed = Arc::new(AtomicBool::new(false));
+    let mut b = backend(&fixed, false);
+    let tap = Arc::new(std::sync::Mutex::new(Vec::new()));
+    b.set_transport(Box::new(FindingsTap(tap.clone())));
+    b.ai_connect("k").unwrap();
+    let codes = vec![
+        "net.dns.resolution_failing".to_string(),
+        "Storage.low_space".to_string(),
+        "<script>alert(1)</script>".to_string(),
+        "net.dns.resolution_failing".to_string(), // duplicate
+    ];
+    let c = b.ai_classify("o wifi caiu", &codes).unwrap();
+    assert_eq!(c.family.as_deref(), Some("audio_video"));
+    let sent = tap.lock().unwrap();
+    // [0] is the key's connection test; [1] is the re-classification.
+    assert_eq!(sent.len(), 2);
+    let user =
+        serde_json::from_str::<serde_json::Value>(&sent[1]).unwrap()["messages"][1]["content"]
+            .as_str()
+            .unwrap()
+            .to_string();
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&user).unwrap()["verification_codes"],
+        serde_json::json!(["net.dns.resolution_failing"])
+    );
+    // garbage does not leave the computer: only the catalog-shaped code goes out
+    assert!(!user.contains("script"));
+    assert!(!user.contains("Storage"));
+}
+
 /// Spec 018: the AI use cases as the JSON the screens receive.
 #[test]
 fn ai_connect_and_classify_as_json() {
@@ -351,9 +399,12 @@ fn ai_connect_and_classify_as_json() {
     let status = serde_json::to_value(b.ai_status().unwrap()).unwrap();
     assert_eq!(status["connected"], false);
     assert_eq!(status["consoleUrl"], hmd_ai::CONSOLE_URL);
-    assert_eq!(b.ai_classify("x").unwrap_err().code, "AI_NOT_CONNECTED");
+    assert_eq!(
+        b.ai_classify("x", &[]).unwrap_err().code,
+        "AI_NOT_CONNECTED"
+    );
     assert!(b.ai_connect("k").unwrap().connected);
-    let c = serde_json::to_value(b.ai_classify("o wifi caiu").unwrap()).unwrap();
+    let c = serde_json::to_value(b.ai_classify("o wifi caiu", &[]).unwrap()).unwrap();
     assert_eq!(c["family"], "connectivity");
     assert_eq!(c["confidence"], "medium");
     assert_eq!(c["question"], "Acontece no Wi-Fi e no cabo?");
@@ -457,7 +508,7 @@ fn ai_preview_and_log() {
         );
     }
     b.ai_connect("k").unwrap();
-    b.ai_classify("o wifi caiu de novo").unwrap();
+    b.ai_classify("o wifi caiu de novo", &[]).unwrap();
     let log = serde_json::to_value(b.ai_log().unwrap()).unwrap();
     assert_eq!(log[0]["outcome"], "ok:connectivity");
     assert_eq!(log[1]["outcome"], "ok:connection_test");

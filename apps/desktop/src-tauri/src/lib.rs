@@ -254,8 +254,20 @@ async fn ai_disconnect(state: State<'_, Shared>) -> IpcResult<AiStatusDto> {
 }
 
 #[tauri::command]
-async fn ai_classify(state: State<'_, Shared>, text: String) -> IpcResult<AiClassificationDto> {
-    let (call, transport) = with(&state, |b| Ok((b.ai_prepare(&text)?, b.ai_transport())))?;
+async fn ai_classify(
+    state: State<'_, Shared>,
+    text: String,
+    findings: Option<Vec<String>>,
+) -> IpcResult<AiClassificationDto> {
+    // Spec 021: the codes of the checks' findings travel beside the text; already sanitized
+    // in the core (hmd-app/hmd-ai), never log lines or values.
+    let findings = findings.unwrap_or_default();
+    let (call, transport) = with(&state, |b| {
+        Ok((
+            b.ai_prepare_with_findings(&text, &findings)?,
+            b.ai_transport(),
+        ))
+    })?;
     let model = call.model;
     let result = tauri::async_runtime::spawn_blocking(move || call.run(&*transport))
         .await

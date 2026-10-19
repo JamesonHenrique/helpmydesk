@@ -512,12 +512,22 @@ impl Backend {
 
     /// Checks and prepares an AI call; the shell runs it without holding the backend.
     pub fn ai_prepare(&mut self, text: &str) -> IpcResult<AiCall> {
+        self.ai_prepare_with_findings(text, &[])
+    }
+
+    /// Spec 021: the same preparation with the codes of the checks' findings (only catalog
+    /// codes are kept; anything else is dropped here and again in [`hmd_ai`]).
+    pub fn ai_prepare_with_findings(
+        &mut self,
+        text: &str,
+        findings: &[String],
+    ) -> IpcResult<AiCall> {
         self.reopen_if_closed();
         let app = self
             .app
             .as_ref()
             .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
-        Ok(app.ai_prepare(&*self.vault, text)?)
+        Ok(app.ai_prepare_with_findings(&*self.vault, text, findings)?)
     }
 
     pub fn ai_finish(
@@ -594,14 +604,19 @@ impl Backend {
         self.ai_status()
     }
 
-    pub fn ai_classify(&mut self, text: &str) -> IpcResult<AiClassificationDto> {
+    pub fn ai_classify(
+        &mut self,
+        text: &str,
+        findings: &[String],
+    ) -> IpcResult<AiClassificationDto> {
         let now = (self.clock)();
         self.reopen_if_closed();
         let app = self
             .app
             .as_mut()
             .ok_or_else(|| IpcError::new("NOT_OPEN", "history is closed"))?;
-        let c = app.ai_classify(&*self.vault, &*self.transport, text, now)?;
+        let c =
+            app.ai_classify_with_findings(&*self.vault, &*self.transport, text, findings, now)?;
         Ok(classification_dto(c))
     }
 

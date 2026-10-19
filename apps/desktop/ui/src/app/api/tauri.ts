@@ -133,8 +133,8 @@ export class TauriApi implements CoreApi {
   aiDisconnect(): Promise<AiStatusDto> {
     return invoke('ai_disconnect');
   }
-  aiClassify(text: string): Promise<AiClassificationDto> {
-    return invoke('ai_classify', { text });
+  aiClassify(text: string, findings: string[] = []): Promise<AiClassificationDto> {
+    return invoke('ai_classify', { text, findings });
   }
   aiPreview(text: string): Promise<string> {
     return invoke('ai_preview', { text });

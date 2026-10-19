@@ -36,3 +36,4 @@ Formato: MADR simplificado. Os ADRs ainda sem arquivo próprio estão resumidos 
 | [030](ADR-030-kill-switch-download.md) | Download do kill switch assinado | Aceita |
 | [031](ADR-031-elevated-helper.md) | Helper elevado em processo separado (UAC, instalação por máquina) | Aceita (sem lançador, ver ADR) |
 | [032](ADR-032-opencode-device-flow.md) | Conectar a IA pelo CLI do OpenCode (device-flow, transporte subprocesso) | Aceita |
+| [033](ADR-033-ai-verification-codes.md) | Códigos de verificação na classificação da IA (re-classificação após o diagnóstico) | Aceita |
