@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 100" role="img" aria-label="helpmydesk — suporte sem mistério">
+  <rect x="2" y="2" width="96" height="96" rx="19" fill="#22282D"/>
+  <path d="M31 70V26C31 22 33 20 37 20H49C62 20 67 28 67 40V44H78" fill="none" stroke="#FF6C4D" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="83" cy="44" r="6.1" fill="#D8F16A"/>
+  <path d="M23 77H45" fill="none" stroke="#F3F0E6" stroke-width="3.4" stroke-linecap="round"/>
+  <text x="118" y="48" fill="#22282D" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="800" letter-spacing="-2.5">help<tspan fill="#B73825">my</tspan>desk</text>
+  <text x="120" y="75" fill="#596267" font-family="Courier New, monospace" font-size="12" font-weight="700" letter-spacing="2">SUPORTE SEM MISTÉRIO</text>
+</svg>
