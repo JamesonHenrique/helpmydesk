@@ -32,3 +32,6 @@ Thumbs.db
 
 # Local copies of planning docs (canonical ones live in docs/planning/)
 /PLANEJAMENTO-*.md
+
+# Visual refinement kit stays out of the repo (external delivery)
+HelpMyDesk-Visual-Refinement-Kit.zip
