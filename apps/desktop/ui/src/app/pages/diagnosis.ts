@@ -26,25 +26,45 @@ interface AiSuggestion {
     @if (fam(); as f) {
       <section class="page" aria-labelledby="t">
         @if (running()) {
-          <h1 id="t">Verificando: {{ f.title }}…</h1>
-          <ul class="checks card" aria-label="Verificações">
+          <div class="page-head">
+            <p class="rule">Inspeção · família “{{ f.title }}”</p>
+            <h1 id="t">Verificando: {{ f.title }}…</h1>
+            <p class="lead">
+              Passo a passo da inspeção, na ordem que o app executa. Indicador indeterminado: o app
+              não inventa porcentagem — o tempo termina quando as verificações terminam.
+            </p>
+          </div>
+          <ol class="trail" aria-label="Verificações">
             @for (id of f.probes; track id) {
               <li>
                 <span class="mark muted" aria-hidden="true">⟳</span><span>{{ title(id) }}</span>
               </li>
             }
-          </ul>
+          </ol>
           <div class="row">
             <span class="muted" aria-live="polite">Nada está sendo alterado agora.</span>
             <button type="button" class="btn" (click)="stop()">Parar</button>
           </div>
         } @else if (error(); as e) {
-          <h1 id="t">Não consegui fazer as verificações</h1>
-          <p class="notice">Algo deu errado do meu lado ({{ e.code }}). Nada foi alterado.</p>
+          <div class="page-head">
+            <p class="rule">Inspeção interrompida</p>
+            <h1 id="t">Não consegui fazer as verificações</h1>
+            <p class="lead">Nada foi alterado no seu computador.</p>
+          </div>
+          <p class="notice error" role="alert">
+            Algo deu errado do meu lado ({{ e.code }}). Nada foi alterado.
+          </p>
           <div class="actions"><a class="btn" routerLink="/">Voltar ao início</a></div>
         } @else if (session.diagnosis(); as d) {
-          <h1 id="t">O que eu encontrei</h1>
-          <ul class="checks card" aria-label="Verificações">
+          <div class="page-head">
+            <p class="rule">Relatório da inspeção · {{ f.title }}</p>
+            <h1 id="t">O que eu encontrei</h1>
+            <p class="lead">
+              Cada verificação, o que ela viu e a leitura que faço disso — separados, como num
+              prontuário.
+            </p>
+          </div>
+          <ol class="trail sheet" aria-label="Verificações">
             @for (p of d.probes; track p.probeId) {
               <li>
                 <span class="mark {{ tone(p) }}" aria-hidden="true">{{ mark(p) }}</span>
@@ -53,9 +73,10 @@ interface AiSuggestion {
                 >
               </li>
             }
-          </ul>
+          </ol>
           @if (suggestion(); as s) {
             <div class="card" aria-live="polite">
+              <p class="rule">Sugestão alternativa · IA</p>
               <p>
                 As verificações não confirmaram isso. Elas sugerem outro tipo de problema:
                 <strong>{{ s.title }}</strong
@@ -73,6 +94,7 @@ interface AiSuggestion {
             </div>
           }
           <div class="card" aria-live="polite">
+            <p class="rule">Leitura do técnico · confiança declarada</p>
             <p>
               <strong>{{ d.confidencePhrase }}:</strong> {{ d.title }}
             </p>

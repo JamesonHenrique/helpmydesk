@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* HelpMyDesk UI — identidade visual "Oficina editorial contemporânea" (v1.0).
+/* HelpMyDesk UI — identidade visual "Oficina editorial de precisão" (v2.0).
    Tokens de referência: branding/tokens.css · tokens.json (manter sincronizado).
    Calma, alto contraste (WCAG 2.2 AA), teclado primeiro.
-   Layout: uma coluna central legível; cartões só para o que se age.
+   Layout: sidebar persistente + workspace; prosa tem limite de leitura próprio.
    Espaçamentos em rem DE propósito: acompanham o ajuste de texto (--font-size). */
 :root {
   color-scheme: light;
@@ -20,16 +20,28 @@
   --coral: #ff6c4d; /* detalhe de marca; não usar em texto pequeno sobre papel */
   --checkpoint: #d8f16a; /* seleção, foco, ponto de verificação */
   --checkpoint-fg: #22282d; /* texto sobre checkpoint, fixo nos dois temas */
+  --technical-ink: #496965; /* tinta técnica: diagramas, índices, trilhas */
+  --technical-soft: #dde8e3; /* fundo suave de material técnico */
   --ok: #286542;
   --warn: #805500;
   --bad: #a32e25;
   --focus: #22282d;
   --texture-dot: #d8d5ca;
+  /* Sidebar (carvão no tema claro; superfície elevada no escuro). */
+  --rail-bg: #22282d;
+  --rail-fg: #f3f0e6;
+  --rail-muted: #aab2b6;
+  --rail-line: #3f474c;
+  --rail-active-bg: #2f373c;
+  --rail-accent: #ff8066; /* vermelho-sinal legível sobre carvão */
   --radius: 7px;
   --radius-small: 4px;
   --font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
   --font-size: 1.0625rem;
+  /* Escala editorial de títulos (nunca fixar html { font-size }). */
+  --fs-display: clamp(2rem, 3.2vw, 3.25rem);
+  --fs-page: clamp(1.7rem, 2.6vw, 2.35rem);
   --control-min-height: 42px;
   --focus-width: 3px;
   --motion-quick: 120ms;
@@ -49,11 +61,19 @@
     --accent-fg: #22282d;
     --accent-soft: #4a2b27;
     --checkpoint: #d8f16a;
+    --technical-ink: #a2c7bf;
+    --technical-soft: #2d413e;
     --ok: #9bd4a7;
     --warn: #f3d078;
     --bad: #ff9a85;
     --focus: #d8f16a;
     --texture-dot: #343b3a;
+    --rail-bg: #101517;
+    --rail-fg: #f3f0e6;
+    --rail-muted: #aab2b6;
+    --rail-line: #3a4144;
+    --rail-active-bg: #1d2326;
+    --rail-accent: #ff8066;
   }
 }
 :root[data-theme='dark'] {
@@ -70,11 +90,19 @@
   --accent-fg: #22282d;
   --accent-soft: #4a2b27;
   --checkpoint: #d8f16a;
+  --technical-ink: #a2c7bf;
+  --technical-soft: #2d413e;
   --ok: #9bd4a7;
   --warn: #f3d078;
   --bad: #ff9a85;
   --focus: #d8f16a;
   --texture-dot: #343b3a;
+  --rail-bg: #101517;
+  --rail-fg: #f3f0e6;
+  --rail-muted: #aab2b6;
+  --rail-line: #3a4144;
+  --rail-active-bg: #1d2326;
+  --rail-accent: #ff8066;
 }
 
 html {
@@ -97,9 +125,9 @@ h3 {
   text-wrap: balance;
 }
 h1 {
-  font-size: clamp(1.65rem, 3vw, 2.1rem);
+  font-size: var(--fs-page, clamp(1.7rem, 2.6vw, 2.35rem));
   margin: 0 0 0.5rem;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 h2 {
   font-size: 1.25rem;
@@ -121,14 +149,43 @@ a {
   color: var(--checkpoint-fg);
 }
 
+/* ---------- Cabeçalho de página (título + subtítulo + rubrica técnica) ---- */
 .page {
   display: grid;
   gap: 1rem;
+}
+.page-head {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.page-head h1 {
+  margin: 0;
+}
+/* Rubrica técnica: índice mono pequeno acima do título (E-01, DIA 02…). */
+.rule {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--technical-ink);
 }
 .lead {
   color: var(--muted);
   margin: 0;
 }
+/* Limite de leitura para prosa dentro de páginas largas. */
+.prose {
+  max-width: 52rem;
+}
+.tagline {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* ---------- Superfícies (composição variada; .card deixa de ser universal) */
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -136,6 +193,17 @@ a {
   padding: 1rem 1.25rem;
   /* Sombra editorial: dura, discreta, como duas folhas sobrepostas. */
   box-shadow: 3px 3px 0 var(--line);
+}
+/* Ficha técnica: papel mais alto, régua de divisores, sem sombra. */
+.sheet {
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+.sheet h2:first-child,
+.card h2:first-child {
+  margin-top: 0;
 }
 .row {
   display: flex;
@@ -149,6 +217,8 @@ a {
   gap: 0.75rem;
   justify-content: flex-end;
 }
+
+/* ---------- Botões ------------------------------------------------------- */
 .btn {
   font: inherit;
   font-weight: 600;
@@ -185,12 +255,22 @@ a {
 .btn.danger {
   color: var(--bad);
   border-color: var(--bad);
+  background: var(--surface);
+}
+.btn.danger:hover {
+  box-shadow: 3px 3px 0 var(--bad);
 }
 .btn[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
   box-shadow: none;
 }
+.btn.small {
+  min-height: 2rem;
+  padding: 0.25rem 0.6rem;
+}
+
+/* ---------- Tiles de escolha (índice + ícone + título + hint) ------------ */
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
@@ -206,7 +286,9 @@ a {
   color: var(--fg);
   cursor: pointer;
   display: grid;
-  gap: 0.25rem;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 0.2rem 0.5rem;
   box-shadow: 3px 3px 0 var(--line);
   transition:
     border-color var(--motion-quick) ease,
@@ -224,10 +306,30 @@ a {
 .tile strong {
   font-size: 1.1rem;
 }
+.tile .hint {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.tile .num {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--technical-ink);
+  letter-spacing: 0.1em;
+  grid-column: 1 / -1;
+}
+.tile svg {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: none;
+  color: var(--accent);
+}
 .tile span {
   color: var(--muted);
   font-size: 0.88rem;
 }
+
+/* ---------- Trilhas, listas e passos ------------------------------------- */
 .steps {
   padding-left: 1.4rem;
   display: grid;
@@ -257,6 +359,89 @@ a {
   flex: none;
   font-family: var(--font-mono);
 }
+/* Trilha de verificação: passos numerados ligados por linha pontilhada,
+   como uma inspeção registrada à mão (não uma lista genérica). */
+.trail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  counter-reset: passo;
+}
+.trail > li {
+  counter-increment: passo;
+  position: relative;
+  padding: 0.4rem 0 0.9rem 2.4rem;
+  border-left: 2px dashed var(--line-strong);
+  margin-left: 0.8rem;
+}
+.trail > li:first-child {
+  padding-top: 0.2rem;
+}
+.trail > li:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+.trail > li::before {
+  content: counter(passo, decimal-leading-zero);
+  position: absolute;
+  left: -0.75rem;
+  top: 0.35rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--technical-ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.trail .mark {
+  width: 1.4rem;
+  text-align: left;
+}
+.trail strong {
+  font-weight: 650;
+}
+
+/* Linha do tempo editorial (histórico). */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.timeline > li {
+  position: relative;
+  padding: 0.55rem 0 0.75rem 1.6rem;
+  border-left: 2px solid var(--line);
+}
+.timeline > li::before {
+  content: '';
+  position: absolute;
+  left: -0.45rem;
+  top: 0.95rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--line-strong);
+}
+.timeline > li.latest::before {
+  background: var(--checkpoint);
+  border-color: var(--technical-ink);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  align-items: center;
+}
+
+/* ---------- Estados ------------------------------------------------------- */
 .ok {
   color: var(--ok);
 }
@@ -285,9 +470,39 @@ a {
   border-radius: var(--radius-small);
   box-shadow: 3px 3px 0 var(--line);
 }
+.notice.error {
+  border-left-color: var(--bad);
+}
+/* Nota de retorno/contínua do shell (histórico recuperado, correção
+   interrompida): honesta, compacta, sem virar banner gigante. */
+.restore-note {
+  margin: 0;
+  font-size: 0.88rem;
+  padding: 0.4rem 16px;
+  background: var(--accent-soft);
+  color: var(--fg);
+  border-bottom: 1px solid var(--line);
+}
+/* Selo de verificação real (resultado conferido): carimbo, não enfeite. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ok);
+  border: 2px solid var(--ok);
+  border-radius: var(--radius-small);
+  padding: 0.2rem 0.55rem;
+  transform: rotate(-2deg);
+}
 .small {
   font-size: 0.88rem;
 }
+
+/* ---------- Formulários --------------------------------------------------- */
 textarea,
 input[type='text'],
 input[type='password'] {
@@ -340,12 +555,16 @@ dl.facts dd {
   font-family: var(--font-mono);
   font-size: 0.94rem;
 }
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
     transition: none !important;
   }
   .tile:active {
+    transform: none;
+  }
+  .stamp {
     transform: none;
   }
 }
@@ -357,4 +576,12 @@ input[type='radio'] {
   height: 1.25rem;
   accent-color: var(--accent, #b73825);
   flex: none;
+}
+
+@media (prefers-contrast: more) {
+  .card,
+  .sheet,
+  .tile {
+    border-color: var(--line-strong);
+  }
 }

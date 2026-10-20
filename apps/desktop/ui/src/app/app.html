@@ -1,8 +1,16 @@
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
-<header class="bar">
-  <div class="inner">
-    <a class="brand" routerLink="/"
-      ><svg viewBox="0 0 64 64" aria-hidden="true">
+@if (!api.real) {
+  <p class="proto" role="note">
+    Protótipo: as telas usam dados de exemplo. Nada é verificado nem alterado no seu computador.
+  </p>
+}
+@if (notice()) {
+  <p class="restore-note" role="note">{{ notice() }}</p>
+}
+<div class="shell">
+  <aside class="rail">
+    <a class="brand" routerLink="/">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
         <rect width="64" height="64" rx="13" fill="var(--fg, #22282D)" />
         <path
           d="M19 46V17.5C19 15.6 20.1 14.5 22 14.5H29.5C37 14.5 40 19.1 40 27V30H46"
@@ -22,54 +30,125 @@
           opacity=".92"
         />
       </svg>
-      <span>HelpMyDesk</span>
+      <span class="brand-name">HelpMyDesk</span>
     </a>
+    <p class="tagline rail-tag">Seu computador, sem mistério.</p>
     <nav aria-label="Principal">
-      <a
-        routerLink="/"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-        ariaCurrentWhenActive="page"
-        >Início</a
-      >
-      <a routerLink="/historico" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Histórico</a
-      >
-      <a routerLink="/meu-computador" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Meu computador</a
-      >
-      <a routerLink="/configuracoes" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Configurações</a
-      >
-      <a routerLink="/ajuda" routerLinkActive="active" ariaCurrentWhenActive="page">Ajuda</a>
+      <div class="nav-group">
+        <p class="nav-label">Atendimento</p>
+        <a
+          routerLink="/"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          ariaCurrentWhenActive="page"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M2.5 7.5 8 2.8l5.5 4.7M4 7v6h8V7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="label">Início</span>
+        </a>
+        <a routerLink="/historico" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path
+              d="M8 5.2V8l2.2 1.6"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span class="label">Histórico</span>
+        </a>
+      </div>
+      <div class="nav-group">
+        <p class="nav-label">Computador</p>
+        <a routerLink="/meu-computador" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <rect
+              x="2"
+              y="3"
+              width="12"
+              height="8"
+              rx="1.2"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            />
+            <path
+              d="M5.5 13.5h5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span class="label">Meu computador</span>
+        </a>
+      </div>
+      <div class="nav-group">
+        <p class="nav-label">Preferências</p>
+        <a routerLink="/configuracoes" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path
+              d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span class="label">Configurações</span>
+        </a>
+        <a routerLink="/ajuda" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path
+              d="M6.4 6.2c.2-.9.9-1.4 1.7-1.4.9 0 1.6.6 1.6 1.4 0 1.1-1.5 1.2-1.5 2.4M8 11.4v.2"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span class="label">Ajuda</span>
+        </a>
+      </div>
     </nav>
-    <div class="size" role="group" aria-label="Tamanho do texto">
-      <button
-        type="button"
-        class="btn"
-        (click)="resize(-1)"
-        [disabled]="size() === 0"
-        aria-label="Diminuir o texto"
-      >
-        A−
-      </button>
-      <button
-        type="button"
-        class="btn"
-        (click)="resize(1)"
-        [disabled]="size() === 3"
-        aria-label="Aumentar o texto"
-      >
-        A+
-      </button>
+    <div class="rail-foot">
+      <div class="size" role="group" aria-label="Tamanho do texto">
+        <button
+          type="button"
+          class="btn small"
+          (click)="resize(-1)"
+          [disabled]="size() === 0"
+          aria-label="Diminuir o texto"
+        >
+          A−
+        </button>
+        <button
+          type="button"
+          class="btn small"
+          (click)="resize(1)"
+          [disabled]="size() === 3"
+          aria-label="Aumentar o texto"
+        >
+          A+
+        </button>
+      </div>
     </div>
+  </aside>
+  <div class="workspace">
+    <main id="conteudo" class="inner" tabindex="-1">
+      <router-outlet />
+    </main>
   </div>
-</header>
-@if (!api.real) {
-  <p class="proto" role="note">
-    Protótipo: as telas usam dados de exemplo. Nada é verificado nem alterado no seu computador.
-  </p>
-}
-<main id="conteudo" class="inner" tabindex="-1">
-  <router-outlet />
-</main>
+</div>

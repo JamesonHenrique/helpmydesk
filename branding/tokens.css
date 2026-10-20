@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
-   Help My Desk — Oficina editorial, tokens de referência v1.0.
+   Help My Desk — Oficina editorial de precisão, tokens de referência v2.0.
    Fonte operacional da UI: apps/desktop/ui/src/styles.css. Manter sincronizado. */
 :root {
   color-scheme: light;
@@ -17,6 +17,14 @@
   --hmd-coral: #ff6c4d;
   --hmd-checkpoint: #d8f16a;
   --hmd-checkpoint-fg: #22282d;
+  --hmd-technical-ink: #496965;
+  --hmd-technical-soft: #dde8e3;
+  --hmd-rail-bg: #22282d;
+  --hmd-rail-fg: #f3f0e6;
+  --hmd-rail-muted: #aab2b6;
+  --hmd-rail-line: #3f474c;
+  --hmd-rail-active-bg: #2f373c;
+  --hmd-rail-accent: #ff8066;
   --hmd-ok: #286542;
   --hmd-warn: #805500;
   --hmd-error: #a32e25;
@@ -27,6 +35,8 @@
   --hmd-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --hmd-font-mono: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
   --hmd-font-size: 1.0625rem;
+  --hmd-fs-display: clamp(2rem, 3.2vw, 3.25rem);
+  --hmd-fs-page: clamp(1.7rem, 2.6vw, 2.35rem);
   --hmd-space-1: 4px;
   --hmd-space-2: 8px;
   --hmd-space-3: 12px;
@@ -55,6 +65,14 @@
     --hmd-accent: #ff8066;
     --hmd-accent-fg: #22282d;
     --hmd-accent-soft: #4a2b27;
+    --hmd-technical-ink: #a2c7bf;
+    --hmd-technical-soft: #2d413e;
+    --hmd-rail-bg: #101517;
+    --hmd-rail-fg: #f3f0e6;
+    --hmd-rail-muted: #aab2b6;
+    --hmd-rail-line: #3a4144;
+    --hmd-rail-active-bg: #1d2326;
+    --hmd-rail-accent: #ff8066;
     --hmd-ok: #9bd4a7;
     --hmd-warn: #f3d078;
     --hmd-error: #ff9a85;
@@ -76,6 +94,14 @@
   --hmd-accent: #ff8066;
   --hmd-accent-fg: #22282d;
   --hmd-accent-soft: #4a2b27;
+  --hmd-technical-ink: #a2c7bf;
+  --hmd-technical-soft: #2d413e;
+  --hmd-rail-bg: #101517;
+  --hmd-rail-fg: #f3f0e6;
+  --hmd-rail-muted: #aab2b6;
+  --hmd-rail-line: #3a4144;
+  --hmd-rail-active-bg: #1d2326;
+  --hmd-rail-accent: #ff8066;
   --hmd-ok: #9bd4a7;
   --hmd-warn: #f3d078;
   --hmd-error: #ff9a85;
