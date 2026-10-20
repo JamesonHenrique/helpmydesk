@@ -21,19 +21,29 @@ const WHY: Record<string, string> = {
   template: `
     <section class="page" aria-labelledby="t">
       @if (running()) {
-        <h1 id="t">Fazendo a correção…</h1>
+        <div class="page-head">
+          <p class="rule">Execução · só o que você aprovou</p>
+          <h1 id="t">Fazendo a correção…</h1>
+        </div>
         <p class="muted" aria-live="polite">
           Só o que você aprovou. Depois eu confiro se resolveu.
         </p>
       } @else if (error(); as e) {
-        <h1 id="t">Não consegui fazer a correção</h1>
+        <div class="page-head">
+          <p class="rule">Execução interrompida</p>
+          <h1 id="t">Não consegui fazer a correção</h1>
+        </div>
         <p class="notice">{{ why(e.code) }}</p>
         <div class="actions">
           <a class="btn primary" routerLink="/relatorio">Preparar relatório</a>
         </div>
       } @else if (answer() === 'yes') {
-        <h1 id="t">Resolvido</h1>
+        <div class="page-head">
+          <p class="rule">Atendimento concluído</p>
+          <h1 id="t">Resolvido</h1>
+        </div>
         <div class="card">
+          <span class="stamp"><span aria-hidden="true">✓</span> CONFIRMADO POR VOCÊ</span>
           <dl class="facts">
             <dt>O problema</dt>
             <dd>{{ session.diagnosis()?.title }}</dd>
@@ -43,12 +53,19 @@ const WHY: Record<string, string> = {
             <dd>Abra o HelpMyDesk e escolha a mesma opção.</dd>
           </dl>
         </div>
-        <div class="actions"><a class="btn primary" routerLink="/">Voltar ao início</a></div>
+        <div class="actions">
+          <a class="btn" routerLink="/relatorio">Preparar relatório</a>
+          <a class="btn primary" routerLink="/">Voltar ao início</a>
+        </div>
       } @else if (outcome(); as o) {
         @switch (o.kind) {
           @case ('verified') {
-            <h1 id="t">Conferi e parece resolvido</h1>
-            <p class="ok">
+            <div class="page-head">
+              <p class="rule">Verificação técnica · falta a sua palavra</p>
+              <h1 id="t">Conferi e parece resolvido</h1>
+            </div>
+            <p class="ok verified-note">
+              <span class="stamp" aria-hidden="true"><span>✓</span> CONFERIDO</span>
               <strong>Verificado:</strong> a verificação não encontra mais o problema.
             </p>
             @if (answer() === 'no') {
@@ -69,8 +86,11 @@ const WHY: Record<string, string> = {
             }
           }
           @case ('not_available') {
-            <h1 id="t">Essa correção ainda não está disponível</h1>
-            <p>
+            <div class="page-head">
+              <p class="rule">Sem correção disponível · nada foi alterado</p>
+              <h1 id="t">Essa correção ainda não está disponível</h1>
+            </div>
+            <p class="notice">
               Esta versão do HelpMyDesk ainda não faz essa correção sozinha.
               <strong>Nada foi alterado.</strong> Siga as orientações abaixo ou leve o relatório a
               alguém.
@@ -85,8 +105,11 @@ const WHY: Record<string, string> = {
             </div>
           }
           @case ('elevation_not_available') {
-            <h1 id="t">Preciso de permissão de administrador</h1>
-            <p>
+            <div class="page-head">
+              <p class="rule">Falta permissão · nada foi alterado</p>
+              <h1 id="t">Preciso de permissão de administrador</h1>
+            </div>
+            <p class="notice">
               Esta correção só pode ser feita por um auxiliar instalado com permissão de
               administrador, e esta instalação do HelpMyDesk não tem esse auxiliar.
               <strong>Nada foi alterado.</strong>
@@ -105,13 +128,16 @@ const WHY: Record<string, string> = {
             </div>
           }
           @default {
-            <h1 id="t">
-              {{
-                o.trigger === 'REP-04'
-                  ? 'Não consegui confirmar o resultado'
-                  : 'A correção não resolveu'
-              }}
-            </h1>
+            <div class="page-head">
+              <p class="rule">Resultado honesto · não resolvido</p>
+              <h1 id="t">
+                {{
+                  o.trigger === 'REP-04'
+                    ? 'Não consegui confirmar o resultado'
+                    : 'A correção não resolveu'
+                }}
+              </h1>
+            </div>
             <p>
               @if (o.trigger === 'REP-04') {
                 Não sei se a correção chegou ao fim. Por segurança, não vou repetir sozinho.
@@ -127,6 +153,17 @@ const WHY: Record<string, string> = {
         }
       }
     </section>
+  `,
+  styles: `
+    .verified-note {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+    }
+    .stamp {
+      margin-right: 0.2rem;
+    }
   `,
 })
 export class ResultPage implements OnInit {

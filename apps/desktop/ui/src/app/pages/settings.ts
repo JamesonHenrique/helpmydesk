@@ -14,122 +14,190 @@ import { Autonomy, Platform, PrototypeState } from '../state/prototype';
   imports: [AiConnectComponent],
   template: `
     <section class="page" aria-labelledby="t">
-      <h1 id="t">Configurações</h1>
-
-      <h2 id="priv">Privacidade</h2>
-      <div class="card">
-        <h3>O que eu olho no seu computador</h3>
-        <label for="pf" class="small">Mostrar para</label>
-        <select
-          id="pf"
-          [value]="state.platform()"
-          (change)="setPlatform($any($event.target).value)"
-        >
-          <option value="windows">Windows</option>
-          <option value="linux">Linux</option>
-        </select>
-        <ul class="checks">
-          @for (p of disclosures(); track p.id) {
-            <li>
-              <span class="mark ok" aria-hidden="true">•</span>
-              <span>
-                <strong>{{ p.title }}</strong>
-                @if (p.consent) {
-                  <span class="pill warn small">só com permissão</span>
-                }
-                <br /><span class="small">Olho: {{ p.looksAt }}</span> <br /><span
-                  class="small muted"
-                  >Não guardo nem envio: {{ p.never }}</span
-                >
-              </span>
-            </li>
-          }
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Permissões opcionais</h3>
-        @for (c of optional; track c.id) {
-          <label class="option">
-            <input
-              type="checkbox"
-              [checked]="consents().has(c.id)"
-              (change)="setConsent(c.id, $any($event.target).checked)"
-            />
-            <span
-              ><strong>{{ c.title }}</strong>
-              <span class="small muted">(aviso versão {{ c.version }})</span><br />
-              <span class="small">{{ c.text }}</span></span
-            >
-          </label>
-        }
-      </div>
-      <div class="card">
-        <h3>Meus dados</h3>
-        <p class="small">
-          Tudo fica neste computador. Você pode ver tudo o que guardo ou apagar tudo.
+      <div class="page-head">
+        <p class="rule">Preferências · 01 a 05</p>
+        <h1 id="t">Configurações</h1>
+        <p class="lead">
+          Privacidade, autonomia e a ajuda inteligente — tudo à vista, tudo revogável.
         </p>
-        <div class="row">
-          <button type="button" class="btn" (click)="exportAll()">
-            Ver tudo o que está guardado
-          </button>
-          @if (!confirming()) {
-            <button type="button" class="btn danger" (click)="confirming.set(true)">
-              Apagar tudo
-            </button>
-          } @else {
-            <span role="alert"
-              >Apagar histórico, relatórios, permissões e o código da ajuda inteligente? Não dá para
-              desfazer.</span
+      </div>
+
+      <div class="settings-grid">
+        <nav class="toc" aria-label="Seções das configurações">
+          <a class="toc-link" href="#priv">01 · Privacidade</a>
+          <a class="toc-link" href="#auto">02 · Autonomia</a>
+          <a class="toc-link" href="#ia">03 · Inteligência artificial</a>
+          <a class="toc-link" href="#sobre">04 · Sobre</a>
+        </nav>
+        <div class="settings-body">
+          <h2 id="priv">Privacidade</h2>
+          <div class="sheet">
+            <h3 class="no-top">O que eu olho no seu computador</h3>
+            <label for="pf" class="small">Mostrar para</label>
+            <select
+              id="pf"
+              [value]="state.platform()"
+              (change)="setPlatform($any($event.target).value)"
             >
-            <button type="button" class="btn" (click)="confirming.set(false)">Cancelar</button>
-            <button type="button" class="btn danger" (click)="erase()">Sim, apagar tudo</button>
-          }
+              <option value="windows">Windows</option>
+              <option value="linux">Linux</option>
+            </select>
+            <ul class="checks">
+              @for (p of disclosures(); track p.id) {
+                <li>
+                  <span class="mark ok" aria-hidden="true">•</span>
+                  <span>
+                    <strong>{{ p.title }}</strong>
+                    @if (p.consent) {
+                      <span class="pill warn small">só com permissão</span>
+                    }
+                    <br /><span class="small">Olho: {{ p.looksAt }}</span> <br /><span
+                      class="small muted"
+                      >Não guardo nem envio: {{ p.never }}</span
+                    >
+                  </span>
+                </li>
+              }
+            </ul>
+          </div>
+          <div class="sheet">
+            <h3 class="no-top">Permissões opcionais</h3>
+            @for (c of optional; track c.id) {
+              <label class="option">
+                <input
+                  type="checkbox"
+                  [checked]="consents().has(c.id)"
+                  (change)="setConsent(c.id, $any($event.target).checked)"
+                />
+                <span
+                  ><strong>{{ c.title }}</strong>
+                  <span class="small muted">(aviso versão {{ c.version }})</span><br />
+                  <span class="small">{{ c.text }}</span></span
+                >
+              </label>
+            }
+          </div>
+          <div class="sheet">
+            <h3 class="no-top">Meus dados</h3>
+            <p class="small">
+              Tudo fica neste computador. Você pode ver tudo o que guardo ou apagar tudo.
+            </p>
+            <div class="row">
+              <button type="button" class="btn" (click)="exportAll()">
+                Ver tudo o que está guardado
+              </button>
+              @if (!confirming()) {
+                <button type="button" class="btn danger" (click)="confirming.set(true)">
+                  Apagar tudo
+                </button>
+              } @else {
+                <span class="erase-confirm" role="alert"
+                  >Apagar histórico, relatórios, permissões e o código da ajuda inteligente? Não dá
+                  para desfazer.</span
+                >
+                <button type="button" class="btn" (click)="confirming.set(false)">Cancelar</button>
+                <button type="button" class="btn danger" (click)="erase()">Sim, apagar tudo</button>
+              }
+            </div>
+            <p class="small muted" aria-live="polite">{{ message() }}</p>
+            @if (exported()) {
+              <label for="exp" class="small">Seus dados (você pode copiar)</label>
+              <textarea id="exp" readonly [value]="exported()"></textarea>
+            }
+          </div>
+
+          <h2 id="auto">Autonomia</h2>
+          <fieldset class="card">
+            <legend>Quanto eu posso fazer sozinho</legend>
+            @for (o of autonomyOptions; track o.value) {
+              <label class="option">
+                <input
+                  type="radio"
+                  name="autonomy"
+                  [checked]="autonomy() === o.value"
+                  (change)="setAutonomy(o.value)"
+                />
+                <span>{{ o.title }}</span>
+              </label>
+            }
+          </fieldset>
+
+          <h2 id="ia">Inteligência artificial</h2>
+          <div class="card">
+            <app-ai-connect />
+          </div>
+
+          <h2 id="sobre">Sobre</h2>
+          <dl class="facts card">
+            <dt>Versão</dt>
+            <dd>0.1.0 (pré-alfa)</dd>
+            <dt>Catálogo</dt>
+            <dd>{{ catalogVersion }}</dd>
+            <dt>Licença</dt>
+            <dd>GPL-3.0-or-later</dd>
+            <dt>Código</dt>
+            <dd>github.com/JamesonHenrique/helpmydesk</dd>
+            <dt>Ao abrir</dt>
+            <dd>
+              Consulto o GitHub para saber se alguma correção foi desligada por segurança. Nenhum
+              dado seu vai junto (o GitHub vê o endereço de internet, como em qualquer download).
+            </dd>
+          </dl>
         </div>
-        <p class="small muted" aria-live="polite">{{ message() }}</p>
-        @if (exported()) {
-          <label for="exp" class="small">Seus dados (você pode copiar)</label>
-          <textarea id="exp" readonly [value]="exported()"></textarea>
-        }
       </div>
-
-      <h2 id="auto">Autonomia</h2>
-      <fieldset class="card">
-        <legend>Quanto eu posso fazer sozinho</legend>
-        @for (o of autonomyOptions; track o.value) {
-          <label class="option">
-            <input
-              type="radio"
-              name="autonomy"
-              [checked]="autonomy() === o.value"
-              (change)="setAutonomy(o.value)"
-            />
-            <span>{{ o.title }}</span>
-          </label>
-        }
-      </fieldset>
-
-      <h2 id="ia">Inteligência artificial</h2>
-      <div class="card">
-        <app-ai-connect />
-      </div>
-
-      <h2 id="sobre">Sobre</h2>
-      <dl class="facts card">
-        <dt>Versão</dt>
-        <dd>0.1.0 (pré-alfa)</dd>
-        <dt>Catálogo</dt>
-        <dd>{{ catalogVersion }}</dd>
-        <dt>Licença</dt>
-        <dd>GPL-3.0-or-later</dd>
-        <dt>Código</dt>
-        <dd>github.com/JamesonHenrique/helpmydesk</dd>
-        <dt>Ao abrir</dt>
-        <dd>
-          Consulto o GitHub para saber se alguma correção foi desligada por segurança. Nenhum dado
-          seu vai junto (o GitHub vê o endereço de internet, como em qualquer download).
-        </dd>
-      </dl>
     </section>
+  `,
+  styles: `
+    .no-top {
+      margin-top: 0;
+    }
+    .settings-grid {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: minmax(10rem, 12rem) minmax(0, 1fr);
+      align-items: start;
+    }
+    .toc {
+      position: sticky;
+      top: 1rem;
+      display: grid;
+      gap: 0.4rem;
+      border-left: 2px solid var(--line);
+      padding-left: 0.8rem;
+    }
+    .toc-link {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-family: var(--font-mono);
+    }
+    .toc-link:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+    .erase-confirm {
+      color: var(--bad);
+      font-weight: 600;
+      max-width: 30rem;
+    }
+    .settings-body .sheet,
+    .settings-body .card {
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 899px) {
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+      .toc {
+        position: static;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem 1rem;
+        border-left: none;
+        border-bottom: 1px dashed var(--line);
+        padding: 0 0 0.6rem;
+      }
+    }
   `,
 })
 export class SettingsPage implements OnInit {

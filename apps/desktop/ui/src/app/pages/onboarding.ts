@@ -23,35 +23,59 @@ const STEPS = [
   imports: [RouterLink, AiConnectComponent],
   template: `
     <section class="page" aria-labelledby="t">
+      <div class="onb-rail" aria-hidden="true">
+        @for (s of steps; track s; let i = $index) {
+          <span class="onb-step" [class.current]="i === step()" [class.done]="i < step()">
+            {{ pad(i + 1) }} · {{ s }}</span
+          >
+        }
+      </div>
       <p class="small muted" aria-live="polite">
         Passo {{ step() + 1 }} de {{ steps.length }}: {{ steps[step()] }}
       </p>
       @switch (step()) {
         @case (0) {
-          <h1 id="t" tabindex="-1">Olá! Eu ajudo com problemas do computador.</h1>
-          <p>
-            Você me conta o que está acontecendo, eu verifico e explico. Só mudo algo com a sua
-            permissão.
-          </p>
+          <div class="onb-head">
+            <div>
+              <h1 id="t" tabindex="-1" class="display">
+                Olá! Eu ajudo com problemas do computador.
+              </h1>
+              <p class="lead">
+                Você me conta o que está acontecendo, eu verifico e explico. Só mudo algo com a sua
+                permissão.
+              </p>
+            </div>
+            <img
+              class="assistant"
+              src="/branding/assistente-oficina.png"
+              alt=""
+              width="150"
+              height="150"
+            />
+          </div>
         }
         @case (1) {
           <h1 id="t" tabindex="-1">O que eu faço e o que eu não faço</h1>
-          <div class="card">
-            <h2>Eu faço</h2>
-            <ul class="steps">
-              <li>
-                Verificações de leitura: internet, desempenho, espaço, som, microfone e câmera.
-              </li>
-              <li>Explico o que encontrei, com palavras simples.</li>
-              <li>Proponho correções conhecidas e só faço com a sua aprovação.</li>
-              <li>Confiro se resolveu. Se não resolver, preparo um relatório.</li>
-            </ul>
-            <h2>Eu nunca</h2>
-            <ul class="steps">
-              <li>Olho seus arquivos, fotos, senhas, e-mails ou histórico do navegador.</li>
-              <li>Instalo ou removo programas, nem mexo no antivírus.</li>
-              <li>Envio dados para o projeto. Tudo fica neste computador.</li>
-            </ul>
+          <div class="onb-do">
+            <div class="sheet">
+              <p class="rule do-rule">Eu faço</p>
+              <ul class="steps">
+                <li>
+                  Verificações de leitura: internet, desempenho, espaço, som, microfone e câmera.
+                </li>
+                <li>Explico o que encontrei, com palavras simples.</li>
+                <li>Proponho correções conhecidas e só faço com a sua aprovação.</li>
+                <li>Confiro se resolveu. Se não resolver, preparo um relatório.</li>
+              </ul>
+            </div>
+            <div class="sheet">
+              <p class="rule never-rule">Eu nunca</p>
+              <ul class="steps">
+                <li>Olho seus arquivos, fotos, senhas, e-mails ou histórico do navegador.</li>
+                <li>Instalo ou removo programas, nem mexo no antivírus.</li>
+                <li>Envio dados para o projeto. Tudo fica neste computador.</li>
+              </ul>
+            </div>
           </div>
         }
         @case (2) {
@@ -59,19 +83,21 @@ const STEPS = [
           <p class="lead">
             As verificações básicas não precisam de permissão. Estas são opcionais:
           </p>
-          @for (c of optional; track c.id) {
-            <label class="option card">
-              <input
-                type="checkbox"
-                [checked]="state.consents().has(c.id)"
-                (change)="setConsent(c.id, $any($event.target).checked)"
-              />
-              <span
-                ><strong>{{ c.title }}</strong
-                ><br /><span class="small">{{ c.text }}</span></span
-              >
-            </label>
-          }
+          <div class="opt-list">
+            @for (c of optional; track c.id) {
+              <label class="option card">
+                <input
+                  type="checkbox"
+                  [checked]="state.consents().has(c.id)"
+                  (change)="setConsent(c.id, $any($event.target).checked)"
+                />
+                <span
+                  ><strong>{{ c.title }}</strong
+                  ><br /><span class="small">{{ c.text }}</span></span
+                >
+              </label>
+            }
+          </div>
           <p class="small">
             <a routerLink="/configuracoes">Ver exatamente o que cada verificação olha</a>
           </p>
@@ -103,9 +129,25 @@ const STEPS = [
           <app-ai-connect />
         }
         @default {
-          <h1 id="t" tabindex="-1">Tudo pronto</h1>
-          <p>Você pode mudar tudo isso depois em Configurações.</p>
-          <p><a class="btn primary" routerLink="/">Começar</a></p>
+          <div class="onb-head">
+            <div>
+              <h1 id="t" tabindex="-1">Tudo pronto</h1>
+              <p class="lead">
+                Suas escolhas ficam salvas neste computador. Você pode mudar tudo isso depois em
+                <a routerLink="/configuracoes">Configurações</a>.
+              </p>
+              <p class="actions">
+                <a class="btn primary" routerLink="/">Começar</a>
+              </p>
+            </div>
+            <img
+              class="assistant"
+              src="/branding/assistente-oficina.png"
+              alt=""
+              width="130"
+              height="130"
+            />
+          </div>
         }
       }
       <div class="actions">
@@ -117,6 +159,68 @@ const STEPS = [
         }
       </div>
     </section>
+  `,
+  styles: `
+    .onb-rail {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem 0.9rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 0.6rem;
+    }
+    .onb-step {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    .onb-step.current {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .onb-step.done {
+      color: var(--technical-ink);
+    }
+    .onb-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 1rem;
+      align-items: center;
+    }
+    .assistant {
+      max-width: 150px;
+      height: auto;
+      justify-self: end;
+    }
+    @media (max-width: 560px) {
+      .onb-head {
+        grid-template-columns: 1fr;
+      }
+      .assistant {
+        display: none;
+      }
+    }
+    .display {
+      font-size: var(--fs-display, clamp(2rem, 3.2vw, 3.25rem));
+      letter-spacing: -0.02em;
+    }
+    .onb-do {
+      display: grid;
+      gap: 0.9rem;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    }
+    .do-rule {
+      color: var(--ok);
+      margin-bottom: 0.4rem;
+    }
+    .never-rule {
+      color: var(--bad);
+      margin-bottom: 0.4rem;
+    }
+    .opt-list {
+      display: grid;
+      gap: 0.7rem;
+    }
   `,
 })
 export class OnboardingPage {
@@ -142,6 +246,10 @@ export class OnboardingPage {
   protected go(delta: number): void {
     this.step.update((s) => Math.min(STEPS.length - 1, Math.max(0, s + delta)));
     queueMicrotask(() => document.getElementById('t')?.focus());
+  }
+
+  protected pad(n: number): string {
+    return String(n).padStart(2, '0');
   }
 
   private readonly api = inject(CORE_API);

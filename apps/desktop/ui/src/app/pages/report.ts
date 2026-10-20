@@ -14,27 +14,45 @@ import { Session } from '../state/session';
   imports: [RouterLink],
   template: `
     <section class="page" aria-labelledby="t">
-      <h1 id="t">{{ heading() }}</h1>
-      <p>Preparo um relatório para você mostrar a quem for te ajudar.</p>
-      <div class="card small">
-        <div class="row">
-          <div>
-            <strong>Ele tem</strong>
-            <ul class="steps">
-              <li>Sua descrição do problema</li>
-              <li>O que eu verifiquei e encontrei</li>
-              <li>O que eu tentei e o resultado</li>
-              <li>Versão do sistema</li>
-            </ul>
-          </div>
-          <div>
-            <strong>Não tem</strong>
-            <ul class="steps">
-              <li>Arquivos, senhas, nome de usuário</li>
-              <li>Nome do computador</li>
-              <li>Nomes de programas abertos</li>
-            </ul>
-          </div>
+      <div class="page-head">
+        <p class="rule">Relatório técnico · gerado neste computador</p>
+        <h1 id="t">{{ heading() }}</h1>
+        <p class="lead">Preparo um relatório para você mostrar a quem for te ajudar.</p>
+      </div>
+      <div class="has-no">
+        <div class="sheet has">
+          <p class="rule has-rule">Contém</p>
+          <ul class="checks">
+            <li>
+              <span class="mark ok" aria-hidden="true">✓</span
+              ><span>Sua descrição do problema</span>
+            </li>
+            <li>
+              <span class="mark ok" aria-hidden="true">✓</span
+              ><span>O que eu verifiquei e encontrei</span>
+            </li>
+            <li>
+              <span class="mark ok" aria-hidden="true">✓</span
+              ><span>O que eu tentei e o resultado</span>
+            </li>
+            <li><span class="mark ok" aria-hidden="true">✓</span><span>Versão do sistema</span></li>
+          </ul>
+        </div>
+        <div class="sheet">
+          <p class="rule no-rule">Não contém</p>
+          <ul class="checks">
+            <li>
+              <span class="mark bad" aria-hidden="true">✗</span
+              ><span>Arquivos, senhas, nome de usuário</span>
+            </li>
+            <li>
+              <span class="mark bad" aria-hidden="true">✗</span><span>Nome do computador</span>
+            </li>
+            <li>
+              <span class="mark bad" aria-hidden="true">✗</span
+              ><span>Nomes de programas abertos</span>
+            </li>
+          </ul>
         </div>
       </div>
       @if (needsDiagnosis()) {
@@ -45,31 +63,41 @@ import { Session } from '../state/session';
         <div class="actions"><a class="btn primary" routerLink="/">Ir para o início</a></div>
       } @else {
         @if (!reportId() && session.diagnosis()) {
-          <label for="sym"
-            ><strong>Conte com suas palavras o que aconteceu</strong>
-            <span class="small muted">(opcional)</span></label
-          >
-          <input
-            id="sym"
-            type="text"
-            [value]="symptom()"
-            (input)="symptom.set($any($event.target).value)"
-          />
-          <div class="actions">
-            <button type="button" class="btn primary" (click)="generate()">Gerar relatório</button>
+          <div class="sheet sym-box">
+            <label for="sym"
+              ><strong>Conte com suas palavras o que aconteceu</strong>
+              <span class="small muted">(opcional)</span></label
+            >
+            <input
+              id="sym"
+              type="text"
+              [value]="symptom()"
+              (input)="symptom.set($any($event.target).value)"
+            />
+            <div class="actions sym-actions">
+              <button type="button" class="btn primary" (click)="generate()">
+                Gerar relatório
+              </button>
+            </div>
           </div>
         }
         @if (text()) {
-          <label for="rel"
-            ><strong>Ver e editar o relatório</strong>
-            <span class="small muted">(apague o que não quiser compartilhar)</span></label
-          >
-          <textarea
-            id="rel"
-            maxlength="20000"
-            [value]="text()"
-            (input)="edit($any($event.target).value)"
-          ></textarea>
+          <div class="report-paper">
+            <div class="report-head" aria-hidden="true">
+              <span class="report-title">HelpMyDesk · relatório do computador</span>
+              <span class="report-dim">não enviado por e-mail — saída manual</span>
+            </div>
+            <label for="rel"
+              ><strong>Ver e editar o relatório</strong>
+              <span class="small muted">(apague o que não quiser compartilhar)</span></label
+            >
+            <textarea
+              id="rel"
+              maxlength="20000"
+              [value]="text()"
+              (input)="edit($any($event.target).value)"
+            ></textarea>
+          </div>
           <div class="actions">
             <button type="button" class="btn" (click)="copy()">Copiar texto</button>
             <button type="button" class="btn primary" (click)="save()">Salvar arquivo</button>
@@ -77,8 +105,71 @@ import { Session } from '../state/session';
         }
       }
       <p class="small muted" aria-live="polite">{{ status() }}</p>
-      <p class="small">Nada é enviado pelo HelpMyDesk. Você decide se e para quem entregar.</p>
+      <p class="small send-note">
+        Nada é enviado pelo HelpMyDesk. Você decide se e para quem entregar.
+      </p>
     </section>
+  `,
+  styles: `
+    .has-no {
+      display: grid;
+      gap: 0.9rem;
+      grid-template-columns: 1fr 1fr;
+      max-width: 52rem;
+    }
+    @media (max-width: 699px) {
+      .has-no {
+        grid-template-columns: 1fr;
+      }
+    }
+    .has-rule {
+      color: var(--ok);
+      margin-bottom: 0.4rem;
+    }
+    .no-rule {
+      color: var(--bad);
+      margin-bottom: 0.4rem;
+    }
+    .sym-box {
+      max-width: 52rem;
+      display: grid;
+      gap: 0.6rem;
+    }
+    .sym-actions {
+      justify-content: flex-start;
+    }
+    .report-paper {
+      max-width: 52rem;
+      background: var(--surface-raised);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem 1.25rem;
+      display: grid;
+      gap: 0.6rem;
+    }
+    .report-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border-bottom: 2px solid var(--fg);
+      padding-bottom: 0.45rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .report-title {
+      font-weight: 700;
+    }
+    .report-dim {
+      color: var(--muted);
+      text-transform: none;
+    }
+    .send-note {
+      border-top: 1px dashed var(--line-strong);
+      padding-top: 0.6rem;
+      max-width: 52rem;
+    }
   `,
 })
 export class ReportPage implements OnInit {
