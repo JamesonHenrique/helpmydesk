@@ -15,36 +15,47 @@ export const APPROVAL_ARM_MS = 1000;
   selector: 'app-approval',
   template: `
     <section class="page" aria-labelledby="t">
-      <h1 id="t">Aprovar correção</h1>
+      <div class="page-head">
+        <p class="rule">Janela de aprovação · decisão aqui, só aqui</p>
+        <h1 id="t">Aprovar correção</h1>
+        <p class="lead">Marque o que eu posso fazer. Nada acontece sem o seu "Sim".</p>
+      </div>
       @if (error(); as e) {
         <p class="notice">Este plano não está mais disponível ({{ e.code }}). Nada foi feito.</p>
       } @else if (done()) {
         <p aria-live="polite">{{ done() }}</p>
       } @else if (plan(); as p) {
-        <p class="lead">Marque o que eu posso fazer. Nada acontece sem o seu "Sim".</p>
-        @for (s of p.steps; track s.stepId) {
-          <label class="option card">
-            <input type="checkbox" [checked]="chosen().has(s.stepId)" (change)="toggle(s.stepId)" />
-            <span>
-              <strong>{{ s.title }}</strong
-              ><br />
-              <span class="small">Risco: {{ s.risk }}</span
-              ><br />
-              <span class="small">Desfazer: {{ s.undo }}</span>
-              @if (s.requiresElevation) {
-                <br />
-                <span class="small warn">
-                  Se o seu HelpMyDesk tiver o auxiliar de administrador instalado, o Windows vai
-                  abrir a janela de Controle de Conta de Usuário. Recusar lá não muda nada no
-                  computador.
-                </span>
-              }
-            </span>
-          </label>
-        }
-        <p class="small muted">Plano {{ p.planHash.slice(0, 19) }}… · vale por 10 minutos.</p>
-        <div class="actions">
-          <button type="button" class="btn" (click)="decline()">Não, obrigado</button>
+        <div class="opt-list">
+          @for (s of p.steps; track s.stepId) {
+            <label class="option card">
+              <input
+                type="checkbox"
+                [checked]="chosen().has(s.stepId)"
+                (change)="toggle(s.stepId)"
+              />
+              <span>
+                <strong>{{ s.title }}</strong
+                ><br />
+                <span class="small">Risco: {{ s.risk }}</span
+                ><br />
+                <span class="small">Desfazer: {{ s.undo }}</span>
+                @if (s.requiresElevation) {
+                  <br />
+                  <span class="small warn">
+                    Se o seu HelpMyDesk tiver o auxiliar de administrador instalado, o Windows vai
+                    abrir a janela de Controle de Conta de Usuário. Recusar lá não muda nada no
+                    computador.
+                  </span>
+                }
+              </span>
+            </label>
+          }
+        </div>
+        <p class="small muted mono-note">
+          Plano {{ p.planHash.slice(0, 19) }}… · vale por 10 minutos.
+        </p>
+        <div class="actions approval-actions">
+          <button type="button" class="btn decline" (click)="decline()">Não, obrigado</button>
           <button
             type="button"
             class="btn primary"
@@ -58,6 +69,18 @@ export const APPROVAL_ARM_MS = 1000;
         <p aria-live="polite">Carregando o plano…</p>
       }
     </section>
+  `,
+  styles: `
+    .opt-list {
+      display: grid;
+      gap: 0.7rem;
+    }
+    .mono-note {
+      font-family: var(--font-mono);
+    }
+    .approval-actions .decline {
+      border-color: var(--control-border);
+    }
   `,
 })
 export class ApprovalPage implements OnInit, OnDestroy {
